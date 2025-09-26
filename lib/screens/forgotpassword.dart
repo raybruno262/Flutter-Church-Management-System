@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
-import 'package:flutter_churchcrm_system/screens/forgotpassword.dart';
+import 'package:flutter_churchcrm_system/screens/login.dart';
 import 'package:flutter_churchcrm_system/screens/otpverification.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   var _obscurePassword = true;
   @override
   Widget build(BuildContext context) {
@@ -47,18 +47,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: containerColor,
               ),
               child: isMobile
-                  ? Center(child: _buildLoginForm())
+                  ? Center(
+                      child: SingleChildScrollView(child: _buildForgotForm()),
+                    )
                   : Row(
                       children: [
                         Expanded(
                           flex: 6,
-                          //login data
+                          //forgot password data
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 8,
                             ),
-                            child: _buildLoginForm(),
+                            child: SingleChildScrollView(
+                              child: _buildForgotForm(),
+                            ),
                           ),
                         ),
                         Expanded(
@@ -85,15 +89,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginForm() {
+  Widget _buildForgotForm() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        SizedBox(height: 10),
         Image.asset('assets/images/church.png', height: 90),
         SizedBox(height: 30),
         Text(
-          'LOGIN ',
+          'Forgot Password ',
           style: GoogleFonts.poppins(
             fontSize: 23,
             color: titleColor,
@@ -117,7 +120,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               labelStyle: GoogleFonts.poppins(color: Colors.black),
               prefixIcon: Icon(Icons.email, color: loginInputColor),
-
               filled: true,
 
               fillColor: loginTextfieldColor,
@@ -134,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
             obscureText: _obscurePassword,
             style: GoogleFonts.poppins(color: Colors.black),
             decoration: InputDecoration(
-              labelText: 'Password',
+              labelText: 'New Password',
               floatingLabelStyle: GoogleFonts.poppins(
                 color: Colors.orange,
                 fontWeight: FontWeight.bold,
@@ -164,37 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 1),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 30.0),
-            child: TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ForgotPasswordScreen(),
-                  ),
-                );
-              },
 
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                minimumSize: Size(1, 1),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                'Forgot Password?',
-                style: GoogleFonts.poppins(
-                  color: titleColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
         const SizedBox(height: 30),
         SizedBox(
           width: 116,
@@ -216,11 +188,32 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             },
             child: Text(
-              'Login',
+              'Save',
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.center,
+          child: TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            },
+
+            child: Text(
+              'Back to Login',
+              style: GoogleFonts.poppins(
+                color: titleColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
