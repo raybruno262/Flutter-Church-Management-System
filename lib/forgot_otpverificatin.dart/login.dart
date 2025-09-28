@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/screens/forgotpassword.dart';
 import 'package:flutter_churchcrm_system/screens/login_otpverification.dart';
+
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -189,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        const ForgotPasswordScreen(email: '', newPassword: ''),
+                        ForgotPasswordScreen(email: '', newPassword: ''),
                   ),
                 );
               },
