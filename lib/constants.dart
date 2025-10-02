@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+// const String baseHost = 'http://localhost:8080';
+const String baseHost = 'https://infrequent-brawly-arya.ngrok-free.dev';
+
 const backgroundcolor = Color(0xFF171821);
 const sideBarBoxColor = Color(0xFF6E60F1);
 const containerColor = Color(0xFF21222D);

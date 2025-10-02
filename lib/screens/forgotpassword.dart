@@ -129,7 +129,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               textAlign: TextAlign.center,
             ),
           ),
-        const SizedBox(height: 10),
+        SizedBox(height: message != null ? 1 : 10),
+
         Text(
           'Forgot Password',
           style: GoogleFonts.poppins(
@@ -138,62 +139,83 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 15),
+
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
-          child: TextField(
-            controller: emailController,
-            style: GoogleFonts.poppins(color: Colors.black),
-            decoration: InputDecoration(
-              labelText: 'Email',
-              floatingLabelStyle: GoogleFonts.poppins(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 19,
-              ),
-              labelStyle: GoogleFonts.poppins(color: Colors.black),
-              prefixIcon: Icon(Icons.email, color: loginInputColor),
-              filled: true,
-              fillColor: loginTextfieldColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 4),
-          child: TextField(
-            controller: passwordController,
-            obscureText: _obscurePassword,
-            style: GoogleFonts.poppins(color: Colors.black),
-            decoration: InputDecoration(
-              labelText: 'New Password',
-              floatingLabelStyle: GoogleFonts.poppins(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 19,
-              ),
-              labelStyle: GoogleFonts.poppins(color: Colors.black),
-              prefixIcon: Icon(Icons.lock, color: loginInputColor),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  color: loginInputColor,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Email',
+                style: GoogleFonts.poppins(
+                  color: Colors.orange,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
               ),
-              filled: true,
-              fillColor: loginTextfieldColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+
+              TextField(
+                controller: emailController,
+                style: GoogleFonts.poppins(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: 'Enter email',
+                  hintStyle: GoogleFonts.poppins(color: Colors.grey),
+                  prefixIcon: Icon(Icons.email, color: loginInputColor),
+                  filled: true,
+                  fillColor: loginTextfieldColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
-        const SizedBox(height: 30),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 1),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'New Password',
+                style: GoogleFonts.poppins(
+                  color: Colors.orange,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+
+              TextField(
+                controller: passwordController,
+                obscureText: _obscurePassword,
+                style: GoogleFonts.poppins(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: 'Enter password',
+                  hintStyle: GoogleFonts.poppins(color: Colors.grey),
+                  prefixIcon: Icon(Icons.lock, color: loginInputColor),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: loginInputColor,
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
+                  filled: true,
+                  fillColor: loginTextfieldColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
         SizedBox(
           width: 116,
           height: 52,
@@ -210,9 +232,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               final newPassword = passwordController.text.trim();
 
               if (email.isEmpty || newPassword.isEmpty) {
-                setState(
-                  () => message = 'Please fill in both email and new password.',
-                );
+                setState(() => message = 'Status 3000');
                 return;
               }
 
@@ -243,7 +263,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         Align(
           alignment: Alignment.center,
           child: TextButton(

@@ -163,7 +163,7 @@ class _LoginOTPVerificationScreenState
               textAlign: TextAlign.center,
             ),
           ),
-        const SizedBox(height: 10),
+        SizedBox(height: message != null ? 3 : 10),
         Text(
           'OTP Verification',
           style: GoogleFonts.poppins(
@@ -251,7 +251,7 @@ class _LoginOTPVerificationScreenState
             onPressed: () async {
               final otp = _controllers.map((c) => c.text).join();
               if (otp.length != 6) {
-                setState(() => message = 'Please enter all 6 digits.');
+                setState(() => message = 'Status 3000');
                 return;
               }
 

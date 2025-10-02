@@ -164,7 +164,7 @@ class _ForgotOTPVerificationScreenState
               textAlign: TextAlign.center,
             ),
           ),
-        const SizedBox(height: 10),
+        SizedBox(height: message != null ? 3 : 10),
         Text(
           'OTP Verification',
           style: GoogleFonts.poppins(

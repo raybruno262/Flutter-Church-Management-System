@@ -1,31 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
-/// Represents the Level object
-class Level {
-  final String levelId;
+import 'level_model.dart';
 
-  Level({required this.levelId});
-
-  factory Level.fromJson(Map<String, dynamic> json) {
-    return Level(levelId: json['levelId'] ?? '');
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'levelId': levelId};
-  }
-
-  /// Convert from JSON string
-  static Level fromJsonString(String jsonString) {
-    return Level.fromJson(jsonDecode(jsonString));
-  }
-
-  /// Convert to JSON string
-  String toJsonString() {
-    return jsonEncode(toJson());
-  }
-}
-
-/// Represents a User as defined in your Spring Boot backend.
 class UserModel {
   final String userId;
   final String names;
@@ -34,6 +11,8 @@ class UserModel {
   final String phone;
   final int nationalId;
   final String role;
+  final Uint8List? profilePic;
+  final bool isActive;
   final Level? level;
 
   UserModel({
@@ -44,6 +23,8 @@ class UserModel {
     required this.phone,
     required this.nationalId,
     required this.role,
+    this.profilePic,
+    required this.isActive,
     this.level,
   });
 
@@ -54,8 +35,12 @@ class UserModel {
       email: json['email'] ?? '',
       password: json['password'] ?? '',
       phone: json['phone'] ?? '',
-      nationalId: json['nationalId'] ?? 0,
+      nationalId: json['nationalId'] ?? '',
       role: json['role'] ?? '',
+      profilePic: json['profilePic'] != null
+          ? base64Decode(json['profilePic'])
+          : null,
+      isActive: json['isActive'] ?? true,
       level: json['level'] != null ? Level.fromJson(json['level']) : null,
     );
   }
@@ -69,16 +54,16 @@ class UserModel {
       'phone': phone,
       'nationalId': nationalId,
       'role': role,
+      'profilePic': profilePic != null ? base64Encode(profilePic!) : null,
+      'isActive': isActive,
       'level': level?.toJson(),
     };
   }
 
-  /// Convert from JSON string
   static UserModel fromJsonString(String jsonString) {
     return UserModel.fromJson(jsonDecode(jsonString));
   }
 
-  /// Convert to JSON string
   String toJsonString() {
     return jsonEncode(toJson());
   }

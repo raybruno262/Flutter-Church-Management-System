@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-        const SizedBox(height: 10),
+        SizedBox(height: message != null ? 4 : 20),
         Text(
           'LOGIN',
           style: GoogleFonts.poppins(
@@ -123,88 +123,115 @@ class _LoginScreenState extends State<LoginScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 15),
+
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
-          child: TextField(
-            controller: emailController,
-            style: GoogleFonts.poppins(color: Colors.black),
-            decoration: InputDecoration(
-              labelText: 'Email',
-              floatingLabelStyle: GoogleFonts.poppins(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 19,
-              ),
-              labelStyle: GoogleFonts.poppins(color: Colors.black),
-              prefixIcon: Icon(Icons.email, color: loginInputColor),
-              filled: true,
-              fillColor: loginTextfieldColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 4),
-          child: TextField(
-            controller: passwordController,
-            obscureText: _obscurePassword,
-            style: GoogleFonts.poppins(color: Colors.black),
-            decoration: InputDecoration(
-              labelText: 'Password',
-              floatingLabelStyle: GoogleFonts.poppins(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 19,
-              ),
-              labelStyle: GoogleFonts.poppins(color: Colors.black),
-              prefixIcon: Icon(Icons.lock, color: loginInputColor),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  color: loginInputColor,
-                ),
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
-              ),
-              filled: true,
-              fillColor: loginTextfieldColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 1),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 30.0),
-            child: TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const ForgotPasswordScreen(email: '', newPassword: ''),
-                  ),
-                );
-              },
-              child: Text(
-                'Forgot Password?',
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 1),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Email',
                 style: GoogleFonts.poppins(
-                  color: titleColor,
-                  fontSize: 12,
+                  color: Colors.orange,
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
               ),
+
+              TextField(
+                controller: emailController,
+                style: GoogleFonts.poppins(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: 'Enter email',
+                  hintStyle: GoogleFonts.poppins(color: Colors.grey),
+                  prefixIcon: Icon(Icons.email, color: loginInputColor),
+                  filled: true,
+                  fillColor: loginTextfieldColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 1),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Password',
+                style: GoogleFonts.poppins(
+                  color: Colors.orange,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+
+              TextField(
+                controller: passwordController,
+                obscureText: _obscurePassword,
+                style: GoogleFonts.poppins(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: 'Enter password',
+                  hintStyle: GoogleFonts.poppins(color: Colors.grey),
+                  prefixIcon: Icon(Icons.lock, color: loginInputColor),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: loginInputColor,
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
+                  filled: true,
+                  fillColor: loginTextfieldColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 2.0),
+            child: SizedBox(
+              width: 150, //
+              child: TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ForgotPasswordScreen(
+                        email: '',
+                        newPassword: '',
+                      ),
+                    ),
+                  );
+                },
+                child: Text(
+                  'Forgot Password?',
+                  style: GoogleFonts.poppins(
+                    color: titleColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 30),
+
+        const SizedBox(height: 15),
         SizedBox(
           width: 116,
           height: 52,
@@ -221,9 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
               final password = passwordController.text.trim();
 
               if (email.isEmpty || password.isEmpty) {
-                setState(
-                  () => message = 'Please fill in both email and password.',
-                );
+                setState(() => message = 'Status 3000');
                 return;
               }
 
