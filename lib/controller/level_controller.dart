@@ -211,4 +211,21 @@ class LevelController {
       return null;
     }
   }
+
+  // get level counts per leveltype
+  Future<Map<String, int>> getLevelCounts() async {
+    try {
+      final url = Uri.parse('$baseHost/api/levels/levelCounts');
+      final response = await http.get(url);
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return {
+        'regions': data['regions'] ?? 0,
+        'parishes': data['parishes'] ?? 0,
+        'chapels': data['chapels'] ?? 0,
+        'cells': data['cells'] ?? 0,
+      };
+    } catch (e) {
+      return {'regions': 0, 'parishes': 0, 'chapels': 0, 'cells': 0};
+    }
+  }
 }

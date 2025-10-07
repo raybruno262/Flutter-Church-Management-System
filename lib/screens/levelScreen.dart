@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/constants.dart';
+import 'package:flutter_churchcrm_system/screens/addLevelScreen.dart';
+import 'package:flutter_churchcrm_system/utils/responsive.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_churchcrm_system/controller/level_controller.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
-import 'package:flutter_churchcrm_system/screens/addLevelScreen.dart';
 
-import 'package:flutter_churchcrm_system/utils/responsive.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_churchcrm_system/widgets/sidemenu_widget.dart';
+
+import 'package:flutter_churchcrm_system/constants.dart';
 
 class LevelScreen extends StatefulWidget {
   const LevelScreen({super.key});
@@ -19,30 +20,140 @@ class LevelScreen extends StatefulWidget {
 }
 
 class _LevelScreenState extends State<LevelScreen> {
-  final LevelController _levelController = LevelController();
+  final LevelController _controller = LevelController();
+  final TextEditingController _searchController = TextEditingController();
+
   int _currentPage = 0;
-  final int _rowsPerPage = 5;
-  bool _isLoading = true;
+  final int _pageSize = 5;
   List<Level> _levels = [];
+  List<Level> _filteredLevels = [];
 
   @override
   void initState() {
     super.initState();
     _fetchLevels();
+    _searchController.addListener(_applySearchFilter);
+    _fetchLevelCounts();
   }
+
+  bool _isLoading = true;
 
   Future<void> _fetchLevels() async {
     setState(() => _isLoading = true);
-    final data = await _levelController.getPaginatedLevels(
+    final levels = await _controller.getPaginatedLevels(
       page: _currentPage,
-      size: _rowsPerPage,
+      size: _pageSize,
     );
     setState(() {
-      _levels = data;
+      _levels = levels.reversed.toList();
+      _filteredLevels = _levels;
       _isLoading = false;
     });
   }
 
+  void _applySearchFilter() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredLevels = _levels.where((level) {
+        final fields = [
+          level.name,
+          level.address,
+          level.levelType,
+          (level.isActive ?? false) ? 'Active' : 'Inactive',
+          level.parent?.name ?? '',
+        ];
+        return fields.any(
+          (field) => field?.toLowerCase().contains(query) ?? false,
+        );
+      }).toList();
+    });
+  }
+
+  void _nextPage() {
+    _currentPage++;
+    _fetchLevels();
+  }
+
+  void _previousPage() {
+    if (_currentPage > 0) {
+      _currentPage--;
+      _fetchLevels();
+    }
+  }
+
+  Map<String, int> _levelCounts = {
+    'regions': 0,
+    'parishes': 0,
+    'chapels': 0,
+    'cells': 0,
+  };
+  Future<void> _fetchLevelCounts() async {
+    final counts = await _controller.getLevelCounts();
+    setState(() => _levelCounts = counts);
+  }
+
+  DataRow _buildDataRow(Level level) {
+    return DataRow(
+      cells: [
+        DataCell(Text(level.name ?? '', style: GoogleFonts.inter())),
+        DataCell(Text(level.address ?? '', style: GoogleFonts.inter())),
+        DataCell(Text(level.levelType ?? '', style: GoogleFonts.inter())),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: (level.isActive ?? false)
+                  ? Colors.green.shade100
+                  : Colors.red.shade100,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (level.isActive ?? false)
+                        ? Colors.green
+                        : Colors.redAccent,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  (level.isActive ?? false) ? 'Active' : 'Inactive',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: (level.isActive ?? false)
+                        ? Colors.green.shade800
+                        : Colors.red.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        DataCell(Text(level.parent?.name ?? 'N/A', style: GoogleFonts.inter())),
+        DataCell(
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.edit, color: Colors.blue),
+                onPressed: () {
+                  // TODO: Navigate to UpdateLevelPage
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
 
@@ -98,7 +209,6 @@ class _LevelScreenState extends State<LevelScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 🔷 Stat Boxes
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Container(
@@ -110,28 +220,28 @@ class _LevelScreenState extends State<LevelScreen> {
                 child: Wrap(
                   spacing: 16,
                   runSpacing: 16,
-                  children: const [
+                  children: [
                     StatBox(
                       iconPath: 'assets/icons/region.svg',
                       label: 'Total Regions',
-                      count: '400',
+                      count: _levelCounts['regions'].toString(),
                       backgroundColor: statboxColor,
                     ),
                     StatBox(
                       label: 'Total Parishes',
-                      count: '370',
+                      count: _levelCounts['parishes'].toString(),
                       iconPath: 'assets/icons/parish.svg',
                       backgroundColor: statboxColor,
                     ),
                     StatBox(
                       label: 'Total Chapels',
-                      count: '200',
+                      count: _levelCounts['chapels'].toString(),
                       iconPath: 'assets/icons/chapel.svg',
                       backgroundColor: statboxColor,
                     ),
                     StatBox(
                       label: 'Total Cells',
-                      count: '200',
+                      count: _levelCounts['cells'].toString(),
                       iconPath: 'assets/icons/cell.svg',
                       backgroundColor: statboxColor,
                     ),
@@ -140,18 +250,18 @@ class _LevelScreenState extends State<LevelScreen> {
               ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 24),
 
-            // 🔍 Search bar + ➕ Add Level button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: 250,
                     height: 35,
                     child: TextField(
+                      controller: _searchController,
                       style: GoogleFonts.inter(
                         color: Colors.black,
                         fontSize: 14,
@@ -176,14 +286,32 @@ class _LevelScreenState extends State<LevelScreen> {
                       ),
                     ),
                   ),
+                  SizedBox(width: 230),
+                  Text(
+                    "Levels List",
+                    style: GoogleFonts.inter(
+                      color: titlepageColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 260),
                   ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final newLevel = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AddLevelScreen(),
+                          builder: (context) => AddLevelScreen(),
                         ),
                       );
+
+                      if (newLevel != null && newLevel is Level) {
+                        setState(() {
+                          _levels.insert(0, newLevel);
+                          _filteredLevels = _levels;
+                          _currentPage = 0;
+                        });
+                      }
                     },
                     icon: SvgPicture.asset("assets/icons/level.svg"),
                     label: Text(
@@ -206,81 +334,148 @@ class _LevelScreenState extends State<LevelScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
 
-            // 📋 Custom-styled Paginated Table
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade900,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade700),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  cardColor: Colors.transparent,
-                  dividerColor: Colors.grey.shade700,
-                ),
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : PaginatedDataTable(
-                        header: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            'Level List',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+            _isLoading
+                ? Container(
+                    height: 300,
+
+                    alignment: Alignment.center,
+                    child: CircularProgressIndicator(),
+                  )
+                : Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 18),
+                    padding: const EdgeInsets.all(12),
+
+                    decoration: BoxDecoration(color: Colors.black26),
+                    child: Column(
+                      children: [
+                        ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: 300),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: 1200,
+                              child: DataTable(
+                                horizontalMargin: 12,
+                                dataRowMaxHeight: 56,
+                                headingRowHeight: 48,
+                                dividerThickness: 1,
+                                headingRowColor: WidgetStateProperty.all(
+                                  Colors.black,
+                                ),
+
+                                dataRowColor: WidgetStateProperty.all(
+                                  backgroundcolor,
+                                ),
+
+                                border: TableBorder(
+                                  horizontalInside: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                  verticalInside: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                  top: BorderSide(color: Colors.grey.shade300),
+                                  bottom: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                columns: const [
+                                  DataColumn(label: Text('Name')),
+                                  DataColumn(label: Text('Address')),
+                                  DataColumn(label: Text('Type')),
+                                  DataColumn(label: Text('Status')),
+                                  DataColumn(label: Text('Parent Name')),
+                                  DataColumn(label: Text('Actions')),
+                                ],
+                                rows: _filteredLevels.isEmpty
+                                    ? [
+                                        DataRow(
+                                          cells: [
+                                            DataCell(
+                                              Container(
+                                                alignment: Alignment.center,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 40,
+                                                    ),
+                                                child: Text(
+                                                  'No levels found',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            ...List.generate(
+                                              5,
+                                              (_) => const DataCell(SizedBox()),
+                                            ),
+                                          ],
+                                        ),
+                                      ]
+                                    : _filteredLevels
+                                          .map(_buildDataRow)
+                                          .toList(),
+                              ),
                             ),
                           ),
                         ),
-                        columns: [
-                          DataColumn(
-                            label: Text(
-                              'Name',
-                              style: GoogleFonts.inter(color: Colors.white),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _previousPage,
+                              icon: Icon(Icons.arrow_back),
+                              label: Text('Previous'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Address',
-                              style: GoogleFonts.inter(color: Colors.white),
+                            const SizedBox(width: 16),
+                            Text(
+                              'Page ${_currentPage + 1}',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Level Type',
-                              style: GoogleFonts.inter(color: Colors.white),
+                            const SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              onPressed: _nextPage,
+                              icon: Icon(Icons.arrow_forward),
+                              label: Text('Next'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'isActive',
-                              style: GoogleFonts.inter(color: Colors.white),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Actions',
-                              style: GoogleFonts.inter(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                        source: LevelDataSource(levels: _levels),
-                        rowsPerPage: _rowsPerPage,
-                        columnSpacing: 196,
-                        horizontalMargin: 16,
-                        showCheckboxColumn: false,
-                        onPageChanged: (startIndex) {
-                          final newPage = startIndex ~/ _rowsPerPage;
-                          setState(() => _currentPage = newPage);
-                          _fetchLevels();
-                        },
-                      ),
-              ),
-            ),
-
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
             const SizedBox(height: 20),
 
             Center(
@@ -295,156 +490,4 @@ class _LevelScreenState extends State<LevelScreen> {
       ),
     );
   }
-}
-
-class LevelDataSource extends DataTableSource {
-  final List<Level> levels;
-  final void Function(Level level)? onEdit;
-
-  LevelDataSource({required this.levels, this.onEdit});
-
-  @override
-  DataRow getRow(int index) {
-    final level = levels[index];
-    final isActive = level.isActive ?? false;
-
-    return DataRow(
-      cells: [
-        DataCell(
-          Text(level.name ?? '', style: const TextStyle(color: Colors.white)),
-        ),
-        DataCell(
-          Text(
-            level.address ?? '',
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        DataCell(
-          Text(
-            level.levelType ?? '',
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: isActive ? Colors.green[100] : Colors.orange[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              isActive ? 'Active' : 'Inactive',
-              style: TextStyle(
-                color: isActive ? Colors.green : Colors.orange,
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        DataCell(
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white, size: 18),
-            onPressed: () => onEdit?.call(level),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get rowCount => levels.length;
-
-  @override
-  int get selectedRowCount => 0;
-}
-
-class _LevelDataSource extends DataTableSource {
-  final List<Map<String, dynamic>> _data = [
-    {
-      'name': 'Maycraven',
-      'address': 'Maycraven',
-      'type': 'Head Quarter',
-      'active': true,
-      'location': 'Remera',
-    },
-    {
-      'name': 'Lionesse Yami',
-      'address': 'Lionesse Yami',
-      'type': 'Region',
-      'active': true,
-      'location': 'Remera',
-    },
-    {
-      'name': 'Lionesse Yami',
-      'address': 'Lionesse Yami',
-      'type': 'Region',
-      'active': true,
-      'location': 'Remera',
-    },
-    {
-      'name': 'Christian Chang',
-      'address': 'Christian Chang',
-      'type': 'Parish',
-      'active': true,
-      'location': 'Remera',
-    },
-    {
-      'name': 'Jade Solis',
-      'address': 'Jade Solis',
-      'type': 'Chapel',
-      'active': true,
-      'location': 'Remera',
-    },
-    {
-      'name': 'Claude Bowman',
-      'address': 'Claude Bowman',
-      'type': 'Cell',
-      'active': false,
-      'location': 'Remera',
-    },
-  ];
-
-  @override
-  DataRow getRow(int index) {
-    final item = _data[index];
-    return DataRow(
-      cells: [
-        DataCell(Text(item['name'])),
-        DataCell(Text(item['address'])),
-        DataCell(Text(item['type'])),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: item['active'] ? Colors.green[100] : Colors.orange[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              item['active'] ? 'Active' : 'Inactive',
-              style: GoogleFonts.inter(
-                color: item['active'] ? Colors.green : Colors.orange,
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        DataCell(Icon(Icons.edit, color: Colors.grey[700], size: 18)),
-      ],
-    );
-  }
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get rowCount => _data.length;
-
-  @override
-  int get selectedRowCount => 0;
 }

@@ -249,7 +249,9 @@ class _LoginScreenState extends State<LoginScreen> {
               final password = passwordController.text.trim();
 
               if (email.isEmpty || password.isEmpty) {
-                setState(() => message = 'Status 3000');
+                setState(
+                  () => message = 'Please enter both email and password',
+                );
                 return;
               }
 
