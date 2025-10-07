@@ -4,6 +4,7 @@ import 'package:flutter_churchcrm_system/screens/forgotpassword.dart';
 import 'package:flutter_churchcrm_system/screens/login_otpverification.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -73,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               bottomRight: Radius.circular(20),
                             ),
                             child: Image.asset(
-                              'assets/images/crossback.jpg',
+                              'assets/images/crossback.png',
                               fit: BoxFit.cover,
                               height: 919,
                             ),
@@ -93,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        Image.asset('assets/images/church.png', height: 90),
+        SvgPicture.asset('assets/images/church.svg', height: 90),
         if (message != null)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
@@ -257,7 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 password,
               );
 
-              if (result['message'] == 'Status 1000') {
+              if (result == 'Status 1000') {
                 setState(() => message = null);
                 Navigator.push(
                   context,
@@ -269,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
               } else {
-                setState(() => message = result['message']);
+                setState(() => message = result);
               }
             },
             child: Text(

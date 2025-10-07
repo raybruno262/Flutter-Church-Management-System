@@ -9,87 +9,117 @@ class UserController {
   final String baseUrl = '$baseHost/api/users';
 
   // Create user
-  Future<String> createUser(UserModel user, {Uint8List? profilePic}) async {
-    final url = Uri.parse('$baseUrl/createrUser');
-    final request = http.MultipartRequest('POST', url);
-    request.fields['user'] = jsonEncode(user.toJson());
+  Future<String> createUser(
+    UserModel user, {
+    Uint8List? profilePic,
+    String? fileExtension,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/createrUser');
+      final request = http.MultipartRequest('POST', url);
 
-    if (profilePic != null) {
+      // Attach user JSON
       request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          profilePic,
-          filename: 'profile.jpg',
-          contentType: MediaType('image', 'jpeg'),
+        http.MultipartFile.fromString(
+          'user',
+          jsonEncode(user.toJson()),
+          filename: 'user.json',
+          contentType: MediaType('application', 'json'),
         ),
       );
-    }
 
-    final response = await request.send();
-    return await response.stream.bytesToString();
+      // Attach image file if provided
+      if (profilePic != null && fileExtension != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            profilePic,
+            filename: 'profile.$fileExtension',
+            contentType: MediaType('image', fileExtension.toLowerCase()),
+          ),
+        );
+      }
+
+      final response = await request.send();
+      return await response.stream.bytesToString();
+    } catch (e) {
+      return 'Status 7000'; // Offline or unreachable
+    }
   }
 
-  // Update user
   Future<String> updateUser(
     String userId,
     UserModel updatedUser, {
     Uint8List? profilePic,
+    String? fileExtension,
   }) async {
-    final url = Uri.parse('$baseUrl/updateUser/$userId');
-    final request = http.MultipartRequest('PUT', url);
-    request.fields['user'] = jsonEncode(updatedUser.toJson());
+    try {
+      final url = Uri.parse('$baseUrl/updateUser/$userId');
+      final request = http.MultipartRequest('PUT', url);
 
-    if (profilePic != null) {
+      // Attach user JSON as a file part
       request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          profilePic,
-          filename: 'profile.jpg',
-          contentType: MediaType('image', 'jpeg'),
+        http.MultipartFile.fromString(
+          'user',
+          jsonEncode(updatedUser.toJson()),
+          filename: 'user.json',
+          contentType: MediaType('application', 'json'),
         ),
       );
+
+      // Attach image file if provided
+      if (profilePic != null && fileExtension != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            profilePic,
+            filename: 'profile.$fileExtension',
+            contentType: MediaType('image', fileExtension.toLowerCase()),
+          ),
+        );
+      }
+
+      final response = await request.send();
+      return await response.stream.bytesToString();
+    } catch (e) {
+      return 'Status 7000'; // Offline or unreachable
     }
-
-    final response = await request.send();
-    return await response.stream.bytesToString();
-  }
-
-  // Disable user
-  Future<String> disableUser(String userId) async {
-    final url = Uri.parse('$baseUrl/disableUser/$userId');
-    final response = await http.put(url);
-    return response.body;
-  }
-
-  // Enable user
-  Future<String> enableUser(String userId) async {
-    final url = Uri.parse('$baseUrl/enableUser/$userId');
-    final response = await http.put(url);
-    return response.body;
   }
 
   // Get all users
   Future<List<UserModel>> getAllUsers() async {
-    final url = Uri.parse('$baseUrl/allUsers');
-    final response = await http.get(url);
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final url = Uri.parse('$baseUrl/allUsers');
+      final response = await http.get(url);
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => UserModel.fromJson(json)).toList();
+    } catch (e) {
+      return []; // Offline
+    }
   }
 
   // Get active users
   Future<List<UserModel>> getAllActiveUsers() async {
-    final url = Uri.parse('$baseUrl/getAllActiveUsers');
-    final response = await http.get(url);
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final url = Uri.parse('$baseUrl/getAllActiveUsers');
+      final response = await http.get(url);
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => UserModel.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
   // Get inactive users
   Future<List<UserModel>> getAllInactiveUsers() async {
-    final url = Uri.parse('$baseUrl/getAllInActiveUsers');
-    final response = await http.get(url);
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final url = Uri.parse('$baseUrl/getAllInActiveUsers');
+      final response = await http.get(url);
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => UserModel.fromJson(json)).toList();
+    } catch (e) {
+      return []; // Offline
+    }
   }
 
   // Get paginated users
@@ -97,11 +127,20 @@ class UserController {
     int page = 0,
     int size = 5,
   }) async {
-    final url = Uri.parse('$baseUrl/getPaginatedUsers?page=$page&size=$size');
-    final response = await http.get(url);
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    final List<dynamic> content = data['content'];
-    return content.map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final url = Uri.parse('$baseUrl/getPaginatedUsers?page=$page&size=$size');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> content = data['content'];
+        return content.map((json) => UserModel.fromJson(json)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
   }
 
   // Get paginated active users
@@ -109,13 +148,17 @@ class UserController {
     int page = 0,
     int size = 5,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/getPaginatedActiveUsers?page=$page&size=$size',
-    );
-    final response = await http.get(url);
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    final List<dynamic> content = data['content'];
-    return content.map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final url = Uri.parse(
+        '$baseUrl/getPaginatedActiveUsers?page=$page&size=$size',
+      );
+      final response = await http.get(url);
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final List<dynamic> content = data['content'];
+      return content.map((json) => UserModel.fromJson(json)).toList();
+    } catch (e) {
+      return []; // Offline
+    }
   }
 
   // Get paginated inactive users
@@ -123,22 +166,30 @@ class UserController {
     int page = 0,
     int size = 5,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/getPaginatedInactiveUsers?page=$page&size=$size',
-    );
-    final response = await http.get(url);
-    final Map<String, dynamic> data = jsonDecode(response.body);
-    final List<dynamic> content = data['content'];
-    return content.map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final url = Uri.parse(
+        '$baseUrl/getPaginatedInactiveUsers?page=$page&size=$size',
+      );
+      final response = await http.get(url);
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final List<dynamic> content = data['content'];
+      return content.map((json) => UserModel.fromJson(json)).toList();
+    } catch (e) {
+      return []; // Offline
+    }
   }
 
   // Send login OTP
   Future<String> sendLoginOtp(String email, String password) async {
-    final url = Uri.parse(
-      '$baseUrl/sendLoginOtp?email=$email&Password=$password',
-    );
-    final response = await http.post(url);
-    return response.body;
+    try {
+      final url = Uri.parse(
+        '$baseUrl/sendLoginOtp?email=$email&Password=$password',
+      );
+      final response = await http.post(url);
+      return response.body;
+    } catch (e) {
+      return 'Status 7000'; // Offline
+    }
   }
 
   // Login with OTP
@@ -147,18 +198,26 @@ class UserController {
     required String verifyCode,
     required String password,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/login?email=${Uri.encodeComponent(email)}&verifyCode=${Uri.encodeComponent(verifyCode)}&Password=${Uri.encodeComponent(password)}',
-    );
-    final response = await http.post(url);
-    return response.body;
+    try {
+      final url = Uri.parse(
+        '$baseUrl/login?email=${Uri.encodeComponent(email)}&verifyCode=${Uri.encodeComponent(verifyCode)}&Password=${Uri.encodeComponent(password)}',
+      );
+      final response = await http.post(url);
+      return response.body;
+    } catch (e) {
+      return 'Status 7000'; // Offline
+    }
   }
 
   // Send password reset OTP
   Future<String> sendPasswordResetOtp(String email) async {
-    final url = Uri.parse('$baseUrl/sendPasswordResetOtp?email=$email');
-    final response = await http.post(url);
-    return response.body;
+    try {
+      final url = Uri.parse('$baseUrl/sendPasswordResetOtp?email=$email');
+      final response = await http.post(url);
+      return response.body;
+    } catch (e) {
+      return 'Status 7000'; // Offline
+    }
   }
 
   // Reset password
@@ -167,17 +226,25 @@ class UserController {
     required String verificationCode,
     required String newPassword,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/resetPassword?email=$email&verificationCode=$verificationCode&newPassword=$newPassword',
-    );
-    final response = await http.post(url);
-    return response.body;
+    try {
+      final url = Uri.parse(
+        '$baseUrl/resetPassword?email=$email&verificationCode=$verificationCode&newPassword=$newPassword',
+      );
+      final response = await http.post(url);
+      return response.body;
+    } catch (e) {
+      return 'Status 7000'; // Offline
+    }
   }
 
   // Destroy session
   Future<String> destroySession() async {
-    final url = Uri.parse('$baseUrl/destroySession');
-    final response = await http.post(url);
-    return response.body;
+    try {
+      final url = Uri.parse('$baseUrl/destroySession');
+      final response = await http.post(url);
+      return response.body;
+    } catch (e) {
+      return 'Status 7000'; // Offline
+    }
   }
 }

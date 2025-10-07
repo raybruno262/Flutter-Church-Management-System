@@ -5,6 +5,7 @@ import 'package:flutter_churchcrm_system/screens/login.dart';
 
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -90,7 +91,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               bottomRight: Radius.circular(20),
                             ),
                             child: Image.asset(
-                              'assets/images/crossback.jpg',
+                              'assets/images/crossback.png',
                               fit: BoxFit.cover,
                               height: 919,
                             ),
@@ -109,7 +110,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Image.asset('assets/images/church.png', height: 90),
+        SvgPicture.asset('assets/images/church.svg', height: 90),
         const SizedBox(height: 10),
         if (message != null)
           Container(
@@ -238,7 +239,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
               final result = await UserController().sendPasswordResetOtp(email);
 
-              if (result['message'] == 'Status 1000') {
+              if (result == 'Status 1000') {
                 setState(() => message = null);
                 Navigator.push(
                   context,
@@ -250,7 +251,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 );
               } else {
-                setState(() => message = result['message']);
+                setState(() => message = result);
               }
             },
             child: Text(

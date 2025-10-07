@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
+import 'package:flutter_churchcrm_system/screens/levelScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginOTPVerificationScreen extends StatefulWidget {
@@ -103,7 +105,7 @@ class _LoginOTPVerificationScreenState
                               bottomRight: Radius.circular(20),
                             ),
                             child: Image.asset(
-                              'assets/images/crossback.jpg',
+                              'assets/images/crossback.png',
                               fit: BoxFit.cover,
                               height: 919,
                             ),
@@ -143,7 +145,7 @@ class _LoginOTPVerificationScreenState
           ),
         ),
         const SizedBox(height: 1),
-        Image.asset('assets/images/church.png', height: 80),
+        SvgPicture.asset('assets/images/church.svg', height: 80),
         if (message != null)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
@@ -261,7 +263,13 @@ class _LoginOTPVerificationScreenState
                 password: widget.password,
               );
 
-              setState(() => message = result['message']);
+              setState(() => message = result);
+              if (result == 'Status 1000') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LevelScreen()),
+                );
+              }
             },
             child: Text(
               'Verify',
@@ -281,7 +289,7 @@ class _LoginOTPVerificationScreenState
               widget.password,
             );
 
-            setState(() => message = result['message']);
+            setState(() => message = result);
           },
           child: Text(
             'Resend OTP',

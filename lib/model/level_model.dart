@@ -2,19 +2,19 @@ import 'dart:convert';
 
 class Level {
   final String levelId;
-  final String name;
-  final String address;
-  final String levelType;
+  final String? name;
+  final String? address;
+  final String? levelType;
   final Level? parent;
-  final bool isActive;
+  final bool? isActive;
 
   Level({
     required this.levelId,
-    required this.name,
-    required this.address,
-    required this.levelType,
+    this.name,
+    this.address,
+    this.levelType,
     this.parent,
-    required this.isActive,
+    this.isActive,
   });
 
   factory Level.fromJson(Map<String, dynamic> json) {
@@ -24,7 +24,7 @@ class Level {
       address: json['address'] ?? '',
       levelType: json['levelType'] ?? '',
       parent: json['parent'] != null ? Level.fromJson(json['parent']) : null,
-      isActive: json['isActive'] ?? true,
+      isActive: json['isActive'],
     );
   }
 
