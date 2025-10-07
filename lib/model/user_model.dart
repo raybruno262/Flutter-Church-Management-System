@@ -8,11 +8,11 @@ class UserModel {
   final String email;
   final String password;
   final String phone;
-  final int? nationalId;
+  final int nationalId;
   final String role;
-  final Uint8List? profilePic;
+  final Uint8List profilePic;
   final bool isActive;
-  final Level? level;
+  final Level level;
 
   UserModel({
     this.userId,
@@ -22,9 +22,9 @@ class UserModel {
     required this.phone,
     required this.nationalId,
     required this.role,
-    this.profilePic,
+    required this.profilePic,
     required this.isActive,
-    this.level,
+    required this.level,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -38,13 +38,14 @@ class UserModel {
           ? json['nationalId']
           : int.tryParse(json['nationalId'].toString()),
       role: json['role'] ?? '',
-      profilePic: json['profilePic'] != null
-          ? base64Decode(json['profilePic'])
-          : null,
+
+      profilePic: base64Decode(json['profilePic']),
+
       isActive: json['isActive'] is bool
           ? json['isActive']
           : json['isActive'].toString().toLowerCase() == 'true',
-      level: json['level'] != null ? Level.fromJson(json['level']) : null,
+
+      level: Level.fromJson(json['level']),
     );
   }
 
@@ -57,9 +58,9 @@ class UserModel {
       'phone': phone,
       'nationalId': nationalId,
       'role': role,
-      'profilePic': profilePic != null ? base64Encode(profilePic!) : null,
+      'profilePic': base64Encode(profilePic),
       'isActive': isActive,
-      'level': level?.toJson(),
+      'level': level.toJson(),
     };
   }
 

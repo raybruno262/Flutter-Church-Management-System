@@ -11,8 +11,8 @@ class UserController {
   // Create user
   Future<String> createUser(
     UserModel user, {
-    Uint8List? profilePic,
-    String? fileExtension,
+    required Uint8List profilePic,
+    required String fileExtension,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/createrUser');
@@ -28,30 +28,28 @@ class UserController {
         ),
       );
 
-      // Attach image file if provided
-      if (profilePic != null && fileExtension != null) {
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            profilePic,
-            filename: 'profile.$fileExtension',
-            contentType: MediaType('image', fileExtension.toLowerCase()),
-          ),
-        );
-      }
+      // Attach image
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          profilePic,
+          filename: 'profile.$fileExtension',
+          contentType: MediaType('image', fileExtension.toLowerCase()),
+        ),
+      );
 
       final response = await request.send();
       return await response.stream.bytesToString();
     } catch (e) {
-      return 'Status 7000'; // Offline or unreachable
+      return 'Status 7000';
     }
   }
 
   Future<String> updateUser(
     String userId,
     UserModel updatedUser, {
-    Uint8List? profilePic,
-    String? fileExtension,
+    required Uint8List profilePic,
+    required String fileExtension,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/updateUser/$userId');
@@ -67,22 +65,21 @@ class UserController {
         ),
       );
 
-      // Attach image file if provided
-      if (profilePic != null && fileExtension != null) {
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            profilePic,
-            filename: 'profile.$fileExtension',
-            contentType: MediaType('image', fileExtension.toLowerCase()),
-          ),
-        );
-      }
+      // Attach image file
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          profilePic,
+          filename: 'profile.$fileExtension',
+          contentType: MediaType('image', fileExtension.toLowerCase()),
+        ),
+      );
 
       final response = await request.send();
       return await response.stream.bytesToString();
     } catch (e) {
-      return 'Status 7000'; // Offline or unreachable
+      return 'Status 7000';
     }
   }
 
@@ -94,7 +91,7 @@ class UserController {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => UserModel.fromJson(json)).toList();
     } catch (e) {
-      return []; // Offline
+      return [];
     }
   }
 
@@ -157,7 +154,7 @@ class UserController {
       final List<dynamic> content = data['content'];
       return content.map((json) => UserModel.fromJson(json)).toList();
     } catch (e) {
-      return []; // Offline
+      return [];
     }
   }
 
@@ -175,7 +172,7 @@ class UserController {
       final List<dynamic> content = data['content'];
       return content.map((json) => UserModel.fromJson(json)).toList();
     } catch (e) {
-      return []; // Offline
+      return [];
     }
   }
 
@@ -188,7 +185,7 @@ class UserController {
       final response = await http.post(url);
       return response.body;
     } catch (e) {
-      return 'Status 7000'; // Offline
+      return 'Status 7000';
     }
   }
 
@@ -205,7 +202,7 @@ class UserController {
       final response = await http.post(url);
       return response.body;
     } catch (e) {
-      return 'Status 7000'; // Offline
+      return 'Status 7000';
     }
   }
 
@@ -216,7 +213,7 @@ class UserController {
       final response = await http.post(url);
       return response.body;
     } catch (e) {
-      return 'Status 7000'; // Offline
+      return 'Status 7000';
     }
   }
 
@@ -228,12 +225,12 @@ class UserController {
   }) async {
     try {
       final url = Uri.parse(
-        '$baseUrl/resetPassword?email=$email&verificationCode=$verificationCode&newPassword=$newPassword',
+        '$baseUrl/resetPassword?email=${Uri.encodeComponent(email)}&verificationCode=${Uri.encodeComponent(verificationCode)}&newPassword=${Uri.encodeComponent(newPassword)}',
       );
       final response = await http.post(url);
       return response.body;
     } catch (e) {
-      return 'Status 7000'; // Offline
+      return 'Status 7000';
     }
   }
 
@@ -244,7 +241,7 @@ class UserController {
       final response = await http.post(url);
       return response.body;
     } catch (e) {
-      return 'Status 7000'; // Offline
+      return 'Status 7000';
     }
   }
 }
