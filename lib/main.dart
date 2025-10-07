@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       // home: const LoginScreen(),
-      home: const LoginScreen(),
+      home: const LevelScreen(),
     );
   }
 }

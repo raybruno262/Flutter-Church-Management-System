@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/screens/levelScreen.dart';
+import 'package:flutter_churchcrm_system/screens/login.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -26,6 +27,8 @@ class LoginOTPVerificationScreen extends StatefulWidget {
 
 class _LoginOTPVerificationScreenState
     extends State<LoginOTPVerificationScreen> {
+  bool isSuccess = false;
+
   final List<TextEditingController> _controllers = List.generate(
     6,
     (_) => TextEditingController(),
@@ -132,7 +135,12 @@ class _LoginOTPVerificationScreenState
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => LoginScreen()),
+              );
+            },
             icon: Icon(Icons.arrow_back, color: loginTextfieldColor),
             label: Text(
               'Back',
@@ -148,17 +156,20 @@ class _LoginOTPVerificationScreenState
         SvgPicture.asset('assets/images/church.svg', height: 80),
         if (message != null)
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey, width: 1.2),
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSuccess ? Colors.green : Colors.red,
+                width: 1.5,
+              ),
             ),
             child: Text(
               message!,
               style: GoogleFonts.poppins(
-                color: Colors.black,
+                color: isSuccess ? Colors.green.shade800 : Colors.red.shade800,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -252,8 +263,12 @@ class _LoginOTPVerificationScreenState
             ),
             onPressed: () async {
               final otp = _controllers.map((c) => c.text).join();
+
               if (otp.length != 6) {
-                setState(() => message = 'Status 3000');
+                setState(() {
+                  message = 'Please enter the full 6-digit OTP code.';
+                  isSuccess = false;
+                });
                 return;
               }
 
@@ -263,12 +278,39 @@ class _LoginOTPVerificationScreenState
                 password: widget.password,
               );
 
-              setState(() => message = result);
-              if (result == 'Status 1000') {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LevelScreen()),
-                );
+              switch (result) {
+                case 'Status 1000':
+                  setState(() {
+                    message = null;
+                  });
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LevelScreen(),
+                    ),
+                  );
+                  break;
+
+                case 'Status 3000':
+                  setState(() {
+                    message = 'Invalid OTP. Please check and try again.';
+                    isSuccess = false;
+                  });
+                  break;
+
+                case 'Status 4000':
+                  setState(() {
+                    message = 'Incorrect password. Please try again.';
+                    isSuccess = false;
+                  });
+                  break;
+
+                case 'Status 9999':
+                  setState(() {
+                    message = 'Something went wrong. Please try again later.';
+                    isSuccess = false;
+                  });
+                  break;
               }
             },
             child: Text(
@@ -289,7 +331,50 @@ class _LoginOTPVerificationScreenState
               widget.password,
             );
 
-            setState(() => message = result);
+            switch (result) {
+              case 'Status 1000':
+                setState(() {
+                  message = 'OTP sent successfully.';
+                  isSuccess = true;
+                });
+                break;
+
+              case 'Status 3000':
+                setState(() {
+                  message = 'No account found for this email.';
+                  isSuccess = false;
+                });
+                break;
+
+              case 'Status 4000':
+                setState(() {
+                  message = 'Incorrect password. Please try again.';
+                  isSuccess = false;
+                });
+                break;
+
+              case '6000':
+                setState(() {
+                  message =
+                      'Your account or level is inactive. Contact the administrator.';
+                  isSuccess = false;
+                });
+                break;
+
+              case 'Status 2000':
+                setState(() {
+                  message = 'Failed to send OTP.';
+                  isSuccess = false;
+                });
+                break;
+
+              case 'Status 9999':
+                setState(() {
+                  message = 'Something went wrong. Please try again later.';
+                  isSuccess = false;
+                });
+                break;
+            }
           },
           child: Text(
             'Resend OTP',

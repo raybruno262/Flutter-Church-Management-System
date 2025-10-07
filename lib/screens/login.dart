@@ -15,6 +15,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  bool isSuccess = false;
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -97,17 +99,20 @@ class _LoginScreenState extends State<LoginScreen> {
         SvgPicture.asset('assets/images/church.svg', height: 90),
         if (message != null)
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-
-              border: Border.all(color: Colors.grey, width: 1.2),
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSuccess ? Colors.green : Colors.red,
+                width: 1.5,
+              ),
             ),
             child: Text(
               message!,
               style: GoogleFonts.poppins(
-                color: Colors.black,
+                color: isSuccess ? Colors.green.shade800 : Colors.red.shade800,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -249,9 +254,10 @@ class _LoginScreenState extends State<LoginScreen> {
               final password = passwordController.text.trim();
 
               if (email.isEmpty || password.isEmpty) {
-                setState(
-                  () => message = 'Please enter both email and password',
-                );
+                setState(() {
+                  message = 'Please enter both Email and Password';
+                  isSuccess = false;
+                });
                 return;
               }
 
@@ -260,19 +266,55 @@ class _LoginScreenState extends State<LoginScreen> {
                 password,
               );
 
-              if (result == 'Status 1000') {
-                setState(() => message = null);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LoginOTPVerificationScreen(
-                      email: email,
-                      password: password,
+              switch (result) {
+                case 'Status 1000':
+                  setState(() => message = null);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LoginOTPVerificationScreen(
+                        email: email,
+                        password: password,
+                      ),
                     ),
-                  ),
-                );
-              } else {
-                setState(() => message = result);
+                  );
+                  break;
+
+                case 'Status 3000':
+                  setState(() {
+                    message = 'No account found for this email.';
+                    isSuccess = false;
+                  });
+                  break;
+
+                case 'Status 4000':
+                  setState(() {
+                    message = 'Incorrect password. Please try again.';
+                    isSuccess = false;
+                  });
+                  break;
+
+                case '6000':
+                  setState(() {
+                    message =
+                        'Your account or level is inactive. Contact the administrator.';
+                    isSuccess = false;
+                  });
+                  break;
+
+                case 'Status 2000':
+                  setState(() {
+                    message = 'Failed to send OTP.';
+                    isSuccess = false;
+                  });
+                  break;
+
+                case 'Status 9999':
+                  setState(() {
+                    message = 'Something went wrong. Please try again later.';
+                    isSuccess = false;
+                  });
+                  break;
               }
             },
             child: Text(

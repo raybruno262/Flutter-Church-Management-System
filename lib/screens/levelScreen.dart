@@ -20,6 +20,8 @@ class LevelScreen extends StatefulWidget {
 }
 
 class _LevelScreenState extends State<LevelScreen> {
+  String _statusFilter = 'All'; // Options: All, Active, Inactive
+
   final LevelController _controller = LevelController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -46,38 +48,49 @@ class _LevelScreenState extends State<LevelScreen> {
     );
     setState(() {
       _levels = levels.reversed.toList();
-      _filteredLevels = _levels;
+      _applyStatusFilter(); // 👈 Apply status filter first
+      _applySearchFilter(); // 👈 Then apply search filter on top
       _isLoading = false;
     });
   }
 
   void _applySearchFilter() {
     final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredLevels = _levels.where((level) {
-        final fields = [
-          level.name,
-          level.address,
-          level.levelType,
-          (level.isActive ?? false) ? 'Active' : 'Inactive',
-          level.parent?.name ?? '',
-        ];
-        return fields.any(
-          (field) => field?.toLowerCase().contains(query) ?? false,
-        );
-      }).toList();
-    });
+
+    // Always apply search on top of current _levels (already status-filtered)
+    _filteredLevels = _levels.where((level) {
+      final fields = [
+        level.name,
+        level.address,
+        level.levelType,
+        (level.isActive ?? false) ? 'Active' : 'Inactive',
+        level.parent?.name ?? '',
+      ];
+      return query.isEmpty ||
+          fields.any((field) => field?.toLowerCase().contains(query) ?? false);
+    }).toList();
+
+    setState(() {}); // 👈 Refresh UI
   }
 
   void _nextPage() {
     _currentPage++;
-    _fetchLevels();
+    _fetchLevels(); // 👈 Will reapply filters after fetch
   }
 
   void _previousPage() {
     if (_currentPage > 0) {
       _currentPage--;
-      _fetchLevels();
+      _fetchLevels(); // 👈 Will reapply filters after fetch
+    }
+  }
+
+  void _applyStatusFilter() {
+    if (_statusFilter == 'All') {
+      _levels = _levels; // 👈 No change
+    } else {
+      final isActive = _statusFilter == 'Active';
+      _levels = _levels.where((level) => level.isActive == isActive).toList();
     }
   }
 
@@ -347,7 +360,10 @@ class _LevelScreenState extends State<LevelScreen> {
                     margin: const EdgeInsets.symmetric(horizontal: 18),
                     padding: const EdgeInsets.all(12),
 
-                    decoration: BoxDecoration(color: Colors.black26),
+                    decoration: BoxDecoration(
+                      color: containerColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Column(
                       children: [
                         ConstrainedBox(
@@ -355,14 +371,14 @@ class _LevelScreenState extends State<LevelScreen> {
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: SizedBox(
-                              width: 1200,
+                              width: 1030,
                               child: DataTable(
                                 horizontalMargin: 12,
                                 dataRowMaxHeight: 56,
                                 headingRowHeight: 48,
                                 dividerThickness: 1,
                                 headingRowColor: WidgetStateProperty.all(
-                                  Colors.black,
+                                  Colors.deepPurple,
                                 ),
 
                                 dataRowColor: WidgetStateProperty.all(
@@ -382,15 +398,110 @@ class _LevelScreenState extends State<LevelScreen> {
                                   bottom: BorderSide(
                                     color: Colors.grey.shade300,
                                   ),
+                                  left: BorderSide(color: Colors.grey.shade300),
+                                  right: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
-                                columns: const [
-                                  DataColumn(label: Text('Name')),
-                                  DataColumn(label: Text('Address')),
-                                  DataColumn(label: Text('Type')),
-                                  DataColumn(label: Text('Status')),
-                                  DataColumn(label: Text('Parent Name')),
-                                  DataColumn(label: Text('Actions')),
+                                columns: [
+                                  DataColumn(
+                                    label: Text(
+                                      'Name',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Address',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Type',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Row(
+                                      children: [
+                                        Text(
+                                          'STATUS',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        PopupMenuButton<String>(
+                                          icon: Icon(
+                                            Icons.filter_list,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
+                                          onSelected: (value) {
+                                            setState(() {
+                                              _statusFilter = value;
+                                              _applyStatusFilter();
+                                            });
+                                          },
+                                          itemBuilder: (context) =>
+                                              ['All', 'Active', 'Inactive']
+                                                  .map(
+                                                    (
+                                                      status,
+                                                    ) => PopupMenuItem<String>(
+                                                      value: status,
+                                                      child: Text(
+                                                        status,
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 13,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  DataColumn(
+                                    label: Text(
+                                      'Parent Name',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Actions',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                                 ],
+
                                 rows: _filteredLevels.isEmpty
                                     ? [
                                         DataRow(
