@@ -177,7 +177,7 @@ class _LevelScreenState extends State<LevelScreen> {
               width: 250,
               color: Theme.of(context).scaffoldBackgroundColor,
               child: SideMenuWidget(
-                selectedTitle: 'Users',
+                selectedTitle: 'Levels',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -195,7 +195,7 @@ class _LevelScreenState extends State<LevelScreen> {
                     ),
                   ),
                   child: SideMenuWidget(
-                    selectedTitle: 'Users',
+                    selectedTitle: 'Levels',
                     loggedInUser: widget.loggedInUser,
                   ),
                 ),
@@ -208,405 +208,436 @@ class _LevelScreenState extends State<LevelScreen> {
   }
 
   Widget _buildLevelScreen() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            const TopHeaderWidget(),
-
-            Center(
-              child: Text(
-                "Manage Levels",
-                style: GoogleFonts.inter(
-                  color: titlepageColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Padding(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const TopHeaderWidget(),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: containerColor,
-                ),
-                child: Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    StatBox(
-                      iconPath: 'assets/icons/region.svg',
-                      label: 'Total Regions',
-                      count: _levelCounts['regions'].toString(),
-                      backgroundColor: statboxColor,
-                    ),
-                    StatBox(
-                      label: 'Total Parishes',
-                      count: _levelCounts['parishes'].toString(),
-                      iconPath: 'assets/icons/parish.svg',
-                      backgroundColor: statboxColor,
-                    ),
-                    StatBox(
-                      label: 'Total Chapels',
-                      count: _levelCounts['chapels'].toString(),
-                      iconPath: 'assets/icons/chapel.svg',
-                      backgroundColor: statboxColor,
-                    ),
-                    StatBox(
-                      label: 'Total Cells',
-                      count: _levelCounts['cells'].toString(),
-                      iconPath: 'assets/icons/cell.svg',
-                      backgroundColor: statboxColor,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 250,
-                    height: 35,
-                    child: TextField(
-                      controller: _searchController,
+                  Center(
+                    child: Text(
+                      "Manage Levels",
                       style: GoogleFonts.inter(
-                        color: Colors.black,
-                        fontSize: 14,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search ...',
-                        hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        suffixIcon: const Icon(
-                          Icons.search,
-                          color: Colors.grey,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
+                        color: titlepageColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  SizedBox(width: 230),
-                  Text(
-                    "Levels List",
-                    style: GoogleFonts.inter(
-                      color: titlepageColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(width: 260),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final newLevel = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AddLevelScreen(loggedInUser: widget.loggedInUser),
-                        ),
-                      );
+                  const SizedBox(height: 16),
 
-                      if (newLevel != null && newLevel is Level) {
-                        setState(() {
-                          _levels.insert(0, newLevel);
-                          _filteredLevels = _levels;
-                          _currentPage = 0;
-                        });
-                      }
-                    },
-                    icon: SvgPicture.asset("assets/icons/level.svg"),
-                    label: Text(
-                      'Add Level',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 15,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: containerColor,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      child: Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          StatBox(
+                            iconPath: 'assets/icons/region.svg',
+                            label: 'Total Regions',
+                            count: _levelCounts['regions'].toString(),
+                            backgroundColor: statboxColor,
+                          ),
+                          StatBox(
+                            label: 'Total Parishes',
+                            count: _levelCounts['parishes'].toString(),
+                            iconPath: 'assets/icons/parish.svg',
+                            backgroundColor: statboxColor,
+                          ),
+                          StatBox(
+                            label: 'Total Chapels',
+                            count: _levelCounts['chapels'].toString(),
+                            iconPath: 'assets/icons/chapel.svg',
+                            backgroundColor: statboxColor,
+                          ),
+                          StatBox(
+                            label: 'Total Cells',
+                            count: _levelCounts['cells'].toString(),
+                            iconPath: 'assets/icons/cell.svg',
+                            backgroundColor: statboxColor,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: 10),
+                  const SizedBox(height: 24),
 
-            _isLoading
-                ? Container(
-                    height: 300,
-
-                    alignment: Alignment.center,
-                    child: CircularProgressIndicator(),
-                  )
-                : Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 18),
-                    padding: const EdgeInsets.all(12),
-
-                    decoration: BoxDecoration(
-                      color: containerColor,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: 300),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: 1030,
-                              child: DataTable(
-                                horizontalMargin: 12,
-                                dataRowMaxHeight: 56,
-                                headingRowHeight: 48,
-                                dividerThickness: 1,
-                                headingRowColor: WidgetStateProperty.all(
-                                  Colors.deepPurple,
-                                ),
-
-                                dataRowColor: WidgetStateProperty.all(
-                                  backgroundcolor,
-                                ),
-
-                                border: TableBorder(
-                                  horizontalInside: BorderSide(
-                                    color: Colors.grey.shade300,
-                                    width: 1,
-                                  ),
-                                  verticalInside: BorderSide(
-                                    color: Colors.grey.shade300,
-                                    width: 1,
-                                  ),
-                                  top: BorderSide(color: Colors.grey.shade300),
-                                  bottom: BorderSide(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  left: BorderSide(color: Colors.grey.shade300),
-                                  right: BorderSide(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                ),
-                                columns: [
-                                  DataColumn(
-                                    label: Text(
-                                      'Name',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    label: Text(
-                                      'Address',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    label: Text(
-                                      'Type',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    label: Row(
-                                      children: [
-                                        Text(
-                                          'STATUS',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        PopupMenuButton<String>(
-                                          icon: Icon(
-                                            Icons.filter_list,
-                                            size: 18,
-                                            color: Colors.white,
-                                          ),
-                                          onSelected: (value) {
-                                            setState(() {
-                                              _statusFilter = value;
-                                              _applyStatusFilter();
-                                            });
-                                          },
-                                          itemBuilder: (context) =>
-                                              ['All', 'Active', 'Inactive']
-                                                  .map(
-                                                    (
-                                                      status,
-                                                    ) => PopupMenuItem<String>(
-                                                      value: status,
-                                                      child: Text(
-                                                        status,
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 13,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                  .toList(),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  DataColumn(
-                                    label: Text(
-                                      'Parent Name',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    label: Text(
-                                      'Actions',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-
-                                rows: _filteredLevels.isEmpty
-                                    ? [
-                                        DataRow(
-                                          cells: [
-                                            DataCell(
-                                              Container(
-                                                alignment: Alignment.center,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 40,
-                                                    ),
-                                                child: Text(
-                                                  'No levels found',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.grey.shade600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            ...List.generate(
-                                              5,
-                                              (_) => const DataCell(SizedBox()),
-                                            ),
-                                          ],
-                                        ),
-                                      ]
-                                    : _filteredLevels
-                                          .map(_buildDataRow)
-                                          .toList(),
+                        SizedBox(
+                          width: 250,
+                          height: 35,
+                          child: TextField(
+                            controller: _searchController,
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontSize: 14,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Search ...',
+                              hintStyle: GoogleFonts.inter(
+                                color: Colors.grey[600],
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              suffixIcon: const Icon(
+                                Icons.search,
+                                color: Colors.grey,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: _previousPage,
-                              icon: Icon(Icons.arrow_back),
-                              label: Text('Previous'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              'Page ${_currentPage + 1}',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            ElevatedButton.icon(
-                              onPressed: _nextPage,
-                              icon: Icon(Icons.arrow_forward),
-                              label: Text('Next'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                        SizedBox(width: 230),
+                        Text(
+                          "Levels List",
+                          style: GoogleFonts.inter(
+                            color: titlepageColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 260),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final newLevel = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddLevelScreen(
+                                  loggedInUser: widget.loggedInUser,
                                 ),
                               ),
+                            );
+
+                            if (newLevel != null && newLevel is Level) {
+                              setState(() {
+                                _levels.insert(0, newLevel);
+                                _filteredLevels = _levels;
+                                _currentPage = 0;
+                              });
+                            }
+                          },
+                          icon: SvgPicture.asset("assets/icons/level.svg"),
+                          label: Text(
+                            'Add Level',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 15,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-            const SizedBox(height: 20),
 
-            Center(
-              child: Text(
-                '© 2025 All rights reserved. Church CRM System',
-                style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
+                  const SizedBox(height: 10),
+
+                  _isLoading
+                      ? Container(
+                          height: 300,
+
+                          alignment: Alignment.center,
+                          child: CircularProgressIndicator(),
+                        )
+                      : Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 18),
+                          padding: const EdgeInsets.all(12),
+
+                          decoration: BoxDecoration(
+                            color: containerColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Column(
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(minHeight: 300),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: 1030,
+                                    child: DataTable(
+                                      horizontalMargin: 12,
+                                      dataRowMaxHeight: 56,
+                                      headingRowHeight: 48,
+                                      dividerThickness: 1,
+                                      headingRowColor: WidgetStateProperty.all(
+                                        Colors.deepPurple,
+                                      ),
+
+                                      dataRowColor: WidgetStateProperty.all(
+                                        backgroundcolor,
+                                      ),
+
+                                      border: TableBorder(
+                                        horizontalInside: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1,
+                                        ),
+                                        verticalInside: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1,
+                                        ),
+                                        top: BorderSide(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                        left: BorderSide(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                        right: BorderSide(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      columns: [
+                                        DataColumn(
+                                          label: Text(
+                                            'Name',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        DataColumn(
+                                          label: Text(
+                                            'Address',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        DataColumn(
+                                          label: Text(
+                                            'Type',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        DataColumn(
+                                          label: Row(
+                                            children: [
+                                              Text(
+                                                'STATUS',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              PopupMenuButton<String>(
+                                                icon: Icon(
+                                                  Icons.filter_list,
+                                                  size: 18,
+                                                  color: Colors.white,
+                                                ),
+                                                onSelected: (value) {
+                                                  setState(() {
+                                                    _statusFilter = value;
+                                                    _applyStatusFilter();
+                                                  });
+                                                },
+                                                itemBuilder: (context) =>
+                                                    [
+                                                          'All',
+                                                          'Active',
+                                                          'Inactive',
+                                                        ]
+                                                        .map(
+                                                          (
+                                                            status,
+                                                          ) => PopupMenuItem<String>(
+                                                            value: status,
+                                                            child: Text(
+                                                              status,
+                                                              style:
+                                                                  GoogleFonts.inter(
+                                                                    fontSize:
+                                                                        13,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                        )
+                                                        .toList(),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        DataColumn(
+                                          label: Text(
+                                            'Parent Name',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        DataColumn(
+                                          label: Text(
+                                            'Actions',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+
+                                      rows: _filteredLevels.isEmpty
+                                          ? [
+                                              DataRow(
+                                                cells: [
+                                                  DataCell(
+                                                    Container(
+                                                      alignment:
+                                                          Alignment.center,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 40,
+                                                          ),
+                                                      child: Text(
+                                                        'No levels found',
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 16,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: Colors
+                                                                  .grey
+                                                                  .shade600,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  ...List.generate(
+                                                    5,
+                                                    (_) => const DataCell(
+                                                      SizedBox(),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ]
+                                          : _filteredLevels
+                                                .map(_buildDataRow)
+                                                .toList(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: _previousPage,
+                                    icon: Icon(Icons.arrow_back),
+                                    label: Text('Previous'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.deepPurple,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    'Page ${_currentPage + 1}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  ElevatedButton.icon(
+                                    onPressed: _nextPage,
+                                    icon: Icon(Icons.arrow_forward),
+                                    label: Text('Next'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.deepPurple,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                  const SizedBox(height: 20),
+
+                  Center(
+                    child: Text(
+                      '© 2025 All rights reserved. Church CRM System',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[600],
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

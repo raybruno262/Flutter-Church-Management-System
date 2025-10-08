@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
+import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
@@ -36,15 +37,22 @@ class _MemberScreenState extends State<MemberScreen> {
             if (isDesktop)
               Expanded(
                 flex: 2,
-                child: SizedBox(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: borderColor, width: 2),
+                    ),
+                  ),
                   child: SideMenuWidget(
                     selectedTitle: 'Members',
                     loggedInUser: widget.loggedInUser,
                   ),
                 ),
               ),
+
             Expanded(
               flex: 10,
+
               child: Container(child: Center(child: Text("Members Page"))),
             ),
           ],

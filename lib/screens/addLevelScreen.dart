@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/constants.dart';
+
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
+
+import 'package:flutter_churchcrm_system/constants.dart';
 
 class AddLevelScreen extends StatefulWidget {
   final UserModel loggedInUser;
   const AddLevelScreen({super.key, required this.loggedInUser});
 
   @override
-  State<AddLevelScreen> createState() => _LevelScreenState();
+  State<AddLevelScreen> createState() => _AddLevelScreenState();
 }
 
-class _LevelScreenState extends State<AddLevelScreen> {
+class _AddLevelScreenState extends State<AddLevelScreen> {
+  @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
 
@@ -58,29 +59,21 @@ class _LevelScreenState extends State<AddLevelScreen> {
   }
 
   Widget _buildAddLevelScreen() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            const TopHeaderWidget(),
-
-            Center(
-              child: Text(
-                "Add Levels",
-                style: GoogleFonts.inter(
-                  color: titlepageColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const TopHeaderWidget(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Container(
+              color: Colors.amberAccent,
+              child: const Text('Add Level '),
             ),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

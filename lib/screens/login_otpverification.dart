@@ -300,7 +300,8 @@ class _LoginOTPVerificationScreenState
 
                 // Save user to local storage
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('loggedInUser', user.toJsonString());
+                final jsonString = user.toJsonString();
+                await prefs.setString('loggedInUser', jsonString);
 
                 //  Navigate with user
                 Navigator.pushReplacement(

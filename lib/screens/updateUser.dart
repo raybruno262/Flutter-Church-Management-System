@@ -16,6 +16,7 @@ class UpdateUserPage extends StatefulWidget {
 
 class _UpdateUserPageState extends State<UpdateUserPage> {
   late TextEditingController _nameController;
+  late TextEditingController _usernameController;
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
   late TextEditingController _phoneController;
@@ -67,6 +68,7 @@ class _UpdateUserPageState extends State<UpdateUserPage> {
     final updatedUser = UserModel(
       userId: widget.user.userId,
       names: _nameController.text,
+      username: _usernameController.text,
       email: _emailController.text,
       password: _passwordController.text,
       phone: _phoneController.text,
@@ -98,6 +100,7 @@ class _UpdateUserPageState extends State<UpdateUserPage> {
           child: ListView(
             children: [
               _buildTextField(_nameController, 'Name'),
+              _buildTextField(_usernameController, 'Username'),
               _buildTextField(_emailController, 'Email'),
               _buildTextField(_passwordController, 'Password', obscure: true),
               _buildTextField(_phoneController, 'Phone'),

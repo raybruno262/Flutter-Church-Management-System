@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
+import '../model/user_model.dart';
 
 class TopHeaderWidget extends StatefulWidget {
   const TopHeaderWidget({super.key});
@@ -19,6 +21,36 @@ class _TopHeaderWidgetState extends State<TopHeaderWidget> {
   ];
 
   String selectedLanguageCode = 'en';
+  UserModel? _loggedInUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('loggedInUser');
+    if (jsonString != null) {
+      final user = UserModel.fromJsonString(jsonString);
+      if (mounted) {
+        setState(() {
+          _loggedInUser = user;
+        });
+      }
+    }
+  }
+
+  String formatRole(String? role) {
+    if (role == null || role.isEmpty) return 'User';
+
+    // Insert space before each capital letter (except the first)
+    return role.replaceAllMapped(
+      RegExp(r'(?<!^)([A-Z])'),
+      (match) => ' ${match.group(0)}',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +64,14 @@ class _TopHeaderWidgetState extends State<TopHeaderWidget> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            "Welcome SuperAdmin",
+            "Welcome ${formatRole(_loggedInUser?.role)}",
             style: GoogleFonts.inter(
               color: Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.w400,
             ),
           ),
+
           Row(
             children: [
               SvgPicture.asset(
@@ -86,13 +119,24 @@ class _TopHeaderWidgetState extends State<TopHeaderWidget> {
                 ),
               ),
               const SizedBox(width: 24),
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 12,
-                backgroundImage: AssetImage('assets/images/crossback.png'),
+                backgroundImage:
+                    (_loggedInUser?.profilePic != null &&
+                        _loggedInUser!.profilePic.isNotEmpty)
+                    ? MemoryImage(_loggedInUser!.profilePic)
+                    : null,
+                backgroundColor: Colors.white,
+                child:
+                    (_loggedInUser?.profilePic == null ||
+                        _loggedInUser!.profilePic.isEmpty)
+                    ? const Icon(Icons.person, size: 16, color: Colors.grey)
+                    : null,
               ),
+
               const SizedBox(width: 3),
               Text(
-                'Bruno Ray',
+                _loggedInUser?.username ?? 'Guest',
                 style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
               ),
             ],

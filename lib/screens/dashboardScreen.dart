@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
+import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
@@ -36,20 +37,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (isDesktop)
               Expanded(
                 flex: 2,
-                child: SizedBox(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: borderColor, width: 2),
+                    ),
+                  ),
                   child: SideMenuWidget(
                     selectedTitle: 'Dashboard',
                     loggedInUser: widget.loggedInUser,
                   ),
                 ),
               ),
-            Expanded(
-              flex: 10,
-              child: Container(child: Center(child: Text("Dashboard Page"))),
-            ),
+            Expanded(flex: 10, child: _buildDashboardScreen()),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDashboardScreen() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const TopHeaderWidget(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+          ),
+        ),
+      ],
     );
   }
 }

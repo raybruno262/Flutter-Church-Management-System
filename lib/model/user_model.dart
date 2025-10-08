@@ -5,6 +5,7 @@ import 'level_model.dart';
 class UserModel {
   final String? userId;
   final String names;
+  final String username;
   final String email;
   final String password;
   final String phone;
@@ -17,6 +18,7 @@ class UserModel {
   UserModel({
     this.userId,
     required this.names,
+    required this.username,
     required this.email,
     required this.password,
     required this.phone,
@@ -31,6 +33,7 @@ class UserModel {
     return UserModel(
       userId: json['userId'],
       names: json['names'] ?? '',
+      username: json['username'] ?? '',
       email: json['email'] ?? '',
       password: json['password'] ?? '',
       phone: json['phone'] ?? '',
@@ -53,6 +56,7 @@ class UserModel {
     return {
       'userId': userId,
       'names': names,
+      'username': username,
       'email': email,
       'password': password,
       'phone': phone,

@@ -36,7 +36,12 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
             if (isDesktop)
               Expanded(
                 flex: 2,
-                child: SizedBox(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: borderColor, width: 2),
+                    ),
+                  ),
                   child: SideMenuWidget(
                     selectedTitle: 'Data Backup',
                     loggedInUser: widget.loggedInUser,

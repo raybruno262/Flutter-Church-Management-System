@@ -14,6 +14,9 @@ class CreateUserPage extends StatefulWidget {
 class _CreateUserPageState extends State<CreateUserPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+   final _usernameController = TextEditingController();
+  
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -47,6 +50,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
       final user = UserModel(
         names: _nameController.text,
         email: _emailController.text,
+           username: _usernameController.text,
         password: _passwordController.text,
         phone: _phoneController.text,
         nationalId: int.parse(_nationalIdController.text),
@@ -81,6 +85,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
           child: ListView(
             children: [
               _buildTextField(_nameController, 'Name'),
+                   _buildTextField(_usernameController, 'Username'),
               _buildTextField(_emailController, 'Email'),
               _buildTextField(_passwordController, 'Password', obscure: true),
               _buildTextField(_phoneController, 'Phone'),
