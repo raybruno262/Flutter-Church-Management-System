@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class SideMenuModel {
   final Widget icon;
   final String title;
-  final Widget page;
+  final Widget? page;
+  final Future<void> Function(BuildContext context)? onTap;
 
   const SideMenuModel({
     required this.icon,
     required this.title,
-    required this.page,
+    this.page,
+    this.onTap,
   });
 }

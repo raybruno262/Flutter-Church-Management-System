@@ -3,13 +3,15 @@ import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
+import 'package:flutter_churchcrm_system/model/user_model.dart';
 
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
 class AddLevelScreen extends StatefulWidget {
-  const AddLevelScreen({super.key});
+  final UserModel loggedInUser;
+  const AddLevelScreen({super.key, required this.loggedInUser});
 
   @override
   State<AddLevelScreen> createState() => _LevelScreenState();
@@ -24,7 +26,10 @@ class _LevelScreenState extends State<AddLevelScreen> {
           ? Container(
               width: 250,
               color: Theme.of(context).scaffoldBackgroundColor,
-              child: const SideMenuWidget(selectedIndex: 1),
+              child: SideMenuWidget(
+                selectedTitle: 'Levels',
+                loggedInUser: widget.loggedInUser,
+              ),
             )
           : null,
       body: SafeArea(
@@ -39,7 +44,10 @@ class _LevelScreenState extends State<AddLevelScreen> {
                       right: BorderSide(color: borderColor, width: 2),
                     ),
                   ),
-                  child: const SideMenuWidget(selectedIndex: 1),
+                  child: SideMenuWidget(
+                    selectedTitle: 'Levels',
+                    loggedInUser: widget.loggedInUser,
+                  ),
                 ),
               ),
             Expanded(flex: 10, child: _buildAddLevelScreen()),

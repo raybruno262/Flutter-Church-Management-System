@@ -1,33 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/data/sidemenu_data.dart';
-
+import 'package:flutter_churchcrm_system/model/sidemenu_model.dart';
+import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SideMenuWidget extends StatefulWidget {
-  final int selectedIndex;
-  const SideMenuWidget({super.key, required this.selectedIndex});
+  final String selectedTitle;
+  final UserModel loggedInUser;
+
+  const SideMenuWidget({
+    super.key,
+    required this.selectedTitle,
+    required this.loggedInUser,
+  });
 
   @override
   State<SideMenuWidget> createState() => _SideMenuWidgetState();
 }
 
 class _SideMenuWidgetState extends State<SideMenuWidget> {
+  late int _selectedIndex;
+  late List<SideMenuModel> _menuItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _menuItems = SidemenuData(loggedInUser: widget.loggedInUser).sideMenu;
+    _selectedIndex = _menuItems.indexWhere(
+      (item) => item.title == widget.selectedTitle,
+    );
+
+    // Fallback if title not found
+    if (_selectedIndex == -1) _selectedIndex = 0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final data = SidemenuData();
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SvgPicture.asset('assets/images/church.svg', height: 68),
-          const SizedBox(height: 10),
+          const SizedBox(height: 5),
           Expanded(
             child: ListView.builder(
-              itemCount: data.sideMenu.length,
-              itemBuilder: (context, index) => buildMenuEntry(data, index),
+              itemCount: _menuItems.length,
+              itemBuilder: (context, index) => _buildMenuEntry(index),
             ),
           ),
         ],
@@ -35,18 +56,17 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
     );
   }
 
-  Widget buildMenuEntry(SidemenuData data, int index) {
-    var selectedIndex = widget.selectedIndex;
-    final isSelected = selectedIndex == index;
-    final title = data.sideMenu[index].title;
-    final isLogout = title == 'Logout';
+  Widget _buildMenuEntry(int index) {
+    final item = _menuItems[index];
+    final isSelected = _selectedIndex == index;
+    final isLogout = item.title == 'Logout';
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-
       height: 34,
       width: 133,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(6.0)),
+        borderRadius: BorderRadius.circular(6),
         color: isLogout
             ? logoutColor
             : isSelected
@@ -54,37 +74,34 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
             : Colors.transparent,
       ),
       child: InkWell(
-        onTap: () {
-          setState(() {
-            selectedIndex = index;
-          });
+        onTap: () async {
+          if (!isLogout) {
+            setState(() => _selectedIndex = index);
+          }
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => data.sideMenu[index].page),
-          );
+          if (item.onTap != null) {
+            await item.onTap!(context);
+          } else if (item.page != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => item.page!),
+            );
+          }
         },
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 8.0, right: 10.0),
-              child: SizedBox(
-                height: 16,
-                width: 16,
-
-                child: data.sideMenu[index].icon,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: SizedBox(height: 18, width: 18, child: item.icon),
             ),
-            Flexible(
+            Expanded(
               child: Text(
-                title,
+                item.title,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   color: isLogout ? Colors.red : Colors.white,
-                  fontSize: 16,
-                  fontWeight: isLogout
-                      ? FontWeight.w600
-                      : isSelected
+                  fontSize: 15,
+                  fontWeight: isSelected || isLogout
                       ? FontWeight.w600
                       : FontWeight.normal,
                 ),

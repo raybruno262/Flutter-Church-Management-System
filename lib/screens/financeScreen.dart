@@ -4,15 +4,15 @@ import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 
-class UserScreen extends StatefulWidget {
+class FinanceScreen extends StatefulWidget {
   final UserModel loggedInUser;
-  const UserScreen({super.key, required this.loggedInUser});
+  const FinanceScreen({super.key, required this.loggedInUser});
 
   @override
-  State<UserScreen> createState() => _UserScreenState();
+  State<FinanceScreen> createState() => _FinanceScreenState();
 }
 
-class _UserScreenState extends State<UserScreen> {
+class _FinanceScreenState extends State<FinanceScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
@@ -24,7 +24,8 @@ class _UserScreenState extends State<UserScreen> {
               width: 250,
               color: Theme.of(context).scaffoldBackgroundColor,
               child: SideMenuWidget(
-                selectedTitle: 'Users',
+                selectedTitle: 'Finance',
+
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -38,12 +39,15 @@ class _UserScreenState extends State<UserScreen> {
                 flex: 2,
                 child: SizedBox(
                   child: SideMenuWidget(
-                    selectedTitle: 'Users',
+                    selectedTitle: 'Finance',
                     loggedInUser: widget.loggedInUser,
                   ),
                 ),
               ),
-            Expanded(flex: 10, child: Center(child: Text("Users Page"))),
+            Expanded(
+              flex: 10,
+              child: Container(child: Center(child: Text("Finance Page"))),
+            ),
           ],
         ),
       ),

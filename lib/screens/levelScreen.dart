@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addLevelScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,12 +9,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_churchcrm_system/controller/level_controller.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
 
-import 'package:flutter_churchcrm_system/widgets/sidemenu_widget.dart';
+import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 
 import 'package:flutter_churchcrm_system/constants.dart';
 
 class LevelScreen extends StatefulWidget {
-  const LevelScreen({super.key});
+  final UserModel loggedInUser;
+  const LevelScreen({super.key, required this.loggedInUser});
 
   @override
   State<LevelScreen> createState() => _LevelScreenState();
@@ -48,8 +50,8 @@ class _LevelScreenState extends State<LevelScreen> {
     );
     setState(() {
       _levels = levels.reversed.toList();
-      _applyStatusFilter(); // 👈 Apply status filter first
-      _applySearchFilter(); // 👈 Then apply search filter on top
+      _applyStatusFilter();
+      _applySearchFilter();
       _isLoading = false;
     });
   }
@@ -57,7 +59,6 @@ class _LevelScreenState extends State<LevelScreen> {
   void _applySearchFilter() {
     final query = _searchController.text.toLowerCase();
 
-    // Always apply search on top of current _levels (already status-filtered)
     _filteredLevels = _levels.where((level) {
       final fields = [
         level.name,
@@ -70,24 +71,24 @@ class _LevelScreenState extends State<LevelScreen> {
           fields.any((field) => field?.toLowerCase().contains(query) ?? false);
     }).toList();
 
-    setState(() {}); // 👈 Refresh UI
+    setState(() {});
   }
 
   void _nextPage() {
     _currentPage++;
-    _fetchLevels(); // 👈 Will reapply filters after fetch
+    _fetchLevels();
   }
 
   void _previousPage() {
     if (_currentPage > 0) {
       _currentPage--;
-      _fetchLevels(); // 👈 Will reapply filters after fetch
+      _fetchLevels();
     }
   }
 
   void _applyStatusFilter() {
     if (_statusFilter == 'All') {
-      _levels = _levels; // 👈 No change
+      _levels = _levels;
     } else {
       final isActive = _statusFilter == 'Active';
       _levels = _levels.where((level) => level.isActive == isActive).toList();
@@ -175,7 +176,10 @@ class _LevelScreenState extends State<LevelScreen> {
           ? Container(
               width: 250,
               color: Theme.of(context).scaffoldBackgroundColor,
-              child: const SideMenuWidget(selectedIndex: 1),
+              child: SideMenuWidget(
+                selectedTitle: 'Users',
+                loggedInUser: widget.loggedInUser,
+              ),
             )
           : null,
       body: SafeArea(
@@ -190,7 +194,10 @@ class _LevelScreenState extends State<LevelScreen> {
                       right: BorderSide(color: borderColor, width: 2),
                     ),
                   ),
-                  child: const SideMenuWidget(selectedIndex: 1),
+                  child: SideMenuWidget(
+                    selectedTitle: 'Users',
+                    loggedInUser: widget.loggedInUser,
+                  ),
                 ),
               ),
             Expanded(flex: 10, child: _buildLevelScreen()),
@@ -314,7 +321,8 @@ class _LevelScreenState extends State<LevelScreen> {
                       final newLevel = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AddLevelScreen(),
+                          builder: (context) =>
+                              AddLevelScreen(loggedInUser: widget.loggedInUser),
                         ),
                       );
 

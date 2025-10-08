@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import '../model/user_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserController {
   final String baseUrl = '$baseHost/api/users';
@@ -190,7 +191,7 @@ class UserController {
   }
 
   // Login with OTP
-  Future<String> login({
+  Future<UserModel?> login({
     required String email,
     required String verifyCode,
     required String password,
@@ -200,9 +201,15 @@ class UserController {
         '$baseUrl/login?email=${Uri.encodeComponent(email)}&verifyCode=${Uri.encodeComponent(verifyCode)}&Password=${Uri.encodeComponent(password)}',
       );
       final response = await http.post(url);
-      return response.body;
+      final body = response.body;
+      try {
+        final json = jsonDecode(body);
+        return UserModel.fromJson(json);
+      } catch (e) {
+        return null;
+      }
     } catch (e) {
-      return 'Status 7000';
+      return null;
     }
   }
 
@@ -234,14 +241,26 @@ class UserController {
     }
   }
 
-  // Destroy session
-  Future<String> destroySession() async {
+  // Logout
+  Future<void> logout() async {
     try {
       final url = Uri.parse('$baseUrl/destroySession');
-      final response = await http.post(url);
-      return response.body;
+      await http.post(url);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('loggedInUser');
     } catch (e) {
-      return 'Status 7000';
+      return null;
     }
+  }
+
+  // Load user from local storage
+  Future<UserModel?> loadUserFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('loggedInUser');
+    if (jsonString != null) {
+      return UserModel.fromJsonString(jsonString);
+    }
+    return null;
   }
 }

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
-import 'package:flutter_churchcrm_system/screens/levelScreen.dart';
+import 'package:flutter_churchcrm_system/model/user_model.dart';
+import 'package:flutter_churchcrm_system/screens/dashboardScreen.dart';
+
 import 'package:flutter_churchcrm_system/screens/login.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginOTPVerificationScreen extends StatefulWidget {
   final String email;
@@ -27,6 +30,8 @@ class LoginOTPVerificationScreen extends StatefulWidget {
 
 class _LoginOTPVerificationScreenState
     extends State<LoginOTPVerificationScreen> {
+  UserModel? loggedInUser;
+
   bool isSuccess = false;
 
   final List<TextEditingController> _controllers = List.generate(
@@ -261,6 +266,7 @@ class _LoginOTPVerificationScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
+
             onPressed: () async {
               final otp = _controllers.map((c) => c.text).join();
 
@@ -272,45 +278,52 @@ class _LoginOTPVerificationScreenState
                 return;
               }
 
-              final result = await UserController().login(
-                email: widget.email,
-                verifyCode: otp,
-                password: widget.password,
-              );
+              setState(() {
+                message = null;
+                isSuccess = true;
+              });
 
-              switch (result) {
-                case 'Status 1000':
-                  setState(() {
-                    message = null;
-                  });
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const LevelScreen(),
-                    ),
-                  );
-                  break;
+              try {
+                final user = await UserController().login(
+                  email: widget.email,
+                  verifyCode: otp,
+                  password: widget.password,
+                );
 
-                case 'Status 3000':
+                if (user == null) {
                   setState(() {
-                    message = 'Invalid OTP. Please check and try again.';
+                    message = 'Login failed. Please try again.';
                     isSuccess = false;
                   });
-                  break;
+                  return;
+                }
 
-                case 'Status 4000':
-                  setState(() {
+                // Save user to local storage
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('loggedInUser', user.toJsonString());
+
+                //  Navigate with user
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DashboardScreen(loggedInUser: user),
+                  ),
+                );
+              } catch (e) {
+                final error = e.toString();
+
+                setState(() {
+                  isSuccess = false;
+
+                  if (error.contains('Status 3000')) {
+                    message =
+                        'Invalid OTP or email. Please check and try again.';
+                  } else if (error.contains('Status 4000')) {
                     message = 'Incorrect password. Please try again.';
-                    isSuccess = false;
-                  });
-                  break;
-
-                case 'Status 9999':
-                  setState(() {
+                  } else if (error.contains('Status 9999')) {
                     message = 'Something went wrong. Please try again later.';
-                    isSuccess = false;
-                  });
-                  break;
+                  }
+                });
               }
             },
             child: Text(

@@ -4,15 +4,15 @@ import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 
-class UserScreen extends StatefulWidget {
+class VisitorScreen extends StatefulWidget {
   final UserModel loggedInUser;
-  const UserScreen({super.key, required this.loggedInUser});
+  const VisitorScreen({super.key, required this.loggedInUser});
 
   @override
-  State<UserScreen> createState() => _UserScreenState();
+  State<VisitorScreen> createState() => _VisitorScreenState();
 }
 
-class _UserScreenState extends State<UserScreen> {
+class _VisitorScreenState extends State<VisitorScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
@@ -24,7 +24,7 @@ class _UserScreenState extends State<UserScreen> {
               width: 250,
               color: Theme.of(context).scaffoldBackgroundColor,
               child: SideMenuWidget(
-                selectedTitle: 'Users',
+                selectedTitle: 'Visitors',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -38,12 +38,15 @@ class _UserScreenState extends State<UserScreen> {
                 flex: 2,
                 child: SizedBox(
                   child: SideMenuWidget(
-                    selectedTitle: 'Users',
+                    selectedTitle: 'Visitors',
                     loggedInUser: widget.loggedInUser,
                   ),
                 ),
               ),
-            Expanded(flex: 10, child: Center(child: Text("Users Page"))),
+            Expanded(
+              flex: 10,
+              child: Container(child: Center(child: Text("Visitors Page"))),
+            ),
           ],
         ),
       ),
