@@ -5,38 +5,47 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import '../model/member_model.dart';
 
+// create member
 class MemberController {
   final String baseUrl = '$baseHost/api/members';
 
-  // Create member (multipart/form-data)
-  // Future<String> createMember(
-  //   Member member, {
-  //   Uint8List? profilePic,
-  //   String? fileExtension, // e.g. 'png', 'jpg', 'webp'
-  // }) async {
-  //   try {
-  //     final url = Uri.parse('$baseUrl/createMember');
-  //     final request = http.MultipartRequest('POST', url);
-  //     request.fields['member'] = jsonEncode(member.toJson());
+  Future<String> createMember(
+    Member member, {
+    required Uint8List profilePic,
+    required String fileExtension,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/createMember');
+      final request = http.MultipartRequest('POST', url);
 
-  //     if (profilePic != null && fileExtension != null) {
-  //       final mimeType = _getMimeType(fileExtension);
-  //       request.files.add(
-  //         http.MultipartFile.fromBytes(
-  //           'file',
-  //           profilePic,
-  //           filename: 'profile.$fileExtension',
-  //           contentType: mimeType,
-  //         ),
-  //       );
-  //     }
+      // Attach member JSON as a file
+      request.files.add(
+        http.MultipartFile.fromString(
+          'member',
+          jsonEncode(member.toJson()),
+          filename: 'member.json',
+          contentType: MediaType('application', 'json'),
+        ),
+      );
 
-  //     final response = await request.send();
-  //     return await response.stream.bytesToString();
-  //   } catch (e) {
-  //     return 'Status 7000';
-  //   }
-  // }
+      // Attach profile picture
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          profilePic,
+          filename: 'profile.$fileExtension',
+          contentType: MediaType('image', fileExtension.toLowerCase()),
+        ),
+      );
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      return responseBody;
+    } catch (e) {
+      return 'Status 7000';
+    }
+  }
 
   // Update member (multipart/form-data)
   Future<String> updateMember(
@@ -95,15 +104,13 @@ class MemberController {
   // Get scoped paginated members
   Future<List<Member>> getScopedPaginatedMembers({
     required String userId,
-    required String levelId,
-    required int page,
-    required int size,
+    int page = 0,
+    int size = 5,
   }) async {
     try {
       final url = Uri.parse(
-        '$baseUrl/scopedPaginatedMembers?userId=$userId&levelId=$levelId&page=$page&size=$size',
+        '$baseUrl/scopedPaginatedMembers?userId=$userId&page=$page&size=$size',
       );
-
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -112,28 +119,33 @@ class MemberController {
 
         return content.map((json) => Member.fromJson(json)).toList();
       } else {
-        print('Failed to fetch members: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      print('Error fetching scoped members: $e');
       return [];
     }
   }
 
   // Get scoped birthday members for current month
   Future<List<Member>> getScopedBirthdayMembers({
+    required String userId,
     int page = 0,
     int size = 5,
   }) async {
     try {
       final url = Uri.parse(
-        '$baseUrl/scopedBirthdayMembers?page=$page&size=$size',
+        '$baseUrl/scopedBirthdayMembers?userId=$userId&page=$page&size=$size',
       );
       final response = await http.get(url);
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> content = data['content'];
-      return content.map((json) => Member.fromJson(json)).toList();
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> content = data['content'] ?? [];
+
+        return content.map((json) => Member.fromJson(json)).toList();
+      } else {
+        return [];
+      }
     } catch (e) {
       return [];
     }

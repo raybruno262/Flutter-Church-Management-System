@@ -92,27 +92,6 @@ class LevelController {
     }
   }
 
-  Future<List<Level>> getAllActiveLevels() async {
-    try {
-      final url = Uri.parse('$baseUrl/getAllActiveLevels');
-      final response = await http.get(url);
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Level.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<List<Level>> getAllInactiveLevels() async {
-    try {
-      final url = Uri.parse('$baseUrl/getAllInactiveLevels');
-      final response = await http.get(url);
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Level.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
   //  Paginated
   Future<List<Level>> getPaginatedLevels({int page = 0, int size = 5}) async {
@@ -127,39 +106,7 @@ class LevelController {
     }
   }
 
-  Future<List<Level>> getPaginatedActiveLevels({
-    int page = 0,
-    int size = 5,
-  }) async {
-    try {
-      final url = Uri.parse(
-        '$baseUrl/getPaginatedActiveLevels?page=$page&size=$size',
-      );
-      final response = await http.get(url);
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> content = data['content'];
-      return content.map((json) => Level.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
-  Future<List<Level>> getPaginatedInactiveLevels({
-    int page = 0,
-    int size = 5,
-  }) async {
-    try {
-      final url = Uri.parse(
-        '$baseUrl/getPaginatedInactiveLevels?page=$page&size=$size',
-      );
-      final response = await http.get(url);
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> content = data['content'];
-      return content.map((json) => Level.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
   //  Descendants
   Future<List<Level>> getAllDescendants(String parentId) async {
@@ -173,29 +120,7 @@ class LevelController {
     }
   }
 
-  Future<List<Level>> getActiveDescendants(String parentId) async {
-    try {
-      final url = Uri.parse('$baseUrl/getActiveDescendants?parentId=$parentId');
-      final response = await http.get(url);
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Level.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
-  Future<List<Level>> getInactiveDescendants(String parentId) async {
-    try {
-      final url = Uri.parse(
-        '$baseUrl/getInactiveDescendants?parentId=$parentId',
-      );
-      final response = await http.get(url);
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Level.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
   //  Single level
   Future<Level?> getLevelById(String levelId) async {

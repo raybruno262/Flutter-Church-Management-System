@@ -96,29 +96,7 @@ class UserController {
     }
   }
 
-  // Get active users
-  Future<List<UserModel>> getAllActiveUsers() async {
-    try {
-      final url = Uri.parse('$baseUrl/getAllActiveUsers');
-      final response = await http.get(url);
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => UserModel.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
-  // Get inactive users
-  Future<List<UserModel>> getAllInactiveUsers() async {
-    try {
-      final url = Uri.parse('$baseUrl/getAllInActiveUsers');
-      final response = await http.get(url);
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => UserModel.fromJson(json)).toList();
-    } catch (e) {
-      return []; // Offline
-    }
-  }
 
   // Get paginated users
   Future<List<UserModel>> getPaginatedUsers({
@@ -141,41 +119,8 @@ class UserController {
     }
   }
 
-  // Get paginated active users
-  Future<List<UserModel>> getPaginatedActiveUsers({
-    int page = 0,
-    int size = 5,
-  }) async {
-    try {
-      final url = Uri.parse(
-        '$baseUrl/getPaginatedActiveUsers?page=$page&size=$size',
-      );
-      final response = await http.get(url);
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> content = data['content'];
-      return content.map((json) => UserModel.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
 
-  // Get paginated inactive users
-  Future<List<UserModel>> getPaginatedInactiveUsers({
-    int page = 0,
-    int size = 5,
-  }) async {
-    try {
-      final url = Uri.parse(
-        '$baseUrl/getPaginatedInactiveUsers?page=$page&size=$size',
-      );
-      final response = await http.get(url);
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final List<dynamic> content = data['content'];
-      return content.map((json) => UserModel.fromJson(json)).toList();
-    } catch (e) {
-      return [];
-    }
-  }
+
 
   // Send login OTP
   Future<String> sendLoginOtp(String email, String password) async {

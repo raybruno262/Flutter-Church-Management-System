@@ -664,10 +664,19 @@ class _LevelScreenState extends State<LevelScreen> {
             value: status,
             child: Text(
               status,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]),
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
             ),
           );
         }).toList(),
+        selectedItemBuilder: (context) {
+          return ['All', 'Active', 'Inactive'].map((status) {
+            return Text(
+              status,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,

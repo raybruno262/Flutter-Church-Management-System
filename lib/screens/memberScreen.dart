@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
@@ -35,9 +36,7 @@ class _MemberScreenState extends State<MemberScreen> {
   final _levelFilterController = TextEditingController();
   final _parentFilterController = TextEditingController();
   final _baptizedFilterController = TextEditingController();
-  final _sameReligionFilterController = TextEditingController();
-  final _otherChurchNameFilterController = TextEditingController();
-  final _otherChurchAddressFilterController = TextEditingController();
+  final ScrollController _horizontalScrollController = ScrollController();
 
   final MemberController _controller = MemberController();
   final TextEditingController _searchController = TextEditingController();
@@ -48,6 +47,11 @@ class _MemberScreenState extends State<MemberScreen> {
   List<Member> _filteredMembers = [];
 
   bool _isLoading = true;
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -60,29 +64,36 @@ class _MemberScreenState extends State<MemberScreen> {
   Future<void> _fetchMembers() async {
     setState(() => _isLoading = true);
 
-    final loggedInUser = await _usercontroller.loadUserFromStorage();
+    try {
+      final loggedInUser = await _usercontroller.loadUserFromStorage();
 
-    if (loggedInUser == null || loggedInUser.userId == null) {
+      if (loggedInUser == null || loggedInUser.userId == null) {
+        setState(() {
+          _members = [];
+          _filteredMembers = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final members = await _controller.getScopedPaginatedMembers(
+        userId: loggedInUser.userId!,
+        page: _currentPage,
+        size: _pageSize,
+      );
+
+      setState(() {
+        _members = members.reversed.toList();
+        _filteredMembers = members;
+        _isLoading = false;
+      });
+    } catch (e) {
       setState(() {
         _members = [];
         _filteredMembers = [];
         _isLoading = false;
       });
-      return;
     }
-
-    final members = await _controller.getScopedPaginatedMembers(
-      userId: loggedInUser.userId!,
-      levelId: loggedInUser.level.levelId,
-      page: _currentPage,
-      size: _pageSize,
-    );
-
-    setState(() {
-      _members = members.reversed.toList();
-      _filteredMembers = members;
-      _isLoading = false;
-    });
   }
 
   void _applySearchFilter() {
@@ -98,11 +109,6 @@ class _MemberScreenState extends State<MemberScreen> {
     final levelQuery = _levelFilterController.text.toLowerCase();
     final parentQuery = _parentFilterController.text.toLowerCase();
     final baptizedQuery = _baptizedFilterController.text.toLowerCase();
-    final sameReligionQuery = _sameReligionFilterController.text.toLowerCase();
-    final otherChurchNameQuery = _otherChurchNameFilterController.text
-        .toLowerCase();
-    final otherChurchAddressQuery = _otherChurchAddressFilterController.text
-        .toLowerCase();
 
     _filteredMembers = _members.where((member) {
       final matchesName = member.names.toLowerCase().contains(nameQuery);
@@ -130,21 +136,8 @@ class _MemberScreenState extends State<MemberScreen> {
       final baptized = member.baptismInformation?.baptized == true
           ? 'true'
           : 'false';
-      final sameReligion = member.baptismInformation?.sameReligion == true
-          ? 'true'
-          : 'false';
+
       final matchesBaptized = baptized.contains(baptizedQuery);
-      final matchesSameReligion = sameReligion.contains(sameReligionQuery);
-      final matchesOtherChurchName =
-          member.baptismInformation?.otherChurchName?.toLowerCase().contains(
-            otherChurchNameQuery,
-          ) ??
-          false;
-      final matchesOtherChurchAddress =
-          member.baptismInformation?.otherChurchAddress?.toLowerCase().contains(
-            otherChurchAddressQuery,
-          ) ??
-          false;
 
       final matchesStatus =
           _statusFilter == 'All' || member.status == _statusFilter;
@@ -161,9 +154,6 @@ class _MemberScreenState extends State<MemberScreen> {
           matchesLevel &&
           matchesParent &&
           matchesBaptized &&
-          matchesSameReligion &&
-          matchesOtherChurchName &&
-          matchesOtherChurchAddress &&
           matchesStatus;
     }).toList();
 
@@ -266,34 +256,16 @@ class _MemberScreenState extends State<MemberScreen> {
             style: GoogleFonts.inter(),
           ),
         ),
-        DataCell(
-          Text(
-            member.baptismInformation?.sameReligion == true ? 'Yes' : 'No',
-            style: GoogleFonts.inter(),
-          ),
-        ),
-        DataCell(
-          Text(
-            member.baptismInformation?.baptismCell?.name ?? 'N/A',
-            style: GoogleFonts.inter(),
-          ),
-        ),
-        DataCell(
-          Text(
-            member.baptismInformation?.otherChurchName ?? 'N/A',
-            style: GoogleFonts.inter(),
-          ),
-        ),
-        DataCell(
-          Text(
-            member.baptismInformation?.otherChurchAddress ?? 'N/A',
-            style: GoogleFonts.inter(),
-          ),
-        ),
 
         DataCell(
           Row(
             children: [
+              IconButton(
+                icon: Icon(Icons.visibility, color: Colors.green),
+                onPressed: () {
+                  // TODO: Navigate to ViewProfilePage
+                },
+              ),
               IconButton(
                 icon: Icon(Icons.edit, color: Colors.blue),
                 onPressed: () {
@@ -490,417 +462,373 @@ class _MemberScreenState extends State<MemberScreen> {
                             color: containerColor,
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
+
+                          child: Scrollbar(
+                            controller: _horizontalScrollController,
+                            thumbVisibility: true,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              controller: _horizontalScrollController,
+                              child: Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        _buildFilterField(
+                                          _nameFilterController,
+                                          'Search Name',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _phoneFilterController,
+                                          'Search Phone',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _emailFilterController,
+                                          'Search Email',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _genderFilterController,
+                                          'Search Gender',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _maritalFilterController,
+                                          'Search Marital Status',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _addressFilterController,
+                                          'Search Address',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _dobFilterController,
+                                          'Search DOB (MM/dd/yyyy)',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _membershipFilterController,
+                                          'Search Membership Date',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _departmentFilterController,
+                                          'Search Department',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _levelFilterController,
+                                          'Search Level',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _parentFilterController,
+                                          'Search Parent Level',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _baptizedFilterController,
+                                          'Baptized (true/false)',
+                                        ),
+
+                                        const SizedBox(width: 8),
+                                        _buildStatusDropdown(),
+                                      ],
+                                    ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      _buildFilterField(
-                                        _nameFilterController,
-                                        'Search Name',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _phoneFilterController,
-                                        'Search Phone',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _emailFilterController,
-                                        'Search Email',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _genderFilterController,
-                                        'Search Gender',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _maritalFilterController,
-                                        'Search Marital Status',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _addressFilterController,
-                                        'Search Address',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _dobFilterController,
-                                        'Search DOB (MM/dd/yyyy)',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _membershipFilterController,
-                                        'Search Membership Date',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _departmentFilterController,
-                                        'Search Department',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _levelFilterController,
-                                        'Search Level',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _parentFilterController,
-                                        'Search Parent Level',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _baptizedFilterController,
-                                        'Baptized (true/false)',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _sameReligionFilterController,
-                                        'Same Religion (true/false)',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _otherChurchNameFilterController,
-                                        'Other Church Name',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _otherChurchAddressFilterController,
-                                        'Other Church Address',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildStatusDropdown(),
-                                    ],
-                                  ),
-                                ),
 
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(minHeight: 300),
-                                  child: SizedBox(
-                                    width: 2700,
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(minHeight: 300),
+                                    child: SizedBox(
+                                      width: 2000,
 
-                                    child: DataTable(
-                                      horizontalMargin: 12,
-                                      dataRowMaxHeight: 56,
-                                      headingRowHeight: 48,
-                                      dividerThickness: 1,
-                                      headingRowColor: WidgetStateProperty.all(
-                                        Colors.deepPurple,
-                                      ),
+                                      child: DataTable(
+                                        horizontalMargin: 12,
+                                        dataRowMaxHeight: 56,
+                                        headingRowHeight: 48,
+                                        dividerThickness: 1,
+                                        headingRowColor:
+                                            WidgetStateProperty.all(
+                                              Colors.deepPurple,
+                                            ),
 
-                                      dataRowColor: WidgetStateProperty.all(
-                                        backgroundcolor,
-                                      ),
+                                        dataRowColor: WidgetStateProperty.all(
+                                          backgroundcolor,
+                                        ),
 
-                                      border: TableBorder(
-                                        horizontalInside: BorderSide(
-                                          color: Colors.grey.shade300,
-                                          width: 1,
+                                        border: TableBorder(
+                                          horizontalInside: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1,
+                                          ),
+                                          verticalInside: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1,
+                                          ),
+                                          top: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          bottom: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          left: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          right: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
                                         ),
-                                        verticalInside: BorderSide(
-                                          color: Colors.grey.shade300,
-                                          width: 1,
-                                        ),
-                                        top: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        left: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        right: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      columns: [
-                                        DataColumn(
-                                          label: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.person,
-                                                size: 16,
+                                        columns: [
+                                          DataColumn(
+                                            label: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.person,
+                                                  size: 16,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Member',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          DataColumn(
+                                            label: Text(
+                                              'Date of Birth',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
                                                 color: Colors.white,
                                               ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'Member',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
-                                                ),
+                                            ),
+                                          ),
+                                          DataColumn(
+                                            label: Text(
+                                              'Phone',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
                                               ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        DataColumn(
-                                          label: Text(
-                                            'Date of Birth',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Phone',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Gender',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Marital Status',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Email',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Row(
-                                            children: [
-                                              Text(
-                                                'STATUS',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
-                                                ),
+                                          DataColumn(
+                                            label: Text(
+                                              'Gender',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Address',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Membership Date',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Marital Status',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Department',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Email',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Level',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Row(
+                                              children: [
+                                                Text(
+                                                  'STATUS',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Baptized',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Address',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Same Religion',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Membership Date',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Baptism Cell',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Department',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Other Church Name',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Level Name',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Other Church Address',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Baptized',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
-                                        ),
 
-                                        DataColumn(
-                                          label: Text(
-                                            'Actions',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          DataColumn(
+                                            label: Text(
+                                              'Actions',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+
+                                        rows: _filteredMembers.isEmpty
+                                            ? [
+                                                DataRow(
+                                                  cells: List.generate(
+                                                    13,
+                                                    (index) => index == 0
+                                                        ? DataCell(
+                                                            Container(
+                                                              alignment: Alignment
+                                                                  .centerLeft,
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    vertical:
+                                                                        40,
+                                                                  ),
+                                                              child: Text(
+                                                                'No members found',
+                                                                style: GoogleFonts.inter(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Colors
+                                                                      .grey
+                                                                      .shade600,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          )
+                                                        : const DataCell(
+                                                            SizedBox(),
+                                                          ),
+                                                  ),
+                                                ),
+                                              ]
+                                            : _filteredMembers
+                                                  .map(_buildDataRow)
+                                                  .toList(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.bottomLeft,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        ElevatedButton.icon(
+                                          onPressed: _previousPage,
+                                          icon: Icon(Icons.arrow_back),
+                                          label: Text('Previous'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.deepPurple,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Text(
+                                          'Page ${_currentPage + 1}',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        ElevatedButton.icon(
+                                          onPressed: _nextPage,
+                                          icon: Icon(Icons.arrow_forward),
+                                          label: Text('Next'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.deepPurple,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
                                         ),
                                       ],
-
-                                      rows: _filteredMembers.isEmpty
-                                          ? [
-                                              DataRow(
-                                                cells: List.generate(
-                                                  17,
-                                                  (index) => index == 0
-                                                      ? DataCell(
-                                                          Container(
-                                                            alignment: Alignment
-                                                                .centerLeft,
-                                                            padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  vertical: 40,
-                                                                ),
-                                                            child: Text(
-                                                              'No members found',
-                                                              style: GoogleFonts.inter(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Colors
-                                                                    .grey
-                                                                    .shade600,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        )
-                                                      : const DataCell(
-                                                          SizedBox(),
-                                                        ),
-                                                ),
-                                              ),
-                                            ]
-                                          : _filteredMembers
-                                                .map(_buildDataRow)
-                                                .toList(),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: _previousPage,
-                                      icon: Icon(Icons.arrow_back),
-                                      label: Text('Previous'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.deepPurple,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Text(
-                                      'Page ${_currentPage + 1}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    ElevatedButton.icon(
-                                      onPressed: _nextPage,
-                                      icon: Icon(Icons.arrow_forward),
-                                      label: Text('Next'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.deepPurple,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -927,7 +855,7 @@ class _MemberScreenState extends State<MemberScreen> {
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SizedBox(
-      width: 163,
+      width: 147,
       height: 40,
       child: TextField(
         controller: controller,
