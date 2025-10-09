@@ -23,6 +23,10 @@ class LevelScreen extends StatefulWidget {
 
 class _LevelScreenState extends State<LevelScreen> {
   String _statusFilter = 'All'; // Options: All, Active, Inactive
+  final _nameFilterController = TextEditingController();
+  final _addressFilterController = TextEditingController();
+  final _typeFilterController = TextEditingController();
+  final _parentFilterController = TextEditingController();
 
   final LevelController _controller = LevelController();
   final TextEditingController _searchController = TextEditingController();
@@ -50,25 +54,37 @@ class _LevelScreenState extends State<LevelScreen> {
     );
     setState(() {
       _levels = levels.reversed.toList();
-      _applyStatusFilter();
+
       _applySearchFilter();
       _isLoading = false;
     });
   }
 
   void _applySearchFilter() {
-    final query = _searchController.text.toLowerCase();
+    final nameQuery = _nameFilterController.text.toLowerCase();
+    final addressQuery = _addressFilterController.text.toLowerCase();
+    final typeQuery = _typeFilterController.text.toLowerCase();
+    final parentQuery = _parentFilterController.text.toLowerCase();
 
     _filteredLevels = _levels.where((level) {
-      final fields = [
-        level.name,
-        level.address,
-        level.levelType,
-        (level.isActive ?? false) ? 'Active' : 'Inactive',
-        level.parent?.name ?? '',
-      ];
-      return query.isEmpty ||
-          fields.any((field) => field?.toLowerCase().contains(query) ?? false);
+      final matchesName =
+          level.name?.toLowerCase().contains(nameQuery) ?? false;
+      final matchesAddress =
+          level.address?.toLowerCase().contains(addressQuery) ?? false;
+      final matchesType =
+          level.levelType?.toLowerCase().contains(typeQuery) ?? false;
+      final matchesParent = parentQuery.isEmpty
+          ? true
+          : (level.parent?.name?.toLowerCase().contains(parentQuery) ?? false);
+
+      final status = (level.isActive ?? false) ? 'Active' : 'Inactive';
+      final matchesStatus = _statusFilter == 'All' || status == _statusFilter;
+
+      return matchesName &&
+          matchesAddress &&
+          matchesType &&
+          matchesParent &&
+          matchesStatus;
     }).toList();
 
     setState(() {});
@@ -83,15 +99,6 @@ class _LevelScreenState extends State<LevelScreen> {
     if (_currentPage > 0) {
       _currentPage--;
       _fetchLevels();
-    }
-  }
-
-  void _applyStatusFilter() {
-    if (_statusFilter == 'All') {
-      _levels = _levels;
-    } else {
-      final isActive = _statusFilter == 'Active';
-      _levels = _levels.where((level) => level.isActive == isActive).toList();
     }
   }
 
@@ -280,38 +287,7 @@ class _LevelScreenState extends State<LevelScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          width: 250,
-                          height: 35,
-                          child: TextField(
-                            controller: _searchController,
-                            style: GoogleFonts.inter(
-                              color: Colors.black,
-                              fontSize: 14,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Search ...',
-                              hintStyle: GoogleFonts.inter(
-                                color: Colors.grey[600],
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              suffixIcon: const Icon(
-                                Icons.search,
-                                color: Colors.grey,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 230),
+                        SizedBox(width: 460),
                         Text(
                           "Levels List",
                           style: GoogleFonts.inter(
@@ -320,7 +296,7 @@ class _LevelScreenState extends State<LevelScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 260),
+                        SizedBox(width: 280),
                         ElevatedButton.icon(
                           onPressed: () async {
                             final newLevel = await Navigator.push(
@@ -380,14 +356,47 @@ class _LevelScreenState extends State<LevelScreen> {
                             color: containerColor,
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Column(
-                            children: [
-                              ConstrainedBox(
-                                constraints: BoxConstraints(minHeight: 300),
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      _buildFilterField(
+                                        _nameFilterController,
+                                        'Search Name',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildFilterField(
+                                        _addressFilterController,
+                                        'Search Address',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildFilterField(
+                                        _typeFilterController,
+                                        'Search Type',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildStatusDropdown(),
+
+                                      const SizedBox(width: 8),
+                                      _buildFilterField(
+                                        _parentFilterController,
+                                        'Search Parent Name',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(minHeight: 300),
                                   child: SizedBox(
                                     width: 1030,
+
                                     child: DataTable(
                                       horizontalMargin: 12,
                                       dataRowMaxHeight: 56,
@@ -465,42 +474,6 @@ class _LevelScreenState extends State<LevelScreen> {
                                                   color: Colors.white,
                                                 ),
                                               ),
-                                              const SizedBox(width: 6),
-                                              PopupMenuButton<String>(
-                                                icon: Icon(
-                                                  Icons.filter_list,
-                                                  size: 18,
-                                                  color: Colors.white,
-                                                ),
-                                                onSelected: (value) {
-                                                  setState(() {
-                                                    _statusFilter = value;
-                                                    _applyStatusFilter();
-                                                  });
-                                                },
-                                                itemBuilder: (context) =>
-                                                    [
-                                                          'All',
-                                                          'Active',
-                                                          'Inactive',
-                                                        ]
-                                                        .map(
-                                                          (
-                                                            status,
-                                                          ) => PopupMenuItem<String>(
-                                                            value: status,
-                                                            child: Text(
-                                                              status,
-                                                              style:
-                                                                  GoogleFonts.inter(
-                                                                    fontSize:
-                                                                        13,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                        )
-                                                        .toList(),
-                                              ),
                                             ],
                                           ),
                                         ),
@@ -569,55 +542,59 @@ class _LevelScreenState extends State<LevelScreen> {
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ElevatedButton.icon(
-                                    onPressed: _previousPage,
-                                    icon: Icon(Icons.arrow_back),
-                                    label: Text('Previous'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.deepPurple,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Text(
-                                    'Page ${_currentPage + 1}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  ElevatedButton.icon(
-                                    onPressed: _nextPage,
-                                    icon: Icon(Icons.arrow_forward),
-                                    label: Text('Next'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.deepPurple,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: _previousPage,
+                                      icon: Icon(Icons.arrow_back),
+                                      label: Text('Previous'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.deepPurple,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 12,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    const SizedBox(width: 16),
+                                    Text(
+                                      'Page ${_currentPage + 1}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: _nextPage,
+                                      icon: Icon(Icons.arrow_forward),
+                                      label: Text('Next'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.deepPurple,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 12,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                   const SizedBox(height: 20),
@@ -638,6 +615,72 @@ class _LevelScreenState extends State<LevelScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFilterField(TextEditingController controller, String hint) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: 210,
+        height: 40,
+        child: TextField(
+          controller: controller,
+          onChanged: (_) => _applySearchFilter(),
+          style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusDropdown() {
+    return SizedBox(
+      width: 150,
+      height: 40,
+      child: DropdownButtonFormField<String>(
+        initialValue: _statusFilter,
+        onChanged: (value) {
+          setState(() {
+            _statusFilter = value!;
+            _applySearchFilter();
+          });
+        },
+        items: ['All', 'Active', 'Inactive'].map((status) {
+          return DropdownMenuItem(
+            value: status,
+            child: Text(
+              status,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]),
+            ),
+          );
+        }).toList(),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
     );
   }
 }
