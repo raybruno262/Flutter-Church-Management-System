@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 class Level {
-  final String levelId;
+  final String? levelId;
   final String? name;
   final String? address;
   final String? levelType;
@@ -9,7 +9,7 @@ class Level {
   final bool? isActive;
 
   Level({
-    required this.levelId,
+    this.levelId,
     this.name,
     this.address,
     this.levelType,

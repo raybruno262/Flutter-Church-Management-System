@@ -1,11 +1,10 @@
-import 'dart:typed_data';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/controller/level_controller.dart';
+
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
+import 'package:flutter_churchcrm_system/screens/addMemberScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -405,22 +404,22 @@ class _MemberScreenState extends State<MemberScreen> {
                         SizedBox(width: 280),
                         ElevatedButton.icon(
                           onPressed: () async {
-                            // final newLevel = await Navigator.push(
-                            //   context,
-                            //   MaterialPageRoute(
-                            //     builder: (context) => AddMemberScreen(
-                            //       loggedInUser: widget.loggedInUser,
-                            //     ),
-                            //   ),
-                            // );
+                            final newMember = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddMemberScreen(
+                                  loggedInUser: widget.loggedInUser,
+                                ),
+                              ),
+                            );
 
-                            // if (newLevel != null && newLevel is Level) {
-                            //   setState(() {
-                            //     _levels.insert(0, newLevel);
-                            //     _filteredLevels = _levels;
-                            //     _currentPage = 0;
-                            //   });
-                            // }
+                            if (newMember != null && newMember is Member) {
+                              setState(() {
+                                _members.insert(0, newMember);
+                                _filteredMembers = _members;
+                                _currentPage = 0;
+                              });
+                            }
                           },
                           icon: SvgPicture.asset("assets/icons/member.svg"),
                           label: Text(

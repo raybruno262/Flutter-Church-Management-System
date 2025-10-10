@@ -13,12 +13,12 @@ class MemberController {
     Member member, {
     required Uint8List profilePic,
     required String fileExtension,
+    required String userId,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/createMember');
+      final url = Uri.parse('$baseUrl/createMember/$userId');
       final request = http.MultipartRequest('POST', url);
 
-      // Attach member JSON as a file
       request.files.add(
         http.MultipartFile.fromString(
           'member',
@@ -28,7 +28,6 @@ class MemberController {
         ),
       );
 
-      // Attach profile picture
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
@@ -50,11 +49,13 @@ class MemberController {
   // Update member (multipart/form-data)
   Future<String> updateMember(
     String memberId,
+    
     Member updatedMember, {
+        required String userId,
     Uint8List? profilePic,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/updateMember/$memberId');
+       final url = Uri.parse('$baseUrl/updateMember/$memberId/$userId');
       final request = http.MultipartRequest('PUT', url);
       request.fields['member'] = jsonEncode(updatedMember.toJson());
 

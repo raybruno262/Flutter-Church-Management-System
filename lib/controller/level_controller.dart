@@ -92,6 +92,17 @@ class LevelController {
     }
   }
 
+  //get all cells
+  Future<List<Level>> getAllCells() async {
+    try {
+      final url = Uri.parse('$baseUrl/allCells');
+      final response = await http.get(url);
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Level.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
 
   //  Paginated
   Future<List<Level>> getPaginatedLevels({int page = 0, int size = 5}) async {
@@ -106,8 +117,6 @@ class LevelController {
     }
   }
 
-
-
   //  Descendants
   Future<List<Level>> getAllDescendants(String parentId) async {
     try {
@@ -119,8 +128,6 @@ class LevelController {
       return [];
     }
   }
-
-
 
   //  Single level
   Future<Level?> getLevelById(String levelId) async {
