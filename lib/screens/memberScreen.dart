@@ -402,44 +402,46 @@ class _MemberScreenState extends State<MemberScreen> {
                           ),
                         ),
                         SizedBox(width: 280),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            final newMember = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddMemberScreen(
-                                  loggedInUser: widget.loggedInUser,
+                        if (widget.loggedInUser.role == 'CellAdmin') ...[
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final newMember = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddMemberScreen(
+                                    loggedInUser: widget.loggedInUser,
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
 
-                            if (newMember != null && newMember is Member) {
-                              setState(() {
-                                _members.insert(0, newMember);
-                                _filteredMembers = _members;
-                                _currentPage = 0;
-                              });
-                            }
-                          },
-                          icon: SvgPicture.asset("assets/icons/member.svg"),
-                          label: Text(
-                            'Add Member',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
+                              if (newMember != null && newMember is Member) {
+                                setState(() {
+                                  _members.insert(0, newMember);
+                                  _filteredMembers = _members;
+                                  _currentPage = 0;
+                                });
+                              }
+                            },
+                            icon: SvgPicture.asset("assets/icons/member.svg"),
+                            label: Text(
+                              'Add Member',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 15,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 15,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

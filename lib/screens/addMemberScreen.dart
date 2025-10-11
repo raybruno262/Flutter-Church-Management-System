@@ -56,6 +56,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final _otherChurchAddressController = TextEditingController();
 
   // State
+  // ignore: unused_field
   Uint8List? _imageBytes;
   String? _fileExtension;
   String? _maritalStatus;
@@ -65,6 +66,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   String? _sameReligion;
   Department? _selectedDepartment;
   Level? _selectedBaptismCell;
+  // ignore: unused_field
   String? _loggedInUserId;
   Uint8List? _profilePic;
 
@@ -97,71 +99,79 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     }
   }
 
+  Future<void> _submit() async {
+    if (_formKey.currentState!.validate()) {
+      if (_profilePic == null ||
+          _fileExtension == null ||
+          _fileExtension!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please select a profile image')),
+        );
+        return;
+      }
+
+      final user = await UserController().loadUserFromStorage();
+      if (user == null || user.userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User not found. Please log in again.')),
+        );
+        return;
+      }
+
+      final baptismInfo = BaptismInformation(
+        baptized: _baptismStatus == "Baptized",
+        sameReligion: _sameReligion == "Yes",
+        baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
+        otherChurchName: _sameReligion == "No"
+            ? _otherChurchNameController.text
+            : null,
+        otherChurchAddress: _sameReligion == "No"
+            ? _otherChurchAddressController.text
+            : null,
+      );
+
+      final member = Member(
+        memberId: _idController.text,
+        names: _nameController.text,
+        email: _emailController.text,
+        address: _addressController.text,
+        phone: _phoneController.text,
+        maritalStatus: _maritalStatus ?? '',
+        gender: _gender ?? '',
+        status: _baptismStatus ?? '',
+        dateOfBirth: _dob?.toIso8601String(),
+        department: _selectedDepartment,
+        baptismInformation: baptismInfo,
+      );
+
+      final result = await MemberController().createMember(
+        member,
+        profilePic: _profilePic!,
+        fileExtension: _fileExtension!,
+        userId: user.userId!,
+      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result)));
+
+      if (result == 'Status 1000') {
+        Navigator.pop(context, member);
+      }
+    }
+  }
+
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
       final bytes = await picked.readAsBytes();
-      final ext = lookupMimeType(picked.path)?.split('/').last;
+      final ext =
+          lookupMimeType(picked.path)?.split('/').last ??
+          picked.path.split('.').last.toLowerCase();
       setState(() {
-        _imageBytes = bytes;
+        _profilePic = bytes;
         _fileExtension = ext;
       });
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_imageBytes == null || _fileExtension == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Please select a profile image')));
-      return;
-    }
-
-    if (_loggedInUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User not found. Please log in again.')),
-      );
-      return;
-    }
-
-    final baptismInfo = BaptismInformation(
-      baptized: _baptismStatus == "Baptized",
-      sameReligion: _sameReligion == "Yes",
-      baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
-      otherChurchName: _sameReligion == "No"
-          ? _otherChurchNameController.text
-          : null,
-      otherChurchAddress: _sameReligion == "No"
-          ? _otherChurchAddressController.text
-          : null,
-    );
-
-    final member = Member(
-      memberId: _idController.text,
-      names: _nameController.text,
-      email: _emailController.text,
-      phone: _phoneController.text,
-      address: _addressController.text,
-      maritalStatus: _maritalStatus ?? '',
-      gender: _gender ?? '',
-      status: _baptismStatus ?? '',
-      dateOfBirth: _dob?.toIso8601String(),
-      department: _selectedDepartment,
-      baptismInformation: baptismInfo,
-    );
-
-    final result = await MemberController().createMember(
-      member,
-      profilePic: _imageBytes!,
-      fileExtension: _fileExtension!,
-      userId: _loggedInUserId!,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
-
-    if (result == 'Status 1000') {
-      Navigator.pop(context, result);
     }
   }
 
@@ -180,8 +190,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   }
 
   final TextEditingController _phoneController = TextEditingController();
-
-  final ImagePicker _picker = ImagePicker();
 
   @override
   Widget build(BuildContext context) {
@@ -385,67 +393,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   /// Save Button
                   Center(
                     child: ElevatedButton(
-                      onPressed: () async {
-                        if (!_formKey.currentState!.validate()) return;
-                        if (_profilePic == null || _fileExtension!.isEmpty) {
-                          _showError("Please select a profile image");
-                          return;
-                        }
-
-                        final user = await UserController()
-                            .loadUserFromStorage();
-                        if (user == null || user.userId == null) {
-                          _showError("User not found. Please log in again.");
-                          return;
-                        }
-
-                        final baptismInfo = BaptismInformation(
-                          baptized: _baptismStatus == "Baptized",
-                          sameReligion: _sameReligion == "Yes",
-                          baptismCell: _sameReligion == "Yes"
-                              ? _selectedBaptismCell
-                              : null,
-                          otherChurchName: _sameReligion == "No"
-                              ? _otherChurchNameController.text
-                              : null,
-                          otherChurchAddress: _sameReligion == "No"
-                              ? _otherChurchAddressController.text
-                              : null,
-                        );
-
-                        final member = Member(
-                          memberId: _idController.text,
-                          names: _nameController.text,
-                          email: _emailController.text,
-                          address: _addressController.text,
-                          phone: _phoneController.text,
-                          maritalStatus: _maritalStatus ?? '',
-                          gender: _gender ?? '',
-                          status: _baptismStatus ?? '',
-                          dateOfBirth: _dob?.toIso8601String(),
-                          department: _selectedDepartment,
-                          baptismInformation: baptismInfo,
-                        );
-
-                        if (_fileExtension == null || _profilePic == null) {
-                          _showError("Please select a profile image");
-                          return;
-                        }
-
-                        final ext = _fileExtension!;
-                        final result = await MemberController().createMember(
-                          member,
-                          profilePic: _profilePic!,
-                          fileExtension: ext,
-                          userId: user.userId!,
-                        );
-
-                        if (result == 'Status 1000') {
-                          _showSuccess("Member created successfully");
-                        } else {
-                          _showError("Error: $result");
-                        }
-                      },
+                      onPressed: _submit,
                       child: Text(
                         "Save",
                         style: GoogleFonts.inter(fontWeight: FontWeight.bold),
@@ -722,24 +670,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           Row(
             children: [
               ElevatedButton(
-                onPressed: () async {
-                  final pickedFile = await ImagePicker().pickImage(
-                    source: ImageSource.gallery,
-                  );
-                  if (pickedFile != null) {
-                    final bytes = await pickedFile.readAsBytes();
-
-                    // Try MIME type first
-                    String? ext = lookupMimeType(
-                      pickedFile.path,
-                    )?.split('/').last;
-
-                    // Fallback to file extension from path
-                    ext ??= pickedFile.path.split('.').last.toLowerCase();
-
-                    onPicked(bytes, ext);
-                  }
-                },
+                onPressed: _pickImage,
                 child: Text("Choose Profile", style: GoogleFonts.inter()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey[300],
