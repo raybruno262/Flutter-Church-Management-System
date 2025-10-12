@@ -62,6 +62,23 @@ class DepartmentController {
     }
   }
 
+  // department count
+  Future<int> getDepartmentCount() async {
+    try {
+      final url = Uri.parse('$baseUrl/count');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final int count = int.tryParse(response.body) ?? 0;
+        return count;
+      } else {
+        return 0;
+      }
+    } catch (e) {
+      return 0;
+    }
+  }
+
   // Get paginated departments
   Future<List<Department>> getPaginatedDepartments({
     int page = 0,

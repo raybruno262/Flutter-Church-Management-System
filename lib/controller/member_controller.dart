@@ -49,13 +49,13 @@ class MemberController {
   // Update member (multipart/form-data)
   Future<String> updateMember(
     String memberId,
-    
+
     Member updatedMember, {
-        required String userId,
+    required String userId,
     Uint8List? profilePic,
   }) async {
     try {
-       final url = Uri.parse('$baseUrl/updateMember/$memberId/$userId');
+      final url = Uri.parse('$baseUrl/updateMember/$memberId/$userId');
       final request = http.MultipartRequest('PUT', url);
       request.fields['member'] = jsonEncode(updatedMember.toJson());
 
@@ -169,12 +169,26 @@ class MemberController {
           'transferred': data['transferredMembers'] ?? 0,
         };
       } else {
-        print('Failed to fetch stats: ${response.statusCode}');
         return {'total': 0, 'active': 0, 'inactive': 0, 'transferred': 0};
       }
     } catch (e) {
-      print('Error fetching member stats: $e');
       return {'total': 0, 'active': 0, 'inactive': 0, 'transferred': 0};
+    }
+  }
+
+  Future<int> getScopedBirthdayCountThisMonth(String userId) async {
+    try {
+      final url = Uri.parse('$baseHost/api/members/birthday?userId=$userId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final int count = int.tryParse(response.body) ?? 0;
+        return count;
+      } else {
+        return 0;
+      }
+    } catch (e) {
+      return 0;
     }
   }
 }
