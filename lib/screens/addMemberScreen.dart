@@ -66,6 +66,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   Level? _selectedBaptismCell;
   Country? _selectedCountry;
 
+  // Message state variables
+  String? _message;
+  bool _isSuccess = false;
+
   @override
   void initState() {
     super.initState();
@@ -115,98 +119,151 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     }
   }
 
+  void _clearForm() {
+    // Clear text controllers
+    _nameController.clear();
+    _emailController.clear();
+    _addressController.clear();
+    _otherChurchNameController.clear();
+    _otherChurchAddressController.clear();
+    _phoneController.clear();
+    _dobController.clear();
+
+    // Reset state variables
+    setState(() {
+      _imageBytes = null;
+      _fileExtension = null;
+      _maritalStatus = null;
+      _gender = null;
+      _dob = null;
+      _baptismStatus = null;
+      _sameReligion = null;
+      _selectedDepartment = null;
+      _selectedBaptismCell = null;
+      _selectedCountry = null;
+    });
+
+    // Reset form validation
+    _formKey.currentState?.reset();
+  }
+
   Future<void> _submit() async {
     // First validate the form
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    //  Email format validation
+    final email = _emailController.text.trim();
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        _message = 'Please enter a valid email address';
+        _isSuccess = false;
+      });
+      return;
+    }
     // Validate image
     if (_imageBytes == null ||
         _fileExtension == null ||
         _fileExtension!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a profile image')),
-      );
+      setState(() {
+        _message = 'Please select a profile image';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate department
     if (_selectedDepartment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a department')),
-      );
+      setState(() {
+        _message = 'Please select a department';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate baptism status
     if (_baptismStatus == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select baptism status')),
-      );
+      setState(() {
+        _message = 'Please select baptism status';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate same religion
     if (_sameReligion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select same religion option')),
-      );
+      setState(() {
+        _message = 'Please select same religion option';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate baptism cell when same religion is Yes
     if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a baptism cell')),
-      );
+      setState(() {
+        _message = 'Please select a baptism cell';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate other church fields when same religion is No
     if (_sameReligion == 'No') {
       if (_otherChurchNameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter other church name')),
-        );
+        setState(() {
+          _message = 'Please enter other church name';
+          _isSuccess = false;
+        });
         return;
       }
       if (_otherChurchAddressController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter other church address')),
-        );
+        setState(() {
+          _message = 'Please enter other church address';
+          _isSuccess = false;
+        });
         return;
       }
     }
 
     // Validate gender
     if (_gender == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select gender')));
+      setState(() {
+        _message = 'Please select gender';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate marital status
     if (_maritalStatus == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select marital status')),
-      );
+      setState(() {
+        _message = 'Please select marital status';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Start loading only after all validations pass
-    if (mounted) setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _message = null;
+      });
+    }
 
     try {
       // Get user ID from logged in user
       if (widget.loggedInUser.userId == null) {
-        if (mounted) setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User ID not found. Please log in again.'),
-          ),
-        );
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _message = 'User ID not found. Please log in again.';
+            _isSuccess = false;
+          });
+        }
         return;
       }
 
@@ -247,7 +304,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             '${DateTime.now().month.toString().padLeft(2, '0')}/'
             '${DateTime.now().day.toString().padLeft(2, '0')}/'
             '${DateTime.now().year}',
-        level: widget.loggedInUser.level, // Get from logged in user
+        level: widget.loggedInUser.level,
         department: _selectedDepartment,
         baptismInformation: baptismInfo,
         profilePic: _imageBytes!,
@@ -258,7 +315,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         member,
         profilePic: _imageBytes!,
         fileExtension: _fileExtension!,
-        userId: widget.loggedInUser.userId!, // Get from logged in user
+        userId: widget.loggedInUser.userId!,
       );
 
       // Always stop loading after getting result
@@ -268,36 +325,41 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       if (!mounted) return;
 
       if (result == 'Status 1000') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Member created successfully')),
-        );
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) Navigator.pop(context, member);
+        setState(() {
+          _message = 'Member created successfully';
+          _isSuccess = true;
         });
+        // Clear the form after successful save
+        _clearForm();
       } else if (result == 'Status 3000') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid department or baptism info')),
-        );
+        setState(() {
+          _message = 'Invalid department or baptism info';
+          _isSuccess = false;
+        });
       } else if (result == 'Status 4000') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('User not found')));
+        setState(() {
+          _message = 'User not found';
+          _isSuccess = false;
+        });
       } else if (result == 'Status 6000') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Unauthorized role')));
+        setState(() {
+          _message = 'Unauthorized role';
+          _isSuccess = false;
+        });
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unexpected error: $result')));
+        setState(() {
+          _message = 'Unexpected error: $result';
+          _isSuccess = false;
+        });
       }
     } catch (e) {
       // Always stop loading on error
-      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error submitting member: $e')));
+        setState(() {
+          _isLoading = false;
+          _message = 'Error submitting member: $e';
+          _isSuccess = false;
+        });
       }
     } finally {
       // Final safety net to ensure loading stops
@@ -374,6 +436,54 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Message Container
+                    if (_message != null)
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isSuccess ? Colors.green : Colors.red,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isSuccess ? Icons.check_circle : Icons.error,
+                                color: _isSuccess
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _message!,
+                                  style: GoogleFonts.inter(
+                                    color: _isSuccess
+                                        ? Colors.green.shade800
+                                        : Colors.red.shade800,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     ElevatedButton.icon(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back),
@@ -474,7 +584,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                           (val) {
                             setState(() {
                               _baptismStatus = val;
-                              // Clear dependent fields when baptism status changes
                               if (val == 'Not Baptized') {
                                 _sameReligion = null;
                                 _selectedBaptismCell = null;
@@ -485,7 +594,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                           },
                         ),
 
-                        // Show Same Religion only when Baptized
                         if (_baptismStatus == 'Baptized')
                           _buildDropdown(
                             'Same Religion',
@@ -494,20 +602,16 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                             (val) {
                               setState(() {
                                 _sameReligion = val;
-                                // Clear dependent fields when same religion changes
                                 if (val == 'Yes') {
-                                  // Clear other church fields when switching to Yes
                                   _otherChurchNameController.clear();
                                   _otherChurchAddressController.clear();
                                 } else if (val == 'No') {
-                                  // Clear baptism cell when switching to No
                                   _selectedBaptismCell = null;
                                 }
                               });
                             },
                           ),
 
-                        // Show baptism cell only when baptized and same religion is Yes
                         if (_baptismStatus == 'Baptized' &&
                             _sameReligion == 'Yes')
                           _buildCellDropdown(
@@ -517,7 +621,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                                 setState(() => _selectedBaptismCell = cell),
                           ),
 
-                        // Show other church fields only when baptized and same religion is No
                         if (_baptismStatus == 'Baptized' &&
                             _sameReligion == 'No') ...[
                           _buildTextField(
@@ -723,7 +826,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     DepartmentScreen(loggedInUser: widget.loggedInUser),
               ),
             );
-            // Reload departments after returning from department screen
             if (result != null) {
               await _loadDepartments();
             }

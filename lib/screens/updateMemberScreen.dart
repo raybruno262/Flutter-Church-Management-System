@@ -72,6 +72,10 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
   Level? _selectedBaptismCell;
   Country? _selectedCountry;
 
+  // Message state variables
+  String? _message;
+  bool _isSuccess = false;
+
   @override
   void initState() {
     super.initState();
@@ -94,7 +98,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
 
       // Remove country code (assumed to be 250 for Rwanda)
       if (normalized.startsWith('250')) {
-        _phoneController.text = normalized.substring(5); // Strip '250'
+        _phoneController.text = normalized.substring(3); // Strip '250'
       } else {
         _phoneController.text = normalized; // Use full number if no match
       }
@@ -216,91 +220,115 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-
+    //  Email format validation
+    final email = _emailController.text.trim();
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        _message = 'Please enter a valid email address';
+        _isSuccess = false;
+      });
+      return;
+    }
     // Validate image
     if (_imageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a profile image')),
-      );
+      setState(() {
+        _message = 'Please select a profile image';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate department
     if (_selectedDepartment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a department')),
-      );
+      setState(() {
+        _message = 'Please select a department';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate baptism status
     if (_baptismStatus == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select baptism status')),
-      );
+      setState(() {
+        _message = 'Please select baptism status';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate same religion
     if (_sameReligion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select same religion option')),
-      );
+      setState(() {
+        _message = 'Please select same religion option';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate baptism cell when same religion is Yes
     if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a baptism cell')),
-      );
+      setState(() {
+        _message = 'Please select a baptism cell';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate other church fields when same religion is No
     if (_sameReligion == 'No') {
       if (_otherChurchNameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter other church name')),
-        );
+        setState(() {
+          _message = 'Please enter other church name';
+          _isSuccess = false;
+        });
         return;
       }
       if (_otherChurchAddressController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter other church address')),
-        );
+        setState(() {
+          _message = 'Please enter other church address';
+          _isSuccess = false;
+        });
         return;
       }
     }
 
     // Validate gender
     if (_gender == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select gender')));
+      setState(() {
+        _message = 'Please select gender';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate marital status
     if (_maritalStatus == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select marital status')),
-      );
+      setState(() {
+        _message = 'Please select marital status';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Start loading only after all validations pass
-    if (mounted) setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _message = null;
+      });
+    }
 
     try {
       // Get user ID from logged in user
       if (widget.loggedInUser.userId == null) {
-        if (mounted) setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User ID not found. Please log in again.'),
-          ),
-        );
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _message = 'User ID not found. Please log in again.';
+            _isSuccess = false;
+          });
+        }
         return;
       }
 
@@ -372,36 +400,39 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
       if (!mounted) return;
 
       if (result == 'Status 1000') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Member updated successfully')),
-        );
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) Navigator.pop(context, updatedMember);
+        setState(() {
+          _message = 'Member updated successfully';
+          _isSuccess = true;
         });
       } else if (result == 'Status 3000') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid department or baptism info')),
-        );
+        setState(() {
+          _message = 'Invalid department or baptism info';
+          _isSuccess = false;
+        });
       } else if (result == 'Status 4000') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Member not found')));
+        setState(() {
+          _message = 'Member not found';
+          _isSuccess = false;
+        });
       } else if (result == 'Status 6000') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Unauthorized role')));
+        setState(() {
+          _message = 'Unauthorized role';
+          _isSuccess = false;
+        });
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unexpected error: $result')));
+        setState(() {
+          _message = 'Unexpected error: $result';
+          _isSuccess = false;
+        });
       }
     } catch (e) {
       // Always stop loading on error
-      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating member: $e')));
+        setState(() {
+          _isLoading = false;
+          _message = 'Error updating member: $e';
+          _isSuccess = false;
+        });
       }
     } finally {
       // Final safety net to ensure loading stops
@@ -477,7 +508,55 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 4),
+
+                    // Message Container
+                    if (_message != null)
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isSuccess ? Colors.green : Colors.red,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isSuccess ? Icons.check_circle : Icons.error,
+                                color: _isSuccess
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _message!,
+                                  style: GoogleFonts.inter(
+                                    color: _isSuccess
+                                        ? Colors.green.shade800
+                                        : Colors.red.shade800,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     ElevatedButton.icon(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back),
@@ -497,7 +576,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
 
                     /// Personal Information Section
                     Text(
@@ -636,7 +715,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 12),
 
                     /// Update Button
                     Center(

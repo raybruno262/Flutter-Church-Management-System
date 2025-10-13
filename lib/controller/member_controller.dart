@@ -197,4 +197,20 @@ class MemberController {
       return 0;
     }
   }
+
+  Future<Member?> getMemberById(String memberId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/members/$memberId'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return Member.fromJson(data);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching member by ID: $e');
+      return null;
+    }
+  }
 }

@@ -317,7 +317,6 @@ class _MemberScreenState extends State<MemberScreen> {
                   icon: const Icon(Icons.edit, color: Colors.blue),
                   tooltip: 'Update Member',
                   onPressed: () async {
-                    // Navigate to UpdateMemberScreen with the current member
                     final updatedMember = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -328,7 +327,6 @@ class _MemberScreenState extends State<MemberScreen> {
                       ),
                     );
 
-                    // Update the member in the list if update was successful
                     if (updatedMember != null && updatedMember is Member) {
                       setState(() {
                         final index = _members.indexWhere(
@@ -336,24 +334,18 @@ class _MemberScreenState extends State<MemberScreen> {
                         );
                         if (index != -1) {
                           _members[index] = updatedMember;
+                        }
 
-                          // Update filtered members as well
-                          final filteredIndex = _filteredMembers.indexWhere(
-                            (m) => m.memberId == updatedMember.memberId,
-                          );
-                          if (filteredIndex != -1) {
-                            _filteredMembers[filteredIndex] = updatedMember;
-                          }
+                        final filteredIndex = _filteredMembers.indexWhere(
+                          (m) => m.memberId == updatedMember.memberId,
+                        );
+                        if (filteredIndex != -1) {
+                          _filteredMembers[filteredIndex] = updatedMember;
                         }
                       });
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Member updated successfully'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
+                      await _fetchMemberStats();
+                      await _fetchMembers();
                     }
                   },
                 ),
@@ -368,105 +360,509 @@ class _MemberScreenState extends State<MemberScreen> {
   void _showMemberDetailsDialog(Member member) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            member.profilePic != null
-                ? CircleAvatar(
-                    radius: 24,
-                    backgroundImage: MemoryImage(member.profilePic!),
-                  )
-                : const CircleAvatar(radius: 24, child: Icon(Icons.person)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                member.names,
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 10,
+        child: SingleChildScrollView(
+          child: Container(
+            width: 700,
+            decoration: BoxDecoration(
+              color: backgroundcolor,
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow('Email', member.email),
-              _buildDetailRow('Phone', member.phone),
-              _buildDetailRow('Gender', member.gender),
-              _buildDetailRow('Marital Status', member.maritalStatus),
-              _buildDetailRow('Date of Birth', member.dateOfBirth ?? 'N/A'),
-              _buildDetailRow('Address', member.address),
-              _buildDetailRow('Status', member.status),
-              _buildDetailRow(
-                'Membership Date',
-                member.membershipDate ?? 'N/A',
-              ),
-              _buildDetailRow('Department', member.department?.name ?? 'N/A'),
-              _buildDetailRow('Level', member.level?.name ?? 'N/A'),
-              _buildDetailRow(
-                'Baptized',
-                member.baptismInformation?.baptized == true ? 'Yes' : 'No',
-              ),
-              if (member.baptismInformation?.baptized == true) ...[
-                _buildDetailRow(
-                  'Same Religion',
-                  member.baptismInformation?.sameReligion == true
-                      ? 'Yes'
-                      : 'No',
-                ),
-                if (member.baptismInformation?.sameReligion == true)
-                  _buildDetailRow(
-                    'Baptism Cell',
-                    member.baptismInformation?.baptismCell?.name ?? 'N/A',
-                  )
-                else ...[
-                  _buildDetailRow(
-                    'Other Church Name',
-                    member.baptismInformation?.otherChurchName ?? 'N/A',
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with profile image
+                  Container(
+                    width: 600,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade700, Colors.purple.shade700],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Large Profile Image
+                        Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: member.profilePic != null
+                                ? Image.memory(
+                                    member.profilePic!,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            _buildDefaultAvatar(120),
+                                  )
+                                : _buildDefaultAvatar(120),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Name with beautiful typography
+                        Text(
+                          member.names,
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        // Status badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(member.status),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            member.status,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  _buildDetailRow(
-                    'Other Church Address',
-                    member.baptismInformation?.otherChurchAddress ?? 'N/A',
+
+                  // Content section
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        // Personal Information Section
+                        _buildSectionHeader('Personal Information'),
+                        const SizedBox(height: 16),
+
+                        // Two-column layout for better space utilization
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _buildEnhancedDetailCard(
+                                    'Email',
+                                    member.email,
+                                    Icons.email_outlined,
+                                    Colors.blue,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildEnhancedDetailCard(
+                                    'Phone',
+                                    member.phone,
+                                    Icons.phone_outlined,
+                                    Colors.green,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildEnhancedDetailCard(
+                                    'Gender',
+                                    member.gender,
+                                    Icons.person_outline,
+                                    Colors.purple,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _buildEnhancedDetailCard(
+                                    'Marital Status',
+                                    member.maritalStatus,
+                                    Icons.favorite_outline,
+                                    Colors.red,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildEnhancedDetailCard(
+                                    'Date of Birth',
+                                    member.dateOfBirth ?? 'N/A',
+                                    Icons.cake_outlined,
+                                    Colors.orange,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildEnhancedDetailCard(
+                                    'Membership Date',
+                                    member.membershipDate ?? 'N/A',
+                                    Icons.date_range_outlined,
+                                    Colors.teal,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildEnhancedDetailCard(
+                          'Address',
+                          member.address,
+                          Icons.location_on_outlined,
+                          Colors.deepOrange,
+                          fullWidth: true,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Church Information Section
+                        _buildSectionHeader('Church Information'),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildEnhancedDetailCard(
+                                'Department',
+                                member.department?.name ?? 'N/A',
+                                Icons.account_tree_outlined,
+                                Colors.indigo,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildEnhancedDetailCard(
+                                'Level',
+                                member.level?.name ?? 'N/A',
+                                Icons.leaderboard_outlined,
+                                Colors.cyan,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Baptism Information Section
+                        _buildSectionHeader('Baptism Information'),
+                        const SizedBox(height: 16),
+                        _buildEnhancedDetailCard(
+                          'Baptized',
+                          member.baptismInformation?.baptized == true
+                              ? 'Yes'
+                              : 'No',
+                          Icons.water_drop_outlined,
+                          member.baptismInformation?.baptized == true
+                              ? Colors.blue
+                              : Colors.grey,
+                          fullWidth: true,
+                        ),
+
+                        if (member.baptismInformation?.baptized == true) ...[
+                          const SizedBox(height: 12),
+                          _buildEnhancedDetailCard(
+                            'Same Religion',
+                            member.baptismInformation?.sameReligion == true
+                                ? 'Yes'
+                                : 'No',
+                            Icons.church_outlined,
+                            member.baptismInformation?.sameReligion == true
+                                ? Colors.green
+                                : Colors.grey,
+                            fullWidth: true,
+                          ),
+
+                          if (member.baptismInformation?.sameReligion ==
+                              true) ...[
+                            const SizedBox(height: 12),
+                            _buildEnhancedDetailCard(
+                              'Baptism Cell',
+                              member.baptismInformation?.baptismCell?.name ??
+                                  'N/A',
+                              Icons.groups_outlined,
+                              Colors.purple,
+                              fullWidth: true,
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 12),
+                            _buildEnhancedDetailCard(
+                              'Other Church Name',
+                              member.baptismInformation?.otherChurchName ??
+                                  'N/A',
+                              Icons.church_outlined,
+                              Colors.orange,
+                              fullWidth: true,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildEnhancedDetailCard(
+                              'Other Church Address',
+                              member.baptismInformation?.otherChurchAddress ??
+                                  'N/A',
+                              Icons.location_city_outlined,
+                              Colors.brown,
+                              fullWidth: true,
+                            ),
+                          ],
+                        ],
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+
+                  // Actions section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (widget.loggedInUser.role == 'CellAdmin')
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blue.shade600,
+                                  Colors.blue.shade800,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextButton.icon(
+                              icon: const Icon(
+                                Icons.edit,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              label: Text(
+                                'Update Profile',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              onPressed: () async {
+                                final updatedMember = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UpdateMemberScreen(
+                                      loggedInUser: widget.loggedInUser,
+                                      member: member,
+                                    ),
+                                  ),
+                                );
+                                if (updatedMember != null &&
+                                    updatedMember is Member) {
+                                  setState(() {
+                                    final index = _members.indexWhere(
+                                      (m) =>
+                                          m.memberId == updatedMember.memberId,
+                                    );
+                                    if (index != -1) {
+                                      _members[index] = updatedMember;
+                                    }
+
+                                    final filteredIndex = _filteredMembers
+                                        .indexWhere(
+                                          (m) =>
+                                              m.memberId ==
+                                              updatedMember.memberId,
+                                        );
+                                    if (filteredIndex != -1) {
+                                      _filteredMembers[filteredIndex] =
+                                          updatedMember;
+                                    }
+                                  });
+
+                                  await _fetchMemberStats();
+                                  await _fetchMembers();
+                                }
+                              },
+                            ),
+                          ),
+                        const SizedBox(width: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'Close',
+                              style: GoogleFonts.inter(
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ],
-            ],
+              ),
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      ),
+    );
+  }
+
+  // Helper method for default avatar
+  Widget _buildDefaultAvatar(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.grey.shade300,
+      ),
+      child: Icon(Icons.person, size: size * 0.5, color: Colors.grey.shade600),
+    );
+  }
+
+  // Helper method for section headers
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      children: [
+        Container(
+          height: 2,
+          width: 20,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade600, Colors.purple.shade600],
+            ),
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.orange.shade800,
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 2,
+            margin: const EdgeInsets.only(left: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, Colors.grey.shade300],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Enhanced detail card widget
+  Widget _buildEnhancedDetailCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color, {
+    bool fullWidth = false,
+  }) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              '$label:',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(child: Text(value, style: GoogleFonts.inter(fontSize: 14))),
-        ],
-      ),
-    );
+  // Helper method to get status color
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'inactive':
+        return Colors.red;
+      case 'pending':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override

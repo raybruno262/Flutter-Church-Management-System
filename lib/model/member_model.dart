@@ -63,6 +63,8 @@ class Member {
     );
   }
 
+  get tags => null;
+
   Map<String, dynamic> toJson() {
     return {
       'memberId': memberId,
