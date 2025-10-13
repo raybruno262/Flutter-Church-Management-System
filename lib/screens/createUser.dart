@@ -15,7 +15,6 @@ class _CreateUserPageState extends State<CreateUserPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -24,12 +23,19 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
   Uint8List? _imageBytes;
   String? _fileExtension;
+  bool _isLoading = false;
 
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
       final bytes = await picked.readAsBytes();
-      final ext = lookupMimeType(picked.path)?.split('/').last;
+      final ext =
+          lookupMimeType(picked.path)?.split('/').last.toLowerCase() ?? 'jpg';
+
+      print('Picked image path: ${picked.path}');
+      print('Image size: ${bytes.length}');
+      print('File extension: $ext');
+
       setState(() {
         _imageBytes = bytes;
         _fileExtension = ext;
@@ -39,37 +45,52 @@ class _CreateUserPageState extends State<CreateUserPage> {
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      if (_imageBytes == null || _fileExtension == null) {
+      if (_imageBytes == null ||
+          _fileExtension == null ||
+          _fileExtension!.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Please select a profile image')),
         );
         return;
       }
 
-      final user = UserModel(
-        names: _nameController.text,
-        email: _emailController.text,
-        username: _usernameController.text,
-        password: _passwordController.text,
-        phone: _phoneController.text,
-        nationalId: int.parse(_nationalIdController.text),
-        role: 'ChapelAdmin',
-        isActive: true,
-        level: Level(levelId: _levelIdController.text),
-        profilePic: _imageBytes!,
-      );
+      setState(() => _isLoading = true);
 
-      final result = await UserController().createUser(
-        user,
-        profilePic: _imageBytes!,
-        fileExtension: _fileExtension!,
-      );
+      try {
+        final user = UserModel(
+          names: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          username: _usernameController.text.trim(),
+          password: _passwordController.text.trim(),
+          phone: _phoneController.text.trim(),
+          nationalId: int.parse(_nationalIdController.text.trim()),
+          role: 'ChapelAdmin',
+          isActive: true,
+          level: Level(levelId: _levelIdController.text.trim()),
+          profilePic: _imageBytes!,
+        );
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result)));
+        final result = await UserController().createUser(
+          user,
+          profilePic: _imageBytes!,
+          fileExtension: _fileExtension!,
+        );
 
-      Navigator.pop(context, result);
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result)));
+
+        if (result == 'Status 1000') {
+          Navigator.pop(context, result);
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error creating user: $e')));
+      }
     }
   }
 
@@ -97,12 +118,19 @@ class _CreateUserPageState extends State<CreateUserPage> {
               SizedBox(height: 16),
               ElevatedButton(onPressed: _pickImage, child: Text('Pick Image')),
               if (_imageBytes != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Image.memory(_imageBytes!, height: 150),
+                Column(
+                  children: [
+                    Text('Image selected'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Image.memory(_imageBytes!, height: 150),
+                    ),
+                  ],
                 ),
               SizedBox(height: 16),
-              ElevatedButton(onPressed: _submit, child: Text('Create')),
+              _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : ElevatedButton(onPressed: _submit, child: Text('Create')),
             ],
           ),
         ),
@@ -121,7 +149,7 @@ class _CreateUserPageState extends State<CreateUserPage> {
       decoration: InputDecoration(labelText: label),
       obscureText: obscure,
       keyboardType: number ? TextInputType.number : TextInputType.text,
-      validator: (v) => v!.isEmpty ? 'Required' : null,
+      validator: (v) => v!.trim().isEmpty ? 'Required' : null,
     );
   }
 }

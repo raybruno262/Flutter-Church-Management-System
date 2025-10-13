@@ -5,6 +5,7 @@ import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addMemberScreen.dart';
+import 'package:flutter_churchcrm_system/screens/updateMemberScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -46,9 +47,23 @@ class _MemberScreenState extends State<MemberScreen> {
   List<Member> _filteredMembers = [];
 
   bool _isLoading = true;
+
   @override
   void dispose() {
     _horizontalScrollController.dispose();
+    _nameFilterController.dispose();
+    _phoneFilterController.dispose();
+    _emailFilterController.dispose();
+    _genderFilterController.dispose();
+    _maritalFilterController.dispose();
+    _addressFilterController.dispose();
+    _dobFilterController.dispose();
+    _membershipFilterController.dispose();
+    _departmentFilterController.dispose();
+    _levelFilterController.dispose();
+    _parentFilterController.dispose();
+    _baptizedFilterController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -83,7 +98,7 @@ class _MemberScreenState extends State<MemberScreen> {
 
       setState(() {
         _members = members.reversed.toList();
-        _filteredMembers = members;
+        _filteredMembers = _members;
         _isLoading = false;
       });
     } catch (e) {
@@ -123,6 +138,7 @@ class _MemberScreenState extends State<MemberScreen> {
       final matchesDOB = dobQuery.isEmpty || member.dateOfBirth == dobQuery;
       final matchesMembership =
           membershipQuery.isEmpty || member.membershipDate == membershipQuery;
+
       final matchesDept =
           member.department?.name.toLowerCase().contains(deptQuery) ?? false;
       final matchesLevel =
@@ -177,6 +193,7 @@ class _MemberScreenState extends State<MemberScreen> {
     'inactive': 0,
     'transferred': 0,
   };
+
   Future<void> _fetchMemberStats() async {
     try {
       final loggedInUser = await _usercontroller.loadUserFromStorage();
@@ -234,13 +251,42 @@ class _MemberScreenState extends State<MemberScreen> {
             ],
           ),
         ),
-
         DataCell(Text(member.dateOfBirth ?? 'N/A', style: GoogleFonts.inter())),
         DataCell(Text(member.phone, style: GoogleFonts.inter())),
         DataCell(Text(member.gender, style: GoogleFonts.inter())),
         DataCell(Text(member.maritalStatus, style: GoogleFonts.inter())),
         DataCell(Text(member.email, style: GoogleFonts.inter())),
-        DataCell(Text(member.status, style: GoogleFonts.inter())),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _getStatusBackgroundColor(member.status),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _getStatusDotColor(member.status),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  member.status,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _getStatusTextColor(member.status),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         DataCell(Text(member.address, style: GoogleFonts.inter())),
         DataCell(
           Text(member.membershipDate ?? 'N/A', style: GoogleFonts.inter()),
@@ -255,26 +301,171 @@ class _MemberScreenState extends State<MemberScreen> {
             style: GoogleFonts.inter(),
           ),
         ),
-
         DataCell(
           Row(
             children: [
               IconButton(
-                icon: Icon(Icons.visibility, color: Colors.green),
+                icon: const Icon(Icons.visibility, color: Colors.green),
+                tooltip: 'View Member',
                 onPressed: () {
                   // TODO: Navigate to ViewProfilePage
+                  _showMemberDetailsDialog(member);
                 },
               ),
-              IconButton(
-                icon: Icon(Icons.edit, color: Colors.blue),
-                onPressed: () {
-                  // TODO: Navigate to UpdateMemberPage
-                },
-              ),
+              if (widget.loggedInUser.role == 'CellAdmin') ...[
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue),
+                  tooltip: 'Update Member',
+                  onPressed: () async {
+                    // Navigate to UpdateMemberScreen with the current member
+                    final updatedMember = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UpdateMemberScreen(
+                          loggedInUser: widget.loggedInUser,
+                          member: member,
+                        ),
+                      ),
+                    );
+
+                    // Update the member in the list if update was successful
+                    if (updatedMember != null && updatedMember is Member) {
+                      setState(() {
+                        final index = _members.indexWhere(
+                          (m) => m.memberId == updatedMember.memberId,
+                        );
+                        if (index != -1) {
+                          _members[index] = updatedMember;
+
+                          // Update filtered members as well
+                          final filteredIndex = _filteredMembers.indexWhere(
+                            (m) => m.memberId == updatedMember.memberId,
+                          );
+                          if (filteredIndex != -1) {
+                            _filteredMembers[filteredIndex] = updatedMember;
+                          }
+                        }
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Member updated successfully'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),
       ],
+    );
+  }
+
+  void _showMemberDetailsDialog(Member member) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            member.profilePic != null
+                ? CircleAvatar(
+                    radius: 24,
+                    backgroundImage: MemoryImage(member.profilePic!),
+                  )
+                : const CircleAvatar(radius: 24, child: Icon(Icons.person)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                member.names,
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Email', member.email),
+              _buildDetailRow('Phone', member.phone),
+              _buildDetailRow('Gender', member.gender),
+              _buildDetailRow('Marital Status', member.maritalStatus),
+              _buildDetailRow('Date of Birth', member.dateOfBirth ?? 'N/A'),
+              _buildDetailRow('Address', member.address),
+              _buildDetailRow('Status', member.status),
+              _buildDetailRow(
+                'Membership Date',
+                member.membershipDate ?? 'N/A',
+              ),
+              _buildDetailRow('Department', member.department?.name ?? 'N/A'),
+              _buildDetailRow('Level', member.level?.name ?? 'N/A'),
+              _buildDetailRow(
+                'Baptized',
+                member.baptismInformation?.baptized == true ? 'Yes' : 'No',
+              ),
+              if (member.baptismInformation?.baptized == true) ...[
+                _buildDetailRow(
+                  'Same Religion',
+                  member.baptismInformation?.sameReligion == true
+                      ? 'Yes'
+                      : 'No',
+                ),
+                if (member.baptismInformation?.sameReligion == true)
+                  _buildDetailRow(
+                    'Baptism Cell',
+                    member.baptismInformation?.baptismCell?.name ?? 'N/A',
+                  )
+                else ...[
+                  _buildDetailRow(
+                    'Other Church Name',
+                    member.baptismInformation?.otherChurchName ?? 'N/A',
+                  ),
+                  _buildDetailRow(
+                    'Other Church Address',
+                    member.baptismInformation?.otherChurchAddress ?? 'N/A',
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              '$label:',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Expanded(child: Text(value, style: GoogleFonts.inter(fontSize: 14))),
+        ],
+      ),
     );
   }
 
@@ -392,7 +583,7 @@ class _MemberScreenState extends State<MemberScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(width: 460),
+                        const SizedBox(width: 460),
                         Text(
                           "Members List",
                           style: GoogleFonts.inter(
@@ -401,7 +592,7 @@ class _MemberScreenState extends State<MemberScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 280),
+                        const SizedBox(width: 280),
                         if (widget.loggedInUser.role == 'CellAdmin') ...[
                           ElevatedButton.icon(
                             onPressed: () async {
@@ -420,6 +611,16 @@ class _MemberScreenState extends State<MemberScreen> {
                                   _filteredMembers = _members;
                                   _currentPage = 0;
                                 });
+
+                                // Refresh stats
+                                await _fetchMemberStats();
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Member added successfully'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
                               }
                             },
                             icon: SvgPicture.asset("assets/icons/member.svg"),
@@ -451,19 +652,16 @@ class _MemberScreenState extends State<MemberScreen> {
                   _isLoading
                       ? Container(
                           height: 300,
-
                           alignment: Alignment.center,
-                          child: CircularProgressIndicator(),
+                          child: const CircularProgressIndicator(),
                         )
                       : Container(
                           margin: const EdgeInsets.symmetric(horizontal: 18),
                           padding: const EdgeInsets.all(12),
-
                           decoration: BoxDecoration(
                             color: containerColor,
                             borderRadius: BorderRadius.circular(20),
                           ),
-
                           child: Scrollbar(
                             controller: _horizontalScrollController,
                             thumbVisibility: true,
@@ -481,6 +679,11 @@ class _MemberScreenState extends State<MemberScreen> {
                                         _buildFilterField(
                                           _nameFilterController,
                                           'Search Name',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _dobFilterController,
+                                          'Search DOB (MM/dd/yyyy)',
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
@@ -509,11 +712,6 @@ class _MemberScreenState extends State<MemberScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
-                                          _dobFilterController,
-                                          'Search DOB (MM/dd/yyyy)',
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildFilterField(
                                           _membershipFilterController,
                                           'Search Membership Date',
                                         ),
@@ -537,18 +735,17 @@ class _MemberScreenState extends State<MemberScreen> {
                                           _baptizedFilterController,
                                           'Baptized (true/false)',
                                         ),
-
                                         const SizedBox(width: 8),
                                         _buildStatusDropdown(),
                                       ],
                                     ),
                                   ),
-
                                   ConstrainedBox(
-                                    constraints: BoxConstraints(minHeight: 300),
+                                    constraints: const BoxConstraints(
+                                      minHeight: 300,
+                                    ),
                                     child: SizedBox(
                                       width: 2000,
-
                                       child: DataTable(
                                         horizontalMargin: 12,
                                         dataRowMaxHeight: 56,
@@ -558,11 +755,9 @@ class _MemberScreenState extends State<MemberScreen> {
                                             WidgetStateProperty.all(
                                               Colors.deepPurple,
                                             ),
-
                                         dataRowColor: WidgetStateProperty.all(
                                           backgroundcolor,
                                         ),
-
                                         border: TableBorder(
                                           horizontalInside: BorderSide(
                                             color: Colors.grey.shade300,
@@ -589,7 +784,7 @@ class _MemberScreenState extends State<MemberScreen> {
                                           DataColumn(
                                             label: Row(
                                               children: [
-                                                Icon(
+                                                const Icon(
                                                   Icons.person,
                                                   size: 16,
                                                   color: Colors.white,
@@ -606,7 +801,6 @@ class _MemberScreenState extends State<MemberScreen> {
                                               ],
                                             ),
                                           ),
-
                                           DataColumn(
                                             label: Text(
                                               'Date of Birth',
@@ -658,17 +852,13 @@ class _MemberScreenState extends State<MemberScreen> {
                                             ),
                                           ),
                                           DataColumn(
-                                            label: Row(
-                                              children: [
-                                                Text(
-                                                  'STATUS',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
+                                            label: Text(
+                                              'STATUS',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
                                           DataColumn(
@@ -721,7 +911,6 @@ class _MemberScreenState extends State<MemberScreen> {
                                               ),
                                             ),
                                           ),
-
                                           DataColumn(
                                             label: Text(
                                               'Actions',
@@ -733,7 +922,6 @@ class _MemberScreenState extends State<MemberScreen> {
                                             ),
                                           ),
                                         ],
-
                                         rows: _filteredMembers.isEmpty
                                             ? [
                                                 DataRow(
@@ -784,8 +972,8 @@ class _MemberScreenState extends State<MemberScreen> {
                                       children: [
                                         ElevatedButton.icon(
                                           onPressed: _previousPage,
-                                          icon: Icon(Icons.arrow_back),
-                                          label: Text('Previous'),
+                                          icon: const Icon(Icons.arrow_back),
+                                          label: const Text('Previous'),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.deepPurple,
                                             foregroundColor: Colors.white,
@@ -810,8 +998,8 @@ class _MemberScreenState extends State<MemberScreen> {
                                         const SizedBox(width: 16),
                                         ElevatedButton.icon(
                                           onPressed: _nextPage,
-                                          icon: Icon(Icons.arrow_forward),
-                                          label: Text('Next'),
+                                          icon: const Icon(Icons.arrow_forward),
+                                          label: const Text('Next'),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.deepPurple,
                                             foregroundColor: Colors.white,
@@ -834,7 +1022,6 @@ class _MemberScreenState extends State<MemberScreen> {
                           ),
                         ),
                   const SizedBox(height: 20),
-
                   Center(
                     child: Text(
                       '© 2025 All rights reserved. Church CRM System',
@@ -885,7 +1072,7 @@ class _MemberScreenState extends State<MemberScreen> {
       width: 130,
       height: 40,
       child: DropdownButtonFormField<String>(
-        initialValue: _statusFilter,
+        value: _statusFilter,
         onChanged: (value) {
           setState(() {
             _statusFilter = value!;
@@ -915,5 +1102,44 @@ class _MemberScreenState extends State<MemberScreen> {
         ),
       ),
     );
+  }
+
+  Color _getStatusBackgroundColor(String status) {
+    switch (status) {
+      case 'Active':
+        return Colors.green.shade100;
+      case 'Inactive':
+        return Colors.red.shade100;
+      case 'Transferred':
+        return Colors.blue.shade100;
+      default:
+        return Colors.grey.shade200;
+    }
+  }
+
+  Color _getStatusDotColor(String status) {
+    switch (status) {
+      case 'Active':
+        return Colors.green;
+      case 'Inactive':
+        return Colors.redAccent;
+      case 'Transferred':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusTextColor(String status) {
+    switch (status) {
+      case 'Active':
+        return Colors.green.shade800;
+      case 'Inactive':
+        return Colors.red.shade500;
+      case 'Transferred':
+        return Colors.blue.shade800;
+      default:
+        return Colors.grey.shade600;
+    }
   }
 }

@@ -55,8 +55,8 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     );
     setState(() {
       _departments = departments.reversed.toList();
+      _filteredDapartments = _departments;
 
-      _applySearchFilter();
       _isLoading = false;
     });
   }
@@ -496,8 +496,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+
       child: SizedBox(
-        width: 310,
+        width: 210,
         height: 40,
         child: TextField(
           controller: controller,

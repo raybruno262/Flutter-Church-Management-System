@@ -6,7 +6,7 @@ import 'level_model.dart';
 import 'baptismInformation_model.dart';
 
 class Member {
-  final String memberId;
+  final String? memberId;
   final String names;
   final String? dateOfBirth;
   final String phone;
@@ -22,7 +22,7 @@ class Member {
   final Level? level;
 
   Member({
-    required this.memberId,
+    this.memberId,
     required this.names,
     this.dateOfBirth,
     required this.phone,

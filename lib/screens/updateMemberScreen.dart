@@ -6,7 +6,6 @@ import 'package:flutter_churchcrm_system/model/baptismInformation_model.dart';
 import 'package:flutter_churchcrm_system/model/department_model.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
 import 'package:flutter_churchcrm_system/model/member_model.dart';
-import 'package:flutter_churchcrm_system/screens/deparmentScreen.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 import 'package:flutter/material.dart';
@@ -24,16 +23,21 @@ import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mime/mime.dart';
 
-class AddMemberScreen extends StatefulWidget {
+class UpdateMemberScreen extends StatefulWidget {
   final UserModel loggedInUser;
+  final Member member;
 
-  const AddMemberScreen({super.key, required this.loggedInUser});
+  const UpdateMemberScreen({
+    super.key,
+    required this.loggedInUser,
+    required this.member,
+  });
 
   @override
-  State<AddMemberScreen> createState() => _AddMemberScreenState();
+  State<UpdateMemberScreen> createState() => _UpdateMemberScreenState();
 }
 
-class _AddMemberScreenState extends State<AddMemberScreen> {
+class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -55,11 +59,13 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   // State variables
   bool _isLoading = false;
+  bool _imageChanged = false;
   Uint8List? _imageBytes;
   String? _fileExtension;
   String? _maritalStatus;
   String? _gender;
   DateTime? _dob;
+
   String? _baptismStatus;
   String? _sameReligion;
   Department? _selectedDepartment;
@@ -71,6 +77,74 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     super.initState();
     _loadDepartments();
     _loadCells();
+    _populateExistingData();
+  }
+
+  void _populateExistingData() {
+    // Populate text fields
+    _nameController.text = widget.member.names ?? '';
+    _emailController.text = widget.member.email ?? '';
+    _addressController.text = widget.member.address ?? '';
+
+    // Parse and populate phone number
+    final phone = widget.member.phone ?? '';
+    if (phone.isNotEmpty) {
+      // Remove leading '+' if present
+      final normalized = phone.startsWith('+') ? phone.substring(1) : phone;
+
+      // Remove country code (assumed to be 250 for Rwanda)
+      if (normalized.startsWith('250')) {
+        _phoneController.text = normalized.substring(5); // Strip '250'
+      } else {
+        _phoneController.text = normalized; // Use full number if no match
+      }
+    }
+
+    // Populate gender and marital status
+    _gender = widget.member.gender;
+    _maritalStatus = widget.member.maritalStatus;
+
+    // Parse and populate date of birth
+    if (widget.member.dateOfBirth != null &&
+        widget.member.dateOfBirth!.isNotEmpty) {
+      try {
+        List<String> parts = widget.member.dateOfBirth!.split('/');
+        if (parts.length == 3) {
+          int month = int.parse(parts[0]);
+          int day = int.parse(parts[1]);
+          int year = int.parse(parts[2]);
+          _dob = DateTime(year, month, day);
+          _dobController.text = widget.member.dateOfBirth!;
+        }
+      } catch (e) {
+        print('Error parsing date of birth: $e');
+      }
+    }
+
+    // Populate baptism information
+    if (widget.member.baptismInformation != null) {
+      _baptismStatus = widget.member.baptismInformation!.baptized == true
+          ? 'Baptized'
+          : 'Not Baptized';
+      _sameReligion = widget.member.baptismInformation!.sameReligion == true
+          ? 'Yes'
+          : 'No';
+
+      if (widget.member.baptismInformation!.sameReligion == true) {
+        _selectedBaptismCell = widget.member.baptismInformation!.baptismCell;
+      } else {
+        _otherChurchNameController.text =
+            widget.member.baptismInformation!.otherChurchName ?? '';
+        _otherChurchAddressController.text =
+            widget.member.baptismInformation!.otherChurchAddress ?? '';
+      }
+    }
+
+    // Set existing profile picture
+    _imageBytes = widget.member.profilePic;
+
+    // Set department (will be matched when departments load)
+    _selectedDepartment = widget.member.department;
   }
 
   @override
@@ -88,14 +162,35 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   Future<void> _loadCells() async {
     final cells = await _levelController.getAllCells();
     if (mounted) {
-      setState(() => _cells = cells);
+      setState(() {
+        _cells = cells;
+        // Match existing baptism cell if it exists
+        if (widget.member.baptismInformation?.baptismCell != null) {
+          _selectedBaptismCell = _cells.firstWhere(
+            (cell) =>
+                cell.levelId ==
+                widget.member.baptismInformation!.baptismCell!.levelId,
+            orElse: () => widget.member.baptismInformation!.baptismCell!,
+          );
+        }
+      });
     }
   }
 
   Future<void> _loadDepartments() async {
     final departments = await _departmentController.getAllDepartments();
     if (mounted) {
-      setState(() => _departments = departments);
+      setState(() {
+        _departments = departments;
+        // Match existing department if it exists
+        if (widget.member.department != null) {
+          _selectedDepartment = _departments.firstWhere(
+            (dept) =>
+                dept.departmentId == widget.member.department!.departmentId,
+            orElse: () => widget.member.department!,
+          );
+        }
+      });
     }
   }
 
@@ -110,6 +205,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         setState(() {
           _imageBytes = bytes;
           _fileExtension = ext;
+          _imageChanged = true;
         });
       }
     }
@@ -122,9 +218,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     }
 
     // Validate image
-    if (_imageBytes == null ||
-        _fileExtension == null ||
-        _fileExtension!.isEmpty) {
+    if (_imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a profile image')),
       );
@@ -229,37 +323,47 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           : '+250';
       final fullPhone = '$phoneCode${_phoneController.text.trim()}';
 
-      // Create member object
-      final member = Member(
+      // Create updated member object
+      final updatedMember = Member(
+        memberId: widget.member.memberId, // Keep existing ID
         names: _nameController.text.trim(),
         email: _emailController.text.trim(),
         address: _addressController.text.trim(),
         phone: fullPhone,
         maritalStatus: _maritalStatus ?? '',
         gender: _gender ?? '',
-        status: 'Active',
+        status: widget.member.status, // Keep existing status
         dateOfBirth: _dob != null
             ? '${_dob!.month.toString().padLeft(2, '0')}/'
                   '${_dob!.day.toString().padLeft(2, '0')}/'
                   '${_dob!.year}'
-            : '',
+            : widget.member.dateOfBirth,
         membershipDate:
-            '${DateTime.now().month.toString().padLeft(2, '0')}/'
-            '${DateTime.now().day.toString().padLeft(2, '0')}/'
-            '${DateTime.now().year}',
-        level: widget.loggedInUser.level, // Get from logged in user
+            widget.member.membershipDate, // Keep existing membership date
+        level: widget.loggedInUser.level,
         department: _selectedDepartment,
         baptismInformation: baptismInfo,
         profilePic: _imageBytes!,
       );
 
       // Submit to backend
-      final result = await MemberController().createMember(
-        member,
-        profilePic: _imageBytes!,
-        fileExtension: _fileExtension!,
-        userId: widget.loggedInUser.userId!, // Get from logged in user
-      );
+      String result;
+      if (_imageChanged && _fileExtension != null) {
+        // If image was changed, send with new image
+        result = await MemberController().updateMember(
+          updatedMember.memberId!,
+          updatedMember,
+          userId: widget.loggedInUser.userId!,
+          profilePic: _imageBytes!,
+        );
+      } else {
+        // If image wasn't changed, send without image data
+        result = await MemberController().updateMember(
+          updatedMember.memberId!,
+          updatedMember,
+          userId: widget.loggedInUser.userId!,
+        );
+      }
 
       // Always stop loading after getting result
       if (mounted) setState(() => _isLoading = false);
@@ -269,10 +373,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
       if (result == 'Status 1000') {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Member created successfully')),
+          const SnackBar(content: Text('Member updated successfully')),
         );
         Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) Navigator.pop(context, member);
+          if (mounted) Navigator.pop(context, updatedMember);
         });
       } else if (result == 'Status 3000') {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -281,7 +385,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       } else if (result == 'Status 4000') {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('User not found')));
+        ).showSnackBar(const SnackBar(content: Text('Member not found')));
       } else if (result == 'Status 6000') {
         ScaffoldMessenger.of(
           context,
@@ -297,7 +401,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error submitting member: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error updating member: $e')));
       }
     } finally {
       // Final safety net to ensure loading stops
@@ -339,7 +443,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildAddMemberScreen(),
+                child: _buildUpdateMemberScreen(),
               ),
             ),
           ],
@@ -348,7 +452,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     );
   }
 
-  Widget _buildAddMemberScreen() {
+  Widget _buildUpdateMemberScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -365,7 +469,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add Member",
+                        "Update Member",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -534,7 +638,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
                     const SizedBox(height: 32),
 
-                    /// Save Button
+                    /// Update Button
                     Center(
                       child: _isLoading
                           ? const CircularProgressIndicator()
@@ -552,7 +656,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                                 ),
                               ),
                               child: Text(
-                                "Save",
+                                "Update",
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -693,8 +797,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   ) {
     return SizedBox(
       width: 300,
-      child: DropdownButtonFormField<String>(
-        value: selectedDepartment?.departmentId ?? 'none',
+      child: DropdownButtonFormField<Department>(
+        value: selectedDepartment,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -705,45 +809,19 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           ),
         ),
         items: [
-          const DropdownMenuItem(value: 'none', child: Text('None')),
           ..._departments.map((department) {
-            return DropdownMenuItem<String>(
-              value: department.departmentId,
+            return DropdownMenuItem<Department>(
+              value: department,
               child: Text(department.name),
             );
           }),
-          const DropdownMenuItem(value: 'others', child: Text('Others')),
         ],
-        onChanged: (String? selectedId) async {
-          if (selectedId == 'others') {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    DepartmentScreen(loggedInUser: widget.loggedInUser),
-              ),
-            );
-            // Reload departments after returning from department screen
-            if (result != null) {
-              await _loadDepartments();
-            }
-          } else if (selectedId == 'none') {
-            setState(() {
-              _selectedDepartment = null;
-            });
-          } else {
-            final dept = _departments.firstWhere(
-              (d) => d.departmentId == selectedId,
-              orElse: () => _departments.first,
-            );
-            setState(() {
-              _selectedDepartment = dept;
-            });
-            onChanged(dept);
+        onChanged: (Department? selected) {
+          if (selected != null) {
+            onChanged(selected);
           }
         },
-        validator: (value) =>
-            value == null || value == 'none' ? 'Required' : null,
+        validator: (value) => value == null ? 'Required' : null,
       ),
     );
   }
@@ -779,7 +857,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   child: SfDateRangePicker(
                     view: DateRangePickerView.month,
                     showNavigationArrow: true,
-                    initialSelectedDate: DateTime.now(),
+                    initialSelectedDate: _dob ?? DateTime.now(),
                     minDate: DateTime(1900),
                     maxDate: DateTime.now(),
                     onSelectionChanged:
@@ -852,7 +930,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text("Choose Profile", style: GoogleFonts.inter()),
+                child: Text("Change Profile", style: GoogleFonts.inter()),
               ),
               const SizedBox(width: 16),
               CircleAvatar(

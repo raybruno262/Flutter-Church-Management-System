@@ -22,12 +22,12 @@ class LevelScreen extends StatefulWidget {
 }
 
 class _LevelScreenState extends State<LevelScreen> {
-  String _statusFilter = 'All'; // Options: All, Active, Inactive
+  String _statusFilter = 'All Status'; // Options: All, Active, Inactive
   final _nameFilterController = TextEditingController();
   final _addressFilterController = TextEditingController();
-  final _typeFilterController = TextEditingController();
-  final _parentFilterController = TextEditingController();
 
+  final _parentFilterController = TextEditingController();
+  String _typeFilter = 'All Types';
   final LevelController _controller = LevelController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -54,8 +54,8 @@ class _LevelScreenState extends State<LevelScreen> {
     );
     setState(() {
       _levels = levels.reversed.toList();
+      _filteredLevels = _levels;
 
-      _applySearchFilter();
       _isLoading = false;
     });
   }
@@ -63,7 +63,7 @@ class _LevelScreenState extends State<LevelScreen> {
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
     final addressQuery = _addressFilterController.text.toLowerCase();
-    final typeQuery = _typeFilterController.text.toLowerCase();
+
     final parentQuery = _parentFilterController.text.toLowerCase();
 
     _filteredLevels = _levels.where((level) {
@@ -71,20 +71,22 @@ class _LevelScreenState extends State<LevelScreen> {
           level.name?.toLowerCase().contains(nameQuery) ?? false;
       final matchesAddress =
           level.address?.toLowerCase().contains(addressQuery) ?? false;
-      final matchesType =
-          level.levelType?.toLowerCase().contains(typeQuery) ?? false;
+
       final matchesParent = parentQuery.isEmpty
           ? true
           : (level.parent?.name?.toLowerCase().contains(parentQuery) ?? false);
 
       final status = (level.isActive ?? false) ? 'Active' : 'Inactive';
-      final matchesStatus = _statusFilter == 'All' || status == _statusFilter;
+      final matchesStatus =
+          _statusFilter == 'All Status' || status == _statusFilter;
 
+      final matchesType =
+          _typeFilter == 'All Types' || level.levelType == _typeFilter;
       return matchesName &&
           matchesAddress &&
-          matchesType &&
           matchesParent &&
-          matchesStatus;
+          matchesStatus &&
+          matchesType;
     }).toList();
 
     setState(() {});
@@ -376,10 +378,8 @@ class _LevelScreenState extends State<LevelScreen> {
                                         'Search Address',
                                       ),
                                       const SizedBox(width: 8),
-                                      _buildFilterField(
-                                        _typeFilterController,
-                                        'Search Type',
-                                      ),
+                                      _buildTypeDropdown(),
+
                                       const SizedBox(width: 8),
                                       _buildStatusDropdown(),
 
@@ -622,7 +622,7 @@ class _LevelScreenState extends State<LevelScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
-        width: 210,
+        width: 200,
         height: 40,
         child: TextField(
           controller: controller,
@@ -647,9 +647,70 @@ class _LevelScreenState extends State<LevelScreen> {
     );
   }
 
+  Widget _buildTypeDropdown() {
+    return SizedBox(
+      width: 200,
+      height: 40,
+      child: DropdownButtonFormField<String>(
+        initialValue: _typeFilter,
+        onChanged: (value) {
+          setState(() {
+            _typeFilter = value!;
+            _applySearchFilter();
+          });
+        },
+        items:
+            [
+              'All Types',
+              'HEADQUARTER',
+              'REGION',
+              'PARISH',
+              'CHAPEL',
+              'CELL',
+            ].map((status) {
+              return DropdownMenuItem(
+                value: status,
+                child: Text(
+                  status,
+                  style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                ),
+              );
+            }).toList(),
+        selectedItemBuilder: (context) {
+          return [
+            'All Types',
+            'HEADQUARTER',
+            'REGION',
+            'PARISH',
+            'CHAPEL',
+            'CELL',
+          ].map((status) {
+            return Text(
+              status,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusDropdown() {
     return SizedBox(
-      width: 150,
+      width: 200,
       height: 40,
       child: DropdownButtonFormField<String>(
         initialValue: _statusFilter,
@@ -659,7 +720,7 @@ class _LevelScreenState extends State<LevelScreen> {
             _applySearchFilter();
           });
         },
-        items: ['All', 'Active', 'Inactive'].map((status) {
+        items: ['All Status', 'Active', 'Inactive'].map((status) {
           return DropdownMenuItem(
             value: status,
             child: Text(
@@ -669,7 +730,7 @@ class _LevelScreenState extends State<LevelScreen> {
           );
         }).toList(),
         selectedItemBuilder: (context) {
-          return ['All', 'Active', 'Inactive'].map((status) {
+          return ['All Status', 'Active', 'Inactive'].map((status) {
             return Text(
               status,
               style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),

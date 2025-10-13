@@ -96,8 +96,6 @@ class UserController {
     }
   }
 
-
-
   // Get paginated users
   Future<List<UserModel>> getPaginatedUsers({
     int page = 0,
@@ -118,9 +116,6 @@ class UserController {
       return [];
     }
   }
-
-
-
 
   // Send login OTP
   Future<String> sendLoginOtp(String email, String password) async {
@@ -207,5 +202,28 @@ class UserController {
       return UserModel.fromJsonString(jsonString);
     }
     return null;
+  }
+
+  //get User stats
+
+  Future<Map<String, int>> getUserStats(String userId) async {
+    try {
+      final url = Uri.parse('$baseHost/api/users/stats?userId=$userId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        return {
+          'total': data['totalUsers'] ?? 0,
+          'active': data['activeUsers'] ?? 0,
+          'inactive': data['inactiveUsers'] ?? 0,
+        };
+      } else {
+        return {'total': 0, 'active': 0, 'inactive': 0};
+      }
+    } catch (e) {
+      return {'total': 0, 'active': 0, 'inactive': 0};
+    }
   }
 }

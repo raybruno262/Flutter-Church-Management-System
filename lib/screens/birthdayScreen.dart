@@ -84,7 +84,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
 
       setState(() {
         _members = members.reversed.toList();
-        _filteredMembers = members;
+        _filteredMembers = _members;
         _isLoading = false;
       });
     } catch (e) {
@@ -214,7 +214,6 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
             ],
           ),
         ),
-
         DataCell(Text(member.dateOfBirth ?? 'N/A', style: GoogleFonts.inter())),
         DataCell(Text(member.phone, style: GoogleFonts.inter())),
         DataCell(Text(member.gender, style: GoogleFonts.inter())),
@@ -225,6 +224,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
         DataCell(
           Text(member.membershipDate ?? 'N/A', style: GoogleFonts.inter()),
         ),
+
         DataCell(
           Text(member.department?.name ?? 'N/A', style: GoogleFonts.inter()),
         ),
@@ -245,12 +245,14 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                   // TODO: Navigate to ViewProfilePage
                 },
               ),
-              IconButton(
-                icon: Icon(Icons.edit, color: Colors.blue),
-                onPressed: () {
-                  // TODO: Navigate to UpdateMemberPage
-                },
-              ),
+              if (widget.loggedInUser.role == 'CellAdmin') ...[
+                IconButton(
+                  icon: Icon(Icons.edit, color: Colors.blue),
+                  onPressed: () {
+                    // TODO: Navigate to UpdateMemberPage
+                  },
+                ),
+              ],
             ],
           ),
         ),

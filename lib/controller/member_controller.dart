@@ -49,15 +49,21 @@ class MemberController {
   // Update member (multipart/form-data)
   Future<String> updateMember(
     String memberId,
-
     Member updatedMember, {
     required String userId,
     Uint8List? profilePic,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/updateMember/$memberId/$userId');
-      final request = http.MultipartRequest('PUT', url);
-      request.fields['member'] = jsonEncode(updatedMember.toJson());
+      final request = http.MultipartRequest('POST', url);
+      request.files.add(
+        http.MultipartFile.fromString(
+          'member',
+          jsonEncode(updatedMember.toJson()),
+          contentType: MediaType('application', 'json'),
+          filename: 'member.json',
+        ),
+      );
 
       if (profilePic != null) {
         request.files.add(
