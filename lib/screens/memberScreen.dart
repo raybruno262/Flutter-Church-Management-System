@@ -308,7 +308,6 @@ class _MemberScreenState extends State<MemberScreen> {
                 icon: const Icon(Icons.visibility, color: Colors.green),
                 tooltip: 'View Member',
                 onPressed: () {
-                  // TODO: Navigate to ViewProfilePage
                   _showMemberDetailsDialog(member);
                 },
               ),

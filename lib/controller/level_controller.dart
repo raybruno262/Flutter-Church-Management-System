@@ -8,37 +8,19 @@ class LevelController {
 
   // Create all levels (some fields optional)
   Future<String> createAllLevels({
-    String? headquarterName,
-    String? headquarterAddress,
-    String? regionName,
-    String? regionAddress,
-    String? parishName,
-    String? parishAddress,
-    String? chapelName,
-    String? chapelAddress,
-    String? cellName,
-    String? cellAddress,
+    required String userId,
+    required Map<String, String> payload,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/createAllLevels');
+      final url = Uri.parse('$baseUrl/createAllLevels/$userId');
       final response = await http.post(
         url,
-        body: {
-          if (headquarterName != null) 'headquarterName': headquarterName,
-          if (headquarterAddress != null)
-            'headquarterAddress': headquarterAddress,
-          if (regionName != null) 'regionName': regionName,
-          if (regionAddress != null) 'regionAddress': regionAddress,
-          if (parishName != null) 'parishName': parishName,
-          if (parishAddress != null) 'parishAddress': parishAddress,
-          if (chapelName != null) 'chapelName': chapelName,
-          if (chapelAddress != null) 'chapelAddress': chapelAddress,
-          if (cellName != null) 'cellName': cellName,
-          if (cellAddress != null) 'cellAddress': cellAddress,
-        },
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
       );
       return response.body;
     } catch (e) {
+      print('Network error: $e');
       return 'Status 7000';
     }
   }
