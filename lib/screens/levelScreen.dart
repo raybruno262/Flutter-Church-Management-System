@@ -316,6 +316,7 @@ class _LevelScreenState extends State<LevelScreen> {
                                 _filteredLevels = _levels;
                                 _currentPage = 0;
                               });
+                              await _fetchLevelCounts();
                             }
                           },
                           icon: SvgPicture.asset("assets/icons/level.svg"),

@@ -15,8 +15,8 @@ class LevelController {
       final url = Uri.parse('$baseUrl/createAllLevels/$userId');
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: payload,
       );
       return response.body;
     } catch (e) {

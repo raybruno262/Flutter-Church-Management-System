@@ -1009,13 +1009,6 @@ class _MemberScreenState extends State<MemberScreen> {
 
                                 // Refresh stats
                                 await _fetchMemberStats();
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Member added successfully'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
                               }
                             },
                             icon: SvgPicture.asset("assets/icons/member.svg"),
