@@ -64,6 +64,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   String? _sameReligion;
   Department? _selectedDepartment;
   Level? _selectedBaptismCell;
+  Level? _selectedSuperAdminBaptismCell;
   Country? _selectedCountry;
 
   // Message state variables
@@ -227,6 +228,14 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         return;
       }
     }
+    if (widget.loggedInUser.role == 'SuperAdmin' &&
+        _selectedSuperAdminBaptismCell == null) {
+      setState(() {
+        _message = 'Please select a cell for this member';
+        _isSuccess = false;
+      });
+      return;
+    }
 
     // Validate gender
     if (_gender == null) {
@@ -304,7 +313,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             '${DateTime.now().month.toString().padLeft(2, '0')}/'
             '${DateTime.now().day.toString().padLeft(2, '0')}/'
             '${DateTime.now().year}',
-        level: widget.loggedInUser.level,
+        level: widget.loggedInUser.role == 'SuperAdmin'
+            ? _selectedSuperAdminBaptismCell
+            : widget.loggedInUser.level,
+
         department: _selectedDepartment,
         baptismInformation: baptismInfo,
         profilePic: _imageBytes!,
@@ -544,6 +556,17 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         ),
                         _buildTextField('Address', _addressController),
                         _buildPhoneField(_phoneController),
+
+                        if (widget.loggedInUser.role == 'SuperAdmin') ...[
+                          _buildSuperAdminCellDropdown(
+                            'Select Cell',
+                            _selectedSuperAdminBaptismCell,
+                            (cell) => setState(
+                              () => _selectedSuperAdminBaptismCell = cell,
+                            ),
+                          ),
+                        ],
+
                         _buildFilePicker(
                           previewBytes: _imageBytes,
                           onPicked: (bytes, ext) {
@@ -717,12 +740,35 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           );
         }).toList(),
         onChanged: onChanged,
-        validator: (value) {
-          if (_sameReligion == 'Yes' && value == null) {
-            return 'Required';
-          }
-          return null;
-        },
+      ),
+    );
+  }
+
+  Widget _buildSuperAdminCellDropdown(
+    String label,
+    Level? _selectedSuperAdminBaptismCell,
+    void Function(Level?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<Level>(
+        value: _selectedSuperAdminBaptismCell,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: _cells.map((cell) {
+          return DropdownMenuItem<Level>(
+            value: cell,
+            child: Text(cell.name ?? 'Unknown'),
+          );
+        }).toList(),
+        onChanged: onChanged,
       ),
     );
   }

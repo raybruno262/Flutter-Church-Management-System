@@ -311,7 +311,8 @@ class _MemberScreenState extends State<MemberScreen> {
                   _showMemberDetailsDialog(member);
                 },
               ),
-              if (widget.loggedInUser.role == 'CellAdmin') ...[
+              if (widget.loggedInUser.role == 'CellAdmin' &&
+                  widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
                   tooltip: 'Update Member',
@@ -988,7 +989,8 @@ class _MemberScreenState extends State<MemberScreen> {
                           ),
                         ),
                         const SizedBox(width: 280),
-                        if (widget.loggedInUser.role == 'CellAdmin') ...[
+                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                            widget.loggedInUser.role == 'SuperAdmin') ...[
                           ElevatedButton.icon(
                             onPressed: () async {
                               final newMember = await Navigator.push(

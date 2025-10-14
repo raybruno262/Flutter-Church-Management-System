@@ -65,9 +65,13 @@ class LevelController {
   }
 
   // Update level (name, address, parent, isActive)
-  Future<String> updateLevel(String levelId, Level updatedData) async {
+  Future<String> updateLevel({
+    required String levelId,
+    required String userId,
+    required Level updatedData,
+  }) async {
     try {
-      final url = Uri.parse('$baseUrl/updateLevel/$levelId');
+      final url = Uri.parse('$baseUrl/updateLevel/$levelId/$userId');
       final response = await http.put(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -75,6 +79,7 @@ class LevelController {
       );
       return response.body;
     } catch (e) {
+      print('Network error: $e');
       return 'Status 7000';
     }
   }

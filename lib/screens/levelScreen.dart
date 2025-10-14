@@ -62,19 +62,9 @@ class _LevelScreenState extends State<LevelScreen> {
     });
   }
 
-  /// Full dataset fetch for filtering
-  Future<void> _fetchAllLevels() async {
-    final allLevels = await _controller.getAllLevels();
-    setState(() {
-      _allLevels = allLevels;
-      _isLoading = false;
-    });
-  }
-
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
     final addressQuery = _addressFilterController.text.toLowerCase();
-
     final parentQuery = _parentFilterController.text.toLowerCase();
 
     final filtered = _allLevels.where((level) {
@@ -82,7 +72,6 @@ class _LevelScreenState extends State<LevelScreen> {
           level.name?.toLowerCase().contains(nameQuery) ?? false;
       final matchesAddress =
           level.address?.toLowerCase().contains(addressQuery) ?? false;
-
       final matchesParent = parentQuery.isEmpty
           ? true
           : (level.parent?.name?.toLowerCase().contains(parentQuery) ?? false);
@@ -93,6 +82,7 @@ class _LevelScreenState extends State<LevelScreen> {
 
       final matchesType =
           _typeFilter == 'All Types' || level.levelType == _typeFilter;
+
       return matchesName &&
           matchesAddress &&
           matchesParent &&
@@ -103,6 +93,14 @@ class _LevelScreenState extends State<LevelScreen> {
     setState(() {
       _filteredLevels = filtered;
       _currentPage = 0;
+    });
+  }
+
+  Future<void> _fetchAllLevels() async {
+    final allLevels = await _controller.getAllLevels();
+    setState(() {
+      _allLevels = allLevels;
+      _isLoading = false;
     });
   }
 
@@ -126,7 +124,6 @@ class _LevelScreenState extends State<LevelScreen> {
     }
   }
 
-  // Paginate filtered results
   Future<void> _nextPage() async {
     if (_isFiltering) {
       if ((_currentPage + 1) * _pageSize < _filteredLevels.length) {
@@ -150,7 +147,8 @@ class _LevelScreenState extends State<LevelScreen> {
   }
 
   List<Level> get displayedLevels {
-    if (_isFiltering && _filteredLevels.isNotEmpty) {
+    if (_isFiltering) {
+      if (_filteredLevels.isEmpty) return [];
       final start = _currentPage * _pageSize;
       final end = start + _pageSize;
       return _filteredLevels.sublist(
@@ -451,81 +449,81 @@ class _LevelScreenState extends State<LevelScreen> {
                                   ),
                                 ),
 
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(minHeight: 300),
-                                  child: SizedBox(
-                                    width: 1030,
-
-                                    child: DataTable(
-                                      horizontalMargin: 12,
-                                      dataRowMaxHeight: 56,
-                                      headingRowHeight: 48,
-                                      dividerThickness: 1,
-                                      headingRowColor: WidgetStateProperty.all(
-                                        Colors.deepPurple,
+                                Stack(
+                                  children: [
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        minHeight: 300,
                                       ),
-
-                                      dataRowColor: WidgetStateProperty.all(
-                                        backgroundcolor,
-                                      ),
-
-                                      border: TableBorder(
-                                        horizontalInside: BorderSide(
-                                          color: Colors.grey.shade300,
-                                          width: 1,
-                                        ),
-                                        verticalInside: BorderSide(
-                                          color: Colors.grey.shade300,
-                                          width: 1,
-                                        ),
-                                        top: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        left: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                        right: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      columns: [
-                                        DataColumn(
-                                          label: Text(
-                                            'Name',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                      child: SizedBox(
+                                        width: 1030,
+                                        child: DataTable(
+                                          horizontalMargin: 12,
+                                          dataRowMaxHeight: 56,
+                                          headingRowHeight: 48,
+                                          dividerThickness: 1,
+                                          headingRowColor:
+                                              WidgetStateProperty.all(
+                                                Colors.deepPurple,
+                                              ),
+                                          dataRowColor: WidgetStateProperty.all(
+                                            backgroundcolor,
+                                          ),
+                                          border: TableBorder(
+                                            horizontalInside: BorderSide(
+                                              color: Colors.grey.shade300,
+                                              width: 1,
+                                            ),
+                                            verticalInside: BorderSide(
+                                              color: Colors.grey.shade300,
+                                              width: 1,
+                                            ),
+                                            top: BorderSide(
+                                              color: Colors.grey.shade300,
+                                            ),
+                                            bottom: BorderSide(
+                                              color: Colors.grey.shade300,
+                                            ),
+                                            left: BorderSide(
+                                              color: Colors.grey.shade300,
+                                            ),
+                                            right: BorderSide(
+                                              color: Colors.grey.shade300,
                                             ),
                                           ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Address',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                          columns: [
+                                            DataColumn(
+                                              label: Text(
+                                                'Name',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Type',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                            DataColumn(
+                                              label: Text(
+                                                'Address',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Row(
-                                            children: [
-                                              Text(
+                                            DataColumn(
+                                              label: Text(
+                                                'Type',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                            DataColumn(
+                                              label: Text(
                                                 'STATUS',
                                                 style: GoogleFonts.inter(
                                                   fontSize: 14,
@@ -533,73 +531,68 @@ class _LevelScreenState extends State<LevelScreen> {
                                                   color: Colors.white,
                                                 ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        DataColumn(
-                                          label: Text(
-                                            'Parent Name',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
                                             ),
-                                          ),
-                                        ),
-                                        DataColumn(
-                                          label: Text(
-                                            'Actions',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                            DataColumn(
+                                              label: Text(
+                                                'Parent Name',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                      ],
-
-                                      rows: displayedLevels.isEmpty
-                                          ? [
-                                              DataRow(
-                                                cells: [
-                                                  DataCell(
-                                                    Container(
-                                                      alignment:
-                                                          Alignment.center,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 40,
-                                                          ),
-                                                      child: Text(
-                                                        'No levels found',
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              color: Colors
-                                                                  .grey
-                                                                  .shade600,
-                                                            ),
+                                            DataColumn(
+                                              label: Text(
+                                                'Actions',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          rows: displayedLevels.isEmpty
+                                              ? [
+                                                  DataRow(
+                                                    cells: List.generate(
+                                                      6,
+                                                      (_) => const DataCell(
+                                                        SizedBox(),
                                                       ),
                                                     ),
                                                   ),
-                                                  ...List.generate(
-                                                    5,
-                                                    (_) => const DataCell(
-                                                      SizedBox(),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ]
-                                          : displayedLevels
-                                                .map(_buildDataRow)
-                                                .toList(),
+                                                ]
+                                              : displayedLevels
+                                                    .map(_buildDataRow)
+                                                    .toList(),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    if (displayedLevels.isEmpty)
+                                      Positioned(
+                                        left: 426,
+                                        top: 120,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.search_off,
+                                              color: Colors.red,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'No levels found',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -658,16 +651,24 @@ class _LevelScreenState extends State<LevelScreen> {
                         ),
                   const SizedBox(height: 20),
 
-                  Center(
-                    child: Text(
-                      '© 2025 All rights reserved. Church CRM System',
-                      style: GoogleFonts.inter(
-                        color: Colors.grey[600],
-                        fontSize: 13,
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Text(
+                          '© 2025 All rights reserved. Church CRM System',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
                 ],
               ),
             ),
