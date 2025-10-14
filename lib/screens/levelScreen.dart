@@ -34,6 +34,7 @@ class _LevelScreenState extends State<LevelScreen> {
   int _currentPage = 0;
   final int _pageSize = 5;
   List<Level> _levels = [];
+  List<Level> _allLevels = [];
   List<Level> _filteredLevels = [];
 
   @override
@@ -45,6 +46,7 @@ class _LevelScreenState extends State<LevelScreen> {
   }
 
   bool _isLoading = true;
+  bool _isFiltering = false;
 
   Future<void> _fetchLevels() async {
     setState(() => _isLoading = true);
@@ -53,9 +55,18 @@ class _LevelScreenState extends State<LevelScreen> {
       size: _pageSize,
     );
     setState(() {
-      _levels = levels.reversed.toList();
+      _levels = levels;
       _filteredLevels = _levels;
 
+      _isLoading = false;
+    });
+  }
+
+  /// Full dataset fetch for filtering
+  Future<void> _fetchAllLevels() async {
+    final allLevels = await _controller.getAllLevels();
+    setState(() {
+      _allLevels = allLevels;
       _isLoading = false;
     });
   }
@@ -66,7 +77,7 @@ class _LevelScreenState extends State<LevelScreen> {
 
     final parentQuery = _parentFilterController.text.toLowerCase();
 
-    _filteredLevels = _levels.where((level) {
+    final filtered = _allLevels.where((level) {
       final matchesName =
           level.name?.toLowerCase().contains(nameQuery) ?? false;
       final matchesAddress =
@@ -89,18 +100,65 @@ class _LevelScreenState extends State<LevelScreen> {
           matchesType;
     }).toList();
 
-    setState(() {});
+    setState(() {
+      _filteredLevels = filtered;
+      _currentPage = 0;
+    });
   }
 
-  void _nextPage() {
-    _currentPage++;
-    _fetchLevels();
+  // Detect filter changes and switch mode
+  void _onFilterChanged() async {
+    final isDefaultFilter =
+        _nameFilterController.text.isEmpty &&
+        _addressFilterController.text.isEmpty &&
+        _parentFilterController.text.isEmpty &&
+        _statusFilter == 'All Status' &&
+        _typeFilter == 'All Types';
+
+    if (isDefaultFilter) {
+      _isFiltering = false;
+      _currentPage = 0;
+      await _fetchLevels();
+    } else {
+      _isFiltering = true;
+      await _fetchAllLevels();
+      _applySearchFilter();
+    }
   }
 
-  void _previousPage() {
+  // Paginate filtered results
+  Future<void> _nextPage() async {
+    if (_isFiltering) {
+      if ((_currentPage + 1) * _pageSize < _filteredLevels.length) {
+        setState(() => _currentPage++);
+      }
+    } else {
+      _currentPage++;
+      await _fetchLevels();
+    }
+  }
+
+  Future<void> _previousPage() async {
     if (_currentPage > 0) {
-      _currentPage--;
-      _fetchLevels();
+      if (_isFiltering) {
+        setState(() => _currentPage--);
+      } else {
+        _currentPage--;
+        await _fetchLevels();
+      }
+    }
+  }
+
+  List<Level> get displayedLevels {
+    if (_isFiltering && _filteredLevels.isNotEmpty) {
+      final start = _currentPage * _pageSize;
+      final end = start + _pageSize;
+      return _filteredLevels.sublist(
+        start,
+        end > _filteredLevels.length ? _filteredLevels.length : end,
+      );
+    } else {
+      return _levels;
     }
   }
 
@@ -301,7 +359,7 @@ class _LevelScreenState extends State<LevelScreen> {
                         SizedBox(width: 280),
                         ElevatedButton.icon(
                           onPressed: () async {
-                            final newLevel = await Navigator.push(
+                            final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => AddLevelScreen(
@@ -310,12 +368,12 @@ class _LevelScreenState extends State<LevelScreen> {
                               ),
                             );
 
-                            if (newLevel != null && newLevel is Level) {
+                            if (result != null) {
                               setState(() {
-                                _levels.insert(0, newLevel);
-                                _filteredLevels = _levels;
                                 _currentPage = 0;
                               });
+
+                              await _fetchLevels();
                               await _fetchLevelCounts();
                             }
                           },
@@ -501,7 +559,7 @@ class _LevelScreenState extends State<LevelScreen> {
                                         ),
                                       ],
 
-                                      rows: _filteredLevels.isEmpty
+                                      rows: displayedLevels.isEmpty
                                           ? [
                                               DataRow(
                                                 cells: [
@@ -537,7 +595,7 @@ class _LevelScreenState extends State<LevelScreen> {
                                                 ],
                                               ),
                                             ]
-                                          : _filteredLevels
+                                          : displayedLevels
                                                 .map(_buildDataRow)
                                                 .toList(),
                                     ),
@@ -627,7 +685,7 @@ class _LevelScreenState extends State<LevelScreen> {
         height: 40,
         child: TextField(
           controller: controller,
-          onChanged: (_) => _applySearchFilter(),
+          onChanged: (_) => _onFilterChanged(),
           style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
           decoration: InputDecoration(
             hintText: hint,
@@ -657,7 +715,7 @@ class _LevelScreenState extends State<LevelScreen> {
         onChanged: (value) {
           setState(() {
             _typeFilter = value!;
-            _applySearchFilter();
+            _onFilterChanged();
           });
         },
         items:
@@ -718,7 +776,7 @@ class _LevelScreenState extends State<LevelScreen> {
         onChanged: (value) {
           setState(() {
             _statusFilter = value!;
-            _applySearchFilter();
+            _onFilterChanged();
           });
         },
         items: ['All Status', 'Active', 'Inactive'].map((status) {

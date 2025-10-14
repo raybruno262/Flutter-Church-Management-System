@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_churchcrm_system/model/levelType_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_churchcrm_system/constants.dart';
 import '../model/level_model.dart';
@@ -27,14 +28,16 @@ class LevelController {
 
   //  Add one level under a parent
   Future<String> addOneLevel({
+    required String userId,
     required String levelName,
     required String levelAddress,
     required String parentId,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/addOneLevel');
+      final url = Uri.parse('$baseUrl/addOneLevel/$userId');
       final response = await http.post(
         url,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {
           'levelName': levelName,
           'levelAddress': levelAddress,
@@ -43,7 +46,21 @@ class LevelController {
       );
       return response.body;
     } catch (e) {
+      print('Network error: $e');
       return 'Status 7000';
+    }
+  }
+
+  // get parent level by level type
+  Future<List<Level>> getLevelsByType(LevelType type) async {
+    final url = Uri.parse('$baseUrl/byType/${type.name}');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Level.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load levels');
     }
   }
 

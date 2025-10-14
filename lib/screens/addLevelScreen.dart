@@ -6,6 +6,7 @@ import 'package:flutter_churchcrm_system/controller/member_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/baptismInformation_model.dart';
 import 'package:flutter_churchcrm_system/model/department_model.dart';
+import 'package:flutter_churchcrm_system/model/levelType_model.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
 import 'package:flutter_churchcrm_system/model/member_model.dart';
 import 'package:flutter_churchcrm_system/screens/deparmentScreen.dart';
@@ -51,10 +52,15 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
   final _cellNameController = TextEditingController();
   final _cellAddressController = TextEditingController();
 
+  final _levelNameController = TextEditingController();
+  final _levelAddressController = TextEditingController();
+
   // Message state variables
   String? _message;
   bool _isSuccess = false;
   bool _isLoading = false;
+  bool _issaveOneLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -90,8 +96,160 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
     _formKey.currentState?.reset();
   }
 
+  Level? _selectedParentLevel;
+  LevelType? _selectedParentType;
+  String? _selectedParentId;
+
+  List<LevelType> _parentTypes = [
+    LevelType.HEADQUARTER,
+    LevelType.REGION,
+    LevelType.PARISH,
+    LevelType.CHAPEL,
+  ];
+
+  List<Level> _availableParents = [];
+
+  Future<void> _loadParentLevels(LevelType type) async {
+    try {
+      final levels = await LevelController().getLevelsByType(type);
+      setState(() {
+        _availableParents = levels;
+        _selectedParentLevel = null;
+        _selectedParentId = null;
+      });
+    } catch (e) {
+      print('Error loading parent levels: $e');
+      setState(() {
+        _availableParents = [];
+      });
+    }
+  }
+
+  void _clearoneForm() {
+    _levelNameController.clear();
+    _levelAddressController.clear();
+    _selectedParentId = null;
+    _selectedParentLevel = null;
+  }
+
+  Future<void> _submitOneLevel() async {
+    if (!_formKey.currentState!.validate()) return;
+    final levelName = _levelNameController.text.trim();
+    final levelAddress = _levelAddressController.text.trim();
+
+    String? missingField;
+
+    if (levelName.isEmpty) {
+      missingField = 'Level Name';
+    } else if (levelAddress.isEmpty) {
+      missingField = 'Level Address';
+    } else if (_selectedParentId == null) {
+      missingField = 'Parent Level';
+    }
+
+    if (missingField != null) {
+      setState(() {
+        _message = '$missingField is required.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _issaveOneLoading = true;
+      _message = null;
+    });
+
+    final loggedInUser = await userController.loadUserFromStorage();
+    if (loggedInUser == null || loggedInUser.userId == null) {
+      setState(() {
+        _issaveOneLoading = false;
+        _message = 'User ID not found. Please log in again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    try {
+      final result = await LevelController().addOneLevel(
+        userId: loggedInUser.userId!,
+        levelName: _levelNameController.text.trim(),
+        levelAddress: _levelAddressController.text.trim(),
+        parentId: _selectedParentId!,
+      );
+
+      setState(() => _issaveOneLoading = false);
+
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Level created successfully';
+            _isSuccess = true;
+          });
+          _clearoneForm();
+          break;
+        case 'Status 3000':
+          _message = 'Missing fields or invalid parent.';
+          break;
+        case 'Status 4000':
+          _message = 'User not found.';
+          break;
+        case 'Status 6000':
+          _message = 'Unauthorized role.';
+          break;
+        case 'Status 7000':
+          _message = 'Network error.';
+          break;
+        case 'Status 9999':
+          _message = 'Server error.';
+          break;
+        default:
+          _message = 'Unexpected error: $result';
+      }
+    } catch (e) {
+      setState(() {
+        _issaveOneLoading = false;
+        _message = 'Error submitting level: $e';
+        _isSuccess = false;
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final hqName = _headquarterNameController.text.trim();
+    final hqAddress = _headquarterAddressController.text.trim();
+    final regionName = _regionNameController.text.trim();
+    final regionAddress = _regionAddressController.text.trim();
+    final parishName = _parishNameController.text.trim();
+    final parishAddress = _parishAddressController.text.trim();
+    final chapelName = _chapelNameController.text.trim();
+    final chapelAddress = _chapelAddressController.text.trim();
+    final cellName = _cellNameController.text.trim();
+    final cellAddress = _cellAddressController.text.trim();
+
+    final levelPairs = {
+      'Headquarter': [hqName, hqAddress],
+      'Region': [regionName, regionAddress],
+      'Parish': [parishName, parishAddress],
+      'Chapel': [chapelName, chapelAddress],
+      'Cell': [cellName, cellAddress],
+    };
+
+    for (final entry in levelPairs.entries) {
+      final name = entry.value[0];
+      final address = entry.value[1];
+      if ((name.isEmpty && address.isNotEmpty) ||
+          (name.isNotEmpty && address.isEmpty)) {
+        setState(() {
+          _isLoading = false;
+          _message = '${entry.key} requires both name and address.';
+          _isSuccess = false;
+        });
+        return;
+      }
+    }
 
     setState(() {
       _isLoading = true;
@@ -108,72 +266,79 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
       return;
     }
 
+    final payload = <String, String>{};
+    if (hqName.isNotEmpty && hqAddress.isNotEmpty) {
+      payload['headquarterName'] = hqName;
+      payload['headquarterAddress'] = hqAddress;
+    }
+    if (regionName.isNotEmpty && regionAddress.isNotEmpty) {
+      payload['regionName'] = regionName;
+      payload['regionAddress'] = regionAddress;
+    }
+    if (parishName.isNotEmpty && parishAddress.isNotEmpty) {
+      payload['parishName'] = parishName;
+      payload['parishAddress'] = parishAddress;
+    }
+    if (chapelName.isNotEmpty && chapelAddress.isNotEmpty) {
+      payload['chapelName'] = chapelName;
+      payload['chapelAddress'] = chapelAddress;
+    }
+    if (cellName.isNotEmpty && cellAddress.isNotEmpty) {
+      payload['cellName'] = cellName;
+      payload['cellAddress'] = cellAddress;
+    }
+    if (payload.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _message = 'At least one level is required.';
+        _isSuccess = false;
+      });
+      return;
+    }
     try {
       final result = await LevelController().createAllLevels(
         userId: loggedInUser.userId!,
-        payload: {
-          if (_headquarterNameController.text.trim().isNotEmpty)
-            'headquarterName': _headquarterNameController.text.trim(),
-          if (_headquarterAddressController.text.trim().isNotEmpty)
-            'headquarterAddress': _headquarterAddressController.text.trim(),
-          if (_regionNameController.text.trim().isNotEmpty)
-            'regionName': _regionNameController.text.trim(),
-          if (_regionAddressController.text.trim().isNotEmpty)
-            'regionAddress': _regionAddressController.text.trim(),
-          if (_parishNameController.text.trim().isNotEmpty)
-            'parishName': _parishNameController.text.trim(),
-          if (_parishAddressController.text.trim().isNotEmpty)
-            'parishAddress': _parishAddressController.text.trim(),
-          if (_chapelNameController.text.trim().isNotEmpty)
-            'chapelName': _chapelNameController.text.trim(),
-          if (_chapelAddressController.text.trim().isNotEmpty)
-            'chapelAddress': _chapelAddressController.text.trim(),
-          if (_cellNameController.text.trim().isNotEmpty)
-            'cellName': _cellNameController.text.trim(),
-          if (_cellAddressController.text.trim().isNotEmpty)
-            'cellAddress': _cellAddressController.text.trim(),
-        },
+        payload: payload,
       );
 
       setState(() => _isLoading = false);
 
-      if (result == 'Status 1000') {
-        setState(() {
-          _message = 'Levels created successfully';
-          _isSuccess = true;
-        });
-        _clearForm();
-      } else if (result == 'Status 3000') {
-        setState(() {
-          _message =
-              'No headquarter found. Please provide headquarter details.';
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Levels created successfully';
+            _isSuccess = true;
+          });
+          _clearForm();
+          break;
+        case 'Status 3000':
+          if (hqName.isNotEmpty && hqAddress.isNotEmpty) {
+            _message = 'Headquarter already exists. Only one is allowed.';
+          } else {
+            _message =
+                'No headquarter found. Please provide headquarter details.';
+          }
           _isSuccess = false;
-        });
-      } else if (result == 'Status 4000') {
-        setState(() {
+          break;
+        case 'Status 4000':
           _message = 'User not found. Please log in again.';
           _isSuccess = false;
-        });
-      } else if (result == 'Status 6000') {
-        setState(() {
+          break;
+        case 'Status 6000':
           _message = 'Unauthorized role. Only SuperAdmins can create levels.';
           _isSuccess = false;
-        });
-      } else if (result == 'Status 7000') {
-        setState(() {
+          break;
+        case 'Status 7000':
           _message = 'Network error. Please check your connection.';
           _isSuccess = false;
-        });
-      } else if (result == 'Status 9999') {
-        setState(() {
+          break;
+        case 'Status 9999':
           _message = 'Server error. Please try again.';
           _isSuccess = false;
-        });
-      } else {
-        setState(() {
+          break;
+        default:
           _message = 'Unexpected error: $result';
           _isSuccess = false;
-        });
       }
     } catch (e) {
       setState(() {
@@ -196,7 +361,7 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Users',
+                selectedTitle: 'Levels',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -213,7 +378,7 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Users',
+                  selectedTitle: 'Levels',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
@@ -246,7 +411,7 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add User",
+                        "Add Level",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -304,7 +469,7 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
                       ),
 
                     ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, 'refresh'),
                       icon: const Icon(Icons.arrow_back),
                       label: Text(
                         'Back',
@@ -322,6 +487,7 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
 
                     // Add all levels at once
@@ -392,112 +558,76 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 26),
 
-                    // Text(
-                    //   "Add One Level",
-                    //   style: GoogleFonts.inter(
-                    //     fontSize: 16,
-                    //     fontWeight: FontWeight.bold,
-                    //     color: titlepageColor,
-                    //   ),
-                    // ),
+                    Text(
+                      "Add One Level",
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titlepageColor,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    // Wrap(
-                    //   spacing: 16,
-                    //   runSpacing: 16,
-                    //   children: [
-                    //     _buildDepartmentDropdown(
-                    //       'Department',
-                    //       _selectedDepartment,
-                    //       (dept) => setState(() => _selectedDepartment = dept),
-                    //     ),
-                    //     _buildDropdown(
-                    //       'Baptism Status',
-                    //       ['Baptized', 'Not Baptized'],
-                    //       _baptismStatus,
-                    //       (val) {
-                    //         setState(() {
-                    //           _baptismStatus = val;
-                    //           if (val == 'Not Baptized') {
-                    //             _sameReligion = null;
-                    //             _selectedBaptismCell = null;
-                    //             _otherChurchNameController.clear();
-                    //             _otherChurchAddressController.clear();
-                    //           }
-                    //         });
-                    //       },
-                    //     ),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildTextField('Level Name', _levelNameController),
+                        _buildTextField(
+                          'Level Address',
+                          _levelAddressController,
+                        ),
+                        _buildParentTypeDropdown(
+                          label: 'Parent Level Type',
+                          selectedType: _selectedParentType,
+                          onChanged: (type) async {
+                            setState(() {
+                              _selectedParentType = type;
+                              _selectedParentLevel = null;
+                              _availableParents = [];
+                            });
+                            if (type != null) {
+                              await _loadParentLevels(type);
+                            }
+                          },
+                        ),
 
-                    //     if (_baptismStatus == 'Baptized')
-                    //       _buildDropdown(
-                    //         'Same Religion',
-                    //         ['Yes', 'No'],
-                    //         _sameReligion,
-                    //         (val) {
-                    //           setState(() {
-                    //             _sameReligion = val;
-                    //             if (val == 'Yes') {
-                    //               _otherChurchNameController.clear();
-                    //               _otherChurchAddressController.clear();
-                    //             } else if (val == 'No') {
-                    //               _selectedBaptismCell = null;
-                    //             }
-                    //           });
-                    //         },
-                    //       ),
+                        _buildParentNameDropdown(
+                          label: 'Parent Level Name',
+                          selectedLevel: _selectedParentLevel,
+                          onChanged: (level) => setState(() {
+                            _selectedParentLevel = level;
+                            _selectedParentId = level?.levelId;
+                          }),
+                        ),
+                        const SizedBox(width: 50),
 
-                    //     if (_baptismStatus == 'Baptized' &&
-                    //         _sameReligion == 'Yes')
-                    //       _buildCellDropdown(
-                    //         'Baptism Cell',
-                    //         _selectedBaptismCell,
-                    //         (cell) =>
-                    //             setState(() => _selectedBaptismCell = cell),
-                    //       ),
-
-                    //     if (_baptismStatus == 'Baptized' &&
-                    //         _sameReligion == 'No') ...[
-                    //       _buildTextField(
-                    //         'Other Church Name',
-                    //         _otherChurchNameController,
-                    //       ),
-                    //       _buildTextField(
-                    //         'Other Church Address',
-                    //         _otherChurchAddressController,
-                    //       ),
-                    //     ],
-                    //   ],
-                    // ),
-
-                    // const SizedBox(height: 32),
-
-                    // /// Save Button
-                    // Center(
-                    //   child: _isLoading
-                    //       ? const CircularProgressIndicator()
-                    //       : ElevatedButton(
-                    //           onPressed: _submit,
-                    //           style: ElevatedButton.styleFrom(
-                    //             backgroundColor: Colors.deepPurple,
-                    //             foregroundColor: Colors.white,
-                    //             padding: const EdgeInsets.symmetric(
-                    //               horizontal: 40,
-                    //               vertical: 16,
-                    //             ),
-                    //             shape: RoundedRectangleBorder(
-                    //               borderRadius: BorderRadius.circular(12),
-                    //             ),
-                    //           ),
-                    //           child: Text(
-                    //             "Save",
-                    //             style: GoogleFonts.inter(
-                    //               fontWeight: FontWeight.bold,
-                    //             ),
-                    //           ),
-                    //         ),
-                    // ),
-                    const SizedBox(height: 20),
+                        /// Save Button
+                        _issaveOneLoading
+                            ? const CircularProgressIndicator()
+                            : ElevatedButton(
+                                onPressed: _submitOneLevel,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.deepPurple,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 40,
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  "Save",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -522,6 +652,64 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
             vertical: 10,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildParentTypeDropdown({
+    required String label,
+    required LevelType? selectedType,
+    required void Function(LevelType?) onChanged,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<LevelType>(
+        value: selectedType,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: _parentTypes.map((type) {
+          return DropdownMenuItem<LevelType>(
+            value: type,
+            child: Text(type.name),
+          );
+        }).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildParentNameDropdown({
+    required String label,
+    required Level? selectedLevel,
+    required void Function(Level?) onChanged,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<Level>(
+        value: selectedLevel,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: _availableParents.map((level) {
+          return DropdownMenuItem<Level>(
+            value: level,
+            child: Text(level.name ?? 'Unknown'),
+          );
+        }).toList(),
+        onChanged: onChanged,
       ),
     );
   }
