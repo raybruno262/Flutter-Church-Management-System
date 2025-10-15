@@ -21,7 +21,6 @@ class LevelController {
       );
       return response.body;
     } catch (e) {
-      print('Network error: $e');
       return 'Status 7000';
     }
   }
@@ -46,7 +45,6 @@ class LevelController {
       );
       return response.body;
     } catch (e) {
-      print('Network error: $e');
       return 'Status 7000';
     }
   }
@@ -77,9 +75,18 @@ class LevelController {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(updatedData.toJson()),
       );
-      return response.body;
+
+      final result = response.body;
+
+      if (result.startsWith('Status 8000')) {
+        final parts = result.split(':');
+        return parts.length > 1
+            ? parts.sublist(1).join(':').trim()
+            : 'Blocked by inactive ancestor or parent.';
+      }
+
+      return result;
     } catch (e) {
-      print('Network error: $e');
       return 'Status 7000';
     }
   }
@@ -149,19 +156,41 @@ class LevelController {
   }
 
   // get level counts per leveltype
-  Future<Map<String, int>> getLevelCounts() async {
+  Future<Map<String, Map<String, int>>> getLevelCounts() async {
     try {
       final url = Uri.parse('$baseHost/api/levels/levelCounts');
       final response = await http.get(url);
       final Map<String, dynamic> data = jsonDecode(response.body);
+
       return {
-        'regions': data['regions'] ?? 0,
-        'parishes': data['parishes'] ?? 0,
-        'chapels': data['chapels'] ?? 0,
-        'cells': data['cells'] ?? 0,
+        'regions': {
+          'total': data['regions']['total'] ?? 0,
+          'active': data['regions']['active'] ?? 0,
+          'inactive': data['regions']['inactive'] ?? 0,
+        },
+        'parishes': {
+          'total': data['parishes']['total'] ?? 0,
+          'active': data['parishes']['active'] ?? 0,
+          'inactive': data['parishes']['inactive'] ?? 0,
+        },
+        'chapels': {
+          'total': data['chapels']['total'] ?? 0,
+          'active': data['chapels']['active'] ?? 0,
+          'inactive': data['chapels']['inactive'] ?? 0,
+        },
+        'cells': {
+          'total': data['cells']['total'] ?? 0,
+          'active': data['cells']['active'] ?? 0,
+          'inactive': data['cells']['inactive'] ?? 0,
+        },
       };
     } catch (e) {
-      return {'regions': 0, 'parishes': 0, 'chapels': 0, 'cells': 0};
+      return {
+        'regions': {'total': 0, 'active': 0, 'inactive': 0},
+        'parishes': {'total': 0, 'active': 0, 'inactive': 0},
+        'chapels': {'total': 0, 'active': 0, 'inactive': 0},
+        'cells': {'total': 0, 'active': 0, 'inactive': 0},
+      };
     }
   }
 }

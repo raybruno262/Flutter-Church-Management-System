@@ -130,6 +130,9 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
     _levelAddressController.clear();
     _selectedParentId = null;
     _selectedParentLevel = null;
+
+    // Reset form validation
+    _formKey.currentState?.reset();
   }
 
   Future<void> _submitOneLevel() async {

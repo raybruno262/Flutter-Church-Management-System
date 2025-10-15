@@ -194,7 +194,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     }
 
     // Validate same religion
-    if (_sameReligion == null) {
+    if (_sameReligion == null && _baptismStatus == "Baptized") {
       setState(() {
         _message = 'Please select same religion option';
         _isSuccess = false;

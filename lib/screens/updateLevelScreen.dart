@@ -29,8 +29,12 @@ import 'package:mime/mime.dart';
 
 class UpdateLevelScreen extends StatefulWidget {
   final UserModel loggedInUser;
-
-  const UpdateLevelScreen({super.key, required this.loggedInUser});
+  final Level level;
+  const UpdateLevelScreen({
+    super.key,
+    required this.loggedInUser,
+    required this.level,
+  });
 
   @override
   State<UpdateLevelScreen> createState() => _UpdateLevelScreenState();
@@ -41,65 +45,31 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
   final LevelController levelController = LevelController();
   final UserController userController = UserController();
   // Controllers
-  final _headquarterNameController = TextEditingController();
-  final _headquarterAddressController = TextEditingController();
-  final _regionNameController = TextEditingController();
-  final _regionAddressController = TextEditingController();
-  final _parishNameController = TextEditingController();
-  final _parishAddressController = TextEditingController();
-  final _chapelNameController = TextEditingController();
-  final _chapelAddressController = TextEditingController();
-  final _cellNameController = TextEditingController();
-  final _cellAddressController = TextEditingController();
 
   final _levelNameController = TextEditingController();
   final _levelAddressController = TextEditingController();
-
+  final _levelTypeController = TextEditingController();
   // Message state variables
   String? _message;
   bool _isSuccess = false;
-  bool _isLoading = false;
+
   bool _issaveOneLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _populateExistingData();
   }
 
   @override
   void dispose() {
-    _headquarterNameController.dispose();
-    _headquarterAddressController.dispose();
-    _regionNameController.dispose();
-    _regionAddressController.dispose();
-    _parishNameController.dispose();
-    _parishAddressController.dispose();
-    _chapelNameController.dispose();
-    _cellNameController.dispose();
-    _cellAddressController.dispose();
     super.dispose();
-  }
-
-  void _clearForm() {
-    // Clear text controllers
-    _headquarterNameController.clear();
-    _headquarterAddressController.clear();
-    _regionNameController.clear();
-    _regionAddressController.clear();
-    _parishNameController.clear();
-    _parishAddressController.clear();
-    _chapelNameController.clear();
-    _cellNameController.clear();
-    _cellAddressController.clear();
-
-    // Reset form validation
-    _formKey.currentState?.reset();
   }
 
   Level? _selectedParentLevel;
   LevelType? _selectedParentType;
   String? _selectedParentId;
-
+  String? _isActive;
   List<LevelType> _parentTypes = [
     LevelType.HEADQUARTER,
     LevelType.REGION,
@@ -125,233 +95,163 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
     }
   }
 
-  void _clearoneForm() {
-    _levelNameController.clear();
-    _levelAddressController.clear();
-    _selectedParentId = null;
-    _selectedParentLevel = null;
-  }
+  void _populateExistingData() async {
+    _levelNameController.text = widget.level.name ?? '';
+    _levelAddressController.text = widget.level.address ?? '';
+    _levelTypeController.text = widget.level.levelType ?? '';
+    _isActive = widget.level.isActive == true ? 'Active' : 'Inactive';
 
-  Future<void> _submitOneLevel() async {
-    if (!_formKey.currentState!.validate()) return;
-    final levelName = _levelNameController.text.trim();
-    final levelAddress = _levelAddressController.text.trim();
+    final parent = widget.level.parent;
 
-    String? missingField;
+    if (parent != null) {
+      // Convert levelType string to enum
+      final parentLevelTypeString = parent.levelType;
+      final match = LevelType.values
+          .where((e) => e.name == parentLevelTypeString)
+          .toList();
+      _selectedParentType = match.isNotEmpty ? match.first : null;
 
-    if (levelName.isEmpty) {
-      missingField = 'Level Name';
-    } else if (levelAddress.isEmpty) {
-      missingField = 'Level Address';
-    } else if (_selectedParentId == null) {
-      missingField = 'Parent Level';
-    }
-
-    if (missingField != null) {
-      setState(() {
-        _message = '$missingField is required.';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _issaveOneLoading = true;
-      _message = null;
-    });
-
-    final loggedInUser = await userController.loadUserFromStorage();
-    if (loggedInUser == null || loggedInUser.userId == null) {
-      setState(() {
-        _issaveOneLoading = false;
-        _message = 'User ID not found. Please log in again.';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    try {
-      final result = await LevelController().addOneLevel(
-        userId: loggedInUser.userId!,
-        levelName: _levelNameController.text.trim(),
-        levelAddress: _levelAddressController.text.trim(),
-        parentId: _selectedParentId!,
-      );
-
-      setState(() => _issaveOneLoading = false);
-
-      switch (result) {
-        case 'Status 1000':
-          setState(() {
-            _message = 'Level created successfully';
-            _isSuccess = true;
-          });
-          _clearoneForm();
-          break;
-        case 'Status 3000':
-          _message = 'Missing fields or invalid parent.';
-          break;
-        case 'Status 4000':
-          _message = 'User not found.';
-          break;
-        case 'Status 6000':
-          _message = 'Unauthorized role.';
-          break;
-        case 'Status 7000':
-          _message = 'Network error.';
-          break;
-        case 'Status 9999':
-          _message = 'Server error.';
-          break;
-        default:
-          _message = 'Unexpected error: $result';
-      }
-    } catch (e) {
-      setState(() {
-        _issaveOneLoading = false;
-        _message = 'Error submitting level: $e';
-        _isSuccess = false;
-      });
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final hqName = _headquarterNameController.text.trim();
-    final hqAddress = _headquarterAddressController.text.trim();
-    final regionName = _regionNameController.text.trim();
-    final regionAddress = _regionAddressController.text.trim();
-    final parishName = _parishNameController.text.trim();
-    final parishAddress = _parishAddressController.text.trim();
-    final chapelName = _chapelNameController.text.trim();
-    final chapelAddress = _chapelAddressController.text.trim();
-    final cellName = _cellNameController.text.trim();
-    final cellAddress = _cellAddressController.text.trim();
-
-    final levelPairs = {
-      'Headquarter': [hqName, hqAddress],
-      'Region': [regionName, regionAddress],
-      'Parish': [parishName, parishAddress],
-      'Chapel': [chapelName, chapelAddress],
-      'Cell': [cellName, cellAddress],
-    };
-
-    for (final entry in levelPairs.entries) {
-      final name = entry.value[0];
-      final address = entry.value[1];
-      if ((name.isEmpty && address.isNotEmpty) ||
-          (name.isNotEmpty && address.isEmpty)) {
+      // Load available parents for that type
+      if (_selectedParentType != null) {
+        final levels = await LevelController().getLevelsByType(
+          _selectedParentType!,
+        );
         setState(() {
-          _isLoading = false;
-          _message = '${entry.key} requires both name and address.';
-          _isSuccess = false;
+          _availableParents = levels;
+
+          //  Match parent level by ID
+          final matchedParent = levels.firstWhere(
+            (lvl) => lvl.levelId == parent.levelId,
+            orElse: () => parent,
+          );
+
+          _selectedParentLevel = matchedParent;
+          _selectedParentId = matchedParent.levelId;
         });
-        return;
-      }
-    }
-
-    setState(() {
-      _isLoading = true;
-      _message = null;
-    });
-
-    final loggedInUser = await userController.loadUserFromStorage();
-    if (loggedInUser == null || loggedInUser.userId == null) {
-      setState(() {
-        _isLoading = false;
-        _message = 'User ID not found. Please log in again.';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    final payload = <String, String>{};
-    if (hqName.isNotEmpty && hqAddress.isNotEmpty) {
-      payload['headquarterName'] = hqName;
-      payload['headquarterAddress'] = hqAddress;
-    }
-    if (regionName.isNotEmpty && regionAddress.isNotEmpty) {
-      payload['regionName'] = regionName;
-      payload['regionAddress'] = regionAddress;
-    }
-    if (parishName.isNotEmpty && parishAddress.isNotEmpty) {
-      payload['parishName'] = parishName;
-      payload['parishAddress'] = parishAddress;
-    }
-    if (chapelName.isNotEmpty && chapelAddress.isNotEmpty) {
-      payload['chapelName'] = chapelName;
-      payload['chapelAddress'] = chapelAddress;
-    }
-    if (cellName.isNotEmpty && cellAddress.isNotEmpty) {
-      payload['cellName'] = cellName;
-      payload['cellAddress'] = cellAddress;
-    }
-    if (payload.isEmpty) {
-      setState(() {
-        _isLoading = false;
-        _message = 'At least one level is required.';
-        _isSuccess = false;
-      });
-      return;
-    }
-    try {
-      final result = await LevelController().createAllLevels(
-        userId: loggedInUser.userId!,
-        payload: payload,
-      );
-
-      setState(() => _isLoading = false);
-
-      switch (result) {
-        case 'Status 1000':
-          setState(() {
-            _message = 'Levels created successfully';
-            _isSuccess = true;
-          });
-          _clearForm();
-          break;
-        case 'Status 3000':
-          if (hqName.isNotEmpty && hqAddress.isNotEmpty) {
-            _message = 'Headquarter already exists. Only one is allowed.';
-          } else {
-            _message =
-                'No headquarter found. Please provide headquarter details.';
-          }
-          _isSuccess = false;
-          break;
-        case 'Status 4000':
-          _message = 'User not found. Please log in again.';
-          _isSuccess = false;
-          break;
-        case 'Status 6000':
-          _message = 'Unauthorized role. Only SuperAdmins can create levels.';
-          _isSuccess = false;
-          break;
-        case 'Status 7000':
-          _message = 'Network error. Please check your connection.';
-          _isSuccess = false;
-          break;
-        case 'Status 9999':
-          _message = 'Server error. Please try again.';
-          _isSuccess = false;
-          break;
-        default:
-          _message = 'Unexpected error: $result';
-          _isSuccess = false;
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _message = 'Error submitting levels: $e';
-        _isSuccess = false;
-      });
-    } finally {
-      if (mounted && _isLoading) {
-        setState(() => _isLoading = false);
       }
     }
   }
+Future<void> _submitUpdateLevel(String levelId) async {
+  if (!_formKey.currentState!.validate()) return;
+
+  final levelName = _levelNameController.text.trim();
+  final levelAddress = _levelAddressController.text.trim();
+  final levelTypeString = _levelTypeController.text.trim();
+
+  String? missingField;
+  if (levelName.isEmpty) {
+    missingField = 'Level Name';
+  } else if (levelAddress.isEmpty) {
+    missingField = 'Level Address';
+  } else if (levelTypeString.isEmpty) {
+    missingField = 'Level Type';
+  }
+
+  if (missingField != null) {
+    setState(() {
+      _message = '$missingField is required.';
+      _isSuccess = false;
+    });
+    return;
+  }
+
+  if (_isActive == null) {
+    setState(() {
+      _message = 'Please select Status';
+      _isSuccess = false;
+    });
+    return;
+  }
+
+  setState(() {
+    _issaveOneLoading = true;
+    _message = null;
+  });
+
+  final loggedInUser = await userController.loadUserFromStorage();
+  if (loggedInUser == null || loggedInUser.userId == null) {
+    setState(() {
+      _issaveOneLoading = false;
+      _message = 'User ID not found. Please log in again.';
+      _isSuccess = false;
+    });
+    return;
+  }
+
+  try {
+    final levelTypeEnum = LevelType.values.firstWhere(
+      (type) => type.name == levelTypeString,
+      orElse: () => LevelType.CHAPEL,
+    );
+    final statusString = _isActive ?? 'Inactive';
+    final isActiveBool = statusString == 'Active';
+
+    final updatedLevel = Level(
+      levelId: levelId,
+      name: levelName,
+      address: levelAddress,
+      levelType: levelTypeEnum.name,
+      parent: _selectedParentLevel,
+      isActive: isActiveBool,
+    );
+
+    final result = await levelController.updateLevel(
+      levelId: levelId,
+      userId: loggedInUser.userId!,
+      updatedData: updatedLevel,
+    );
+
+    setState(() => _issaveOneLoading = false);
+
+    if (result == 'Status 1000') {
+      setState(() {
+        _message = 'Level updated successfully';
+        _isSuccess = true;
+      });
+    } else if (result.startsWith('Blocked by')) {
+      setState(() {
+        _message = result;
+        _isSuccess = false;
+      });
+    } else if (result == 'Invalid level data or parent mismatch.') {
+      setState(() {
+        _message = result;
+        _isSuccess = false;
+      });
+    } else if (result == 'User not found.') {
+      setState(() {
+        _message = result;
+        _isSuccess = false;
+      });
+    } else if (result == 'Unauthorized: only SuperAdmins can update levels.') {
+      setState(() {
+        _message = result;
+        _isSuccess = false;
+      });
+    } else if (result == 'Server error.') {
+      setState(() {
+        _message = result;
+        _isSuccess = false;
+      });
+    } else if (result == 'Network error.') {
+      setState(() {
+        _message = result;
+        _isSuccess = false;
+      });
+    } else {
+      setState(() {
+        _message = 'Unexpected error: $result';
+        _isSuccess = false;
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _issaveOneLoading = false;
+      _message = 'Error updating level: $e';
+      _isSuccess = false;
+    });
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +311,7 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add Level",
+                        "Update Level",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -490,97 +390,41 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Add all levels at once
-                    Text(
-                      "Add All Levels",
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: titlepageColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 16,
                       runSpacing: 16,
                       children: [
                         _buildTextField(
-                          'Headquarter Name',
-                          _headquarterNameController,
+                          'Level Name',
+                          _levelNameController,
+                          readOnly: false,
                         ),
-                        _buildTextField(
-                          'Headquarter Address',
-                          _headquarterAddressController,
-                        ),
-                        _buildTextField('Region Name', _regionNameController),
-                        _buildTextField(
-                          'Region Address',
-                          _regionAddressController,
-                        ),
-                        _buildTextField('Parish Name', _parishNameController),
-                        _buildTextField(
-                          'Parish Address',
-                          _parishAddressController,
-                        ),
-                        _buildTextField('Chapel Name', _chapelNameController),
-                        _buildTextField(
-                          'Chapel Address',
-                          _chapelAddressController,
-                        ),
-                        _buildTextField('Cell Name', _cellNameController),
-                        _buildTextField('Cell Address', _cellAddressController),
-                        const SizedBox(width: 50),
-
-                        /// Save All levels Button
-                        _isLoading
-                            ? const CircularProgressIndicator()
-                            : ElevatedButton(
-                                onPressed: _submit,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepPurple,
-                                  foregroundColor: Colors.white,
-
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 40,
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Save All",
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 26),
-
-                    Text(
-                      "Add One Level",
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: titlepageColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildTextField('Level Name', _levelNameController),
                         _buildTextField(
                           'Level Address',
                           _levelAddressController,
+                          readOnly: false,
                         ),
+                        _buildTextField(
+                          'Level Type',
+                          _levelTypeController,
+                          readOnly: true,
+                        ),
+
+                        _buildDropdown(
+                          'Status',
+                          ['Active', 'Inactive'],
+                          _isActive,
+                          (val) {
+                            setState(() {
+                              _isActive = val;
+                            });
+                          },
+                        ),
+
                         _buildParentTypeDropdown(
                           label: 'Parent Level Type',
                           selectedType: _selectedParentType,
+
                           onChanged: (type) async {
                             setState(() {
                               _selectedParentType = type;
@@ -591,6 +435,7 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
                               await _loadParentLevels(type);
                             }
                           },
+                          readOnly: true,
                         ),
 
                         _buildParentNameDropdown(
@@ -602,31 +447,34 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
                           }),
                         ),
                         const SizedBox(width: 50),
-
-                        /// Save Button
-                        _issaveOneLoading
-                            ? const CircularProgressIndicator()
-                            : ElevatedButton(
-                                onPressed: _submitOneLevel,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepPurple,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 40,
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                    // Save Button
+                    Center(
+                      child: _issaveOneLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: () =>
+                                  _submitUpdateLevel(widget.level.levelId!),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 16,
                                 ),
-                                child: Text(
-                                  "Save",
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                      ],
+                              child: Text(
+                                "Save",
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                     ),
                   ],
                 ),
@@ -638,11 +486,45 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildDropdown(
+    String label,
+    List<String> items,
+    String? selectedValue,
+    void Function(String?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<String>(
+        value: selectedValue,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: items.map((item) {
+          return DropdownMenuItem(value: item, child: Text(item));
+        }).toList(),
+        onChanged: onChanged,
+        validator: (value) =>
+            value == null || value.isEmpty ? 'Required' : null,
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    required bool readOnly,
+  }) {
     return SizedBox(
       width: 300,
       child: TextFormField(
         controller: controller,
+        readOnly: readOnly,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -660,13 +542,17 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
     required String label,
     required LevelType? selectedType,
     required void Function(LevelType?) onChanged,
+    required bool readOnly,
   }) {
     return SizedBox(
       width: 300,
+
       child: DropdownButtonFormField<LevelType>(
         value: selectedType,
+
         decoration: InputDecoration(
           labelText: label,
+
           labelStyle: GoogleFonts.inter(fontSize: 13),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           contentPadding: const EdgeInsets.symmetric(
@@ -680,7 +566,7 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
             child: Text(type.name),
           );
         }).toList(),
-        onChanged: onChanged,
+        onChanged: readOnly ? null : onChanged,
       ),
     );
   }

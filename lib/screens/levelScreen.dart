@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_churchcrm_system/Widgets/levelStatBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addLevelScreen.dart';
+import 'package:flutter_churchcrm_system/screens/updateLevelScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -29,7 +31,6 @@ class _LevelScreenState extends State<LevelScreen> {
   final _parentFilterController = TextEditingController();
   String _typeFilter = 'All Types';
   final LevelController _controller = LevelController();
-  final TextEditingController _searchController = TextEditingController();
 
   int _currentPage = 0;
   final int _pageSize = 5;
@@ -41,7 +42,7 @@ class _LevelScreenState extends State<LevelScreen> {
   void initState() {
     super.initState();
     _fetchLevels();
-    _searchController.addListener(_applySearchFilter);
+
     _fetchLevelCounts();
   }
 
@@ -160,15 +161,39 @@ class _LevelScreenState extends State<LevelScreen> {
     }
   }
 
-  Map<String, int> _levelCounts = {
-    'regions': 0,
-    'parishes': 0,
-    'chapels': 0,
-    'cells': 0,
+  Map<String, Map<String, int>> _levelCounts = {
+    'regions': {'total': 0, 'active': 0, 'inactive': 0},
+    'parishes': {'total': 0, 'active': 0, 'inactive': 0},
+    'chapels': {'total': 0, 'active': 0, 'inactive': 0},
+    'cells': {'total': 0, 'active': 0, 'inactive': 0},
   };
   Future<void> _fetchLevelCounts() async {
-    final counts = await _controller.getLevelCounts();
-    setState(() => _levelCounts = counts);
+    final rawCounts = await _controller.getLevelCounts();
+
+    setState(() {
+      _levelCounts = {
+        'regions': {
+          'total': rawCounts['regions']?['total'] ?? 0,
+          'active': rawCounts['regions']?['active'] ?? 0,
+          'inactive': rawCounts['regions']?['inactive'] ?? 0,
+        },
+        'parishes': {
+          'total': rawCounts['parishes']?['total'] ?? 0,
+          'active': rawCounts['parishes']?['active'] ?? 0,
+          'inactive': rawCounts['parishes']?['inactive'] ?? 0,
+        },
+        'chapels': {
+          'total': rawCounts['chapels']?['total'] ?? 0,
+          'active': rawCounts['chapels']?['active'] ?? 0,
+          'inactive': rawCounts['chapels']?['inactive'] ?? 0,
+        },
+        'cells': {
+          'total': rawCounts['cells']?['total'] ?? 0,
+          'active': rawCounts['cells']?['active'] ?? 0,
+          'inactive': rawCounts['cells']?['inactive'] ?? 0,
+        },
+      };
+    });
   }
 
   DataRow _buildDataRow(Level level) {
@@ -221,8 +246,26 @@ class _LevelScreenState extends State<LevelScreen> {
             children: [
               IconButton(
                 icon: Icon(Icons.edit, color: Colors.blue),
-                onPressed: () {
-                  // TODO: Navigate to UpdateLevelPage
+
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UpdateLevelScreen(
+                        loggedInUser: widget.loggedInUser,
+                        level: level,
+                      ),
+                    ),
+                  );
+
+                  if (result != null) {
+                    setState(() {
+                      _currentPage = 0;
+                    });
+
+                    await _fetchLevels();
+                    await _fetchLevelCounts();
+                  }
                 },
               ),
             ],
@@ -309,28 +352,39 @@ class _LevelScreenState extends State<LevelScreen> {
                         spacing: 16,
                         runSpacing: 16,
                         children: [
-                          StatBox(
+                          LevelStatBox(
                             iconPath: 'assets/icons/region.svg',
-                            label: 'Total Regions',
-                            count: _levelCounts['regions'].toString(),
+                            label: 'Regions',
+                            totalCount: _levelCounts['regions']!['total']!,
+                            activeCount: _levelCounts['regions']!['active']!,
+                            inactiveCount:
+                                _levelCounts['regions']!['inactive']!,
                             backgroundColor: statboxColor,
                           ),
-                          StatBox(
-                            label: 'Total Parishes',
-                            count: _levelCounts['parishes'].toString(),
+                          LevelStatBox(
                             iconPath: 'assets/icons/parish.svg',
+                            label: 'Parishes',
+                            totalCount: _levelCounts['parishes']!['total']!,
+                            activeCount: _levelCounts['parishes']!['active']!,
+                            inactiveCount:
+                                _levelCounts['parishes']!['inactive']!,
                             backgroundColor: statboxColor,
                           ),
-                          StatBox(
-                            label: 'Total Chapels',
-                            count: _levelCounts['chapels'].toString(),
+                          LevelStatBox(
                             iconPath: 'assets/icons/chapel.svg',
+                            label: 'Chapels',
+                            totalCount: _levelCounts['chapels']!['total']!,
+                            activeCount: _levelCounts['chapels']!['active']!,
+                            inactiveCount:
+                                _levelCounts['chapels']!['inactive']!,
                             backgroundColor: statboxColor,
                           ),
-                          StatBox(
-                            label: 'Total Cells',
-                            count: _levelCounts['cells'].toString(),
+                          LevelStatBox(
                             iconPath: 'assets/icons/cell.svg',
+                            label: 'Cells',
+                            totalCount: _levelCounts['cells']!['total']!,
+                            activeCount: _levelCounts['cells']!['active']!,
+                            inactiveCount: _levelCounts['cells']!['inactive']!,
                             backgroundColor: statboxColor,
                           ),
                         ],

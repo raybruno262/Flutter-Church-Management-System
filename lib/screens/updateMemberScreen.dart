@@ -86,12 +86,12 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
 
   void _populateExistingData() {
     // Populate text fields
-    _nameController.text = widget.member.names ?? '';
-    _emailController.text = widget.member.email ?? '';
-    _addressController.text = widget.member.address ?? '';
+    _nameController.text = widget.member.names;
+    _emailController.text = widget.member.email;
+    _addressController.text = widget.member.address;
 
     // Parse and populate phone number
-    final phone = widget.member.phone ?? '';
+    final phone = widget.member.phone;
     if (phone.isNotEmpty) {
       // Remove leading '+' if present
       final normalized = phone.startsWith('+') ? phone.substring(1) : phone;
