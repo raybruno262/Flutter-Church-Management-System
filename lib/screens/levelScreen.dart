@@ -723,6 +723,7 @@ class _LevelScreenState extends State<LevelScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),

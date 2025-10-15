@@ -42,7 +42,7 @@ class _UserScreenState extends State<UserScreen> {
   int _currentPage = 0;
   final int _pageSize = 5;
   List<UserModel> _users = [];
-  // ignore: unused_field
+  List<UserModel> _allUsers = [];
   List<UserModel> _filteredUsers = [];
 
   bool _isLoading = true;
@@ -56,42 +56,24 @@ class _UserScreenState extends State<UserScreen> {
   void initState() {
     super.initState();
     _fetchUsers();
-    _searchController.addListener(_applySearchFilter);
+
     _fetchUserStats();
   }
 
+  bool _isFiltering = false;
+
   Future<void> _fetchUsers() async {
     setState(() => _isLoading = true);
+    final users = await _controller.getPaginatedUsers(
+      page: _currentPage,
+      size: _pageSize,
+    );
+    setState(() {
+      _users = users;
+      _filteredUsers = _users;
 
-    try {
-      final loggedInUser = await _controller.loadUserFromStorage();
-
-      if (loggedInUser == null || loggedInUser.userId == null) {
-        setState(() {
-          _users = [];
-          _filteredUsers = [];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final users = await _controller.getPaginatedUsers(
-        page: _currentPage,
-        size: _pageSize,
-      );
-
-      setState(() {
-        _users = users.reversed.toList();
-        _filteredUsers = _users;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _users = [];
-        _filteredUsers = [];
-        _isLoading = false;
-      });
-    }
+      _isLoading = false;
+    });
   }
 
   void _applySearchFilter() {
@@ -136,19 +118,73 @@ class _UserScreenState extends State<UserScreen> {
     setState(() {});
   }
 
-  void _nextPage() {
-    _currentPage++;
-    _fetchUsers();
+  Future<void> _fetchAllUsers() async {
+    final allUsers = await _controller.getAllUsers();
+    setState(() {
+      _allUsers = allUsers;
+      _isLoading = false;
+    });
   }
 
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _currentPage--;
-      _fetchUsers();
+  // Detect filter changes and switch mode
+  void _onFilterChanged() async {
+    final isDefaultFilter =
+        _nameFilterController.text.isEmpty &&
+        _usernameFilterController.text.isEmpty &&
+        _emailFilterController.text.isEmpty &&
+        _phoneFilterController.text.isEmpty &&
+        _nationalIdFilterController.text.isEmpty &&
+        _levelFilterController.text.isEmpty &&
+        _statusFilter == 'All Status' &&
+        _roleFilter == 'All Roles';
+
+    if (isDefaultFilter) {
+      _isFiltering = false;
+      _currentPage = 0;
+      await _fetchUsers();
+    } else {
+      _isFiltering = true;
+      await _fetchAllUsers();
+      _applySearchFilter();
     }
   }
 
-  // ignore: unused_field
+  Future<void> _nextPage() async {
+    if (_isFiltering) {
+      if ((_currentPage + 1) * _pageSize < _filteredUsers.length) {
+        setState(() => _currentPage++);
+      }
+    } else {
+      _currentPage++;
+      await _fetchUsers();
+    }
+  }
+
+  Future<void> _previousPage() async {
+    if (_currentPage > 0) {
+      if (_isFiltering) {
+        setState(() => _currentPage--);
+      } else {
+        _currentPage--;
+        await _fetchUsers();
+      }
+    }
+  }
+
+  List<UserModel> get displayedUsers {
+    if (_isFiltering) {
+      if (_filteredUsers.isEmpty) return [];
+      final start = _currentPage * _pageSize;
+      final end = start + _pageSize;
+      return _filteredUsers.sublist(
+        start,
+        end > _filteredUsers.length ? _filteredUsers.length : end,
+      );
+    } else {
+      return _users;
+    }
+  }
+
   Map<String, int> _userStats = {'total': 0, 'active': 0, 'inactive': 0};
 
   Future<void> _fetchUserStats() async {
@@ -178,6 +214,399 @@ class _UserScreenState extends State<UserScreen> {
         _userStats = {'total': 0, 'active': 0, 'inactive': 0};
       });
     }
+  }
+
+  // User Profile Dialog Method
+  void _showUserProfileDialog(UserModel user) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 10,
+        child: SingleChildScrollView(
+          child: Container(
+            width: 600,
+            decoration: BoxDecoration(
+              color: backgroundcolor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with profile image
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade700, Colors.purple.shade700],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Large Profile Image
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child:
+                              user.profilePic != null &&
+                                  user.profilePic.isNotEmpty
+                              ? Image.memory(
+                                  user.profilePic,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildDefaultAvatar(100),
+                                )
+                              : _buildDefaultAvatar(100),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Name with beautiful typography
+                      Text(
+                        user.names,
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      // Role badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getRoleColor(user.role),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _formatRole(user.role),
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      // Status badge
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: user.isActive == true
+                              ? Colors.green.shade600
+                              : Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          user.isActive == true ? 'Active' : 'Inactive',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content section
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      // Personal Information Section
+                      _buildSectionHeader('Personal Information'),
+                      const SizedBox(height: 16),
+
+                      // Two-column layout for better space utilization
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _buildEnhancedDetailCard(
+                                  'Username',
+                                  user.username,
+                                  Icons.person_outline,
+                                  Colors.blue,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildEnhancedDetailCard(
+                                  'Email',
+                                  user.email,
+                                  Icons.email_outlined,
+                                  Colors.green,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildEnhancedDetailCard(
+                                  'Level Name',
+                                  user.level?.name ?? 'N/A',
+                                  Icons.leaderboard_outlined,
+                                  Colors.indigo,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _buildEnhancedDetailCard(
+                                  'National ID',
+                                  user.nationalId?.toString() ?? 'N/A',
+                                  Icons.badge_outlined,
+                                  Colors.orange,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildEnhancedDetailCard(
+                                  'Phone',
+                                  user.phone ?? 'N/A',
+                                  Icons.phone_outlined,
+                                  Colors.purple,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildEnhancedDetailCard(
+                                  'Level Address',
+                                  user.level?.address ?? 'N/A',
+                                  Icons.map,
+                                  Colors.indigo,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Account Information Section
+                      _buildSectionHeader('Account Information'),
+                      const SizedBox(height: 16),
+                      _buildEnhancedDetailCard(
+                        'Account Status',
+                        user.isActive == true ? 'Active' : 'Inactive',
+                        user.isActive == true
+                            ? Icons.check_circle_outline
+                            : Icons.remove_circle_outline,
+                        user.isActive == true ? Colors.green : Colors.red,
+                        fullWidth: true,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Actions section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Close',
+                            style: GoogleFonts.inter(
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method for default avatar
+  Widget _buildDefaultAvatar(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.grey.shade300,
+      ),
+      child: Icon(Icons.person, size: size * 0.5, color: Colors.grey.shade600),
+    );
+  }
+
+  // Helper method for section headers
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      children: [
+        Container(
+          height: 2,
+          width: 20,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade600, Colors.purple.shade600],
+            ),
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.orange.shade800,
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 2,
+            margin: const EdgeInsets.only(left: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, Colors.grey.shade300],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Enhanced detail card widget
+  Widget _buildEnhancedDetailCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color, {
+    bool fullWidth = false,
+  }) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to get role color
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'SuperAdmin':
+        return Colors.red.shade600;
+      case 'RegionAdmin':
+        return Colors.orange.shade600;
+      case 'ParishAdmin':
+        return Colors.amber.shade600;
+      case 'ChapelAdmin':
+        return Colors.blue.shade600;
+      case 'CellAdmin':
+        return Colors.green.shade600;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
+  String _formatRole(String role) {
+    if (role.isEmpty) return 'User';
+
+    // Insert space before each capital letter (except the first)
+    return role.replaceAllMapped(
+      RegExp(r'(?<!^)([A-Z])'),
+      (match) => ' ${match.group(0)}',
+    );
   }
 
   DataRow _buildDataRow(UserModel user) {
@@ -245,7 +674,7 @@ class _UserScreenState extends State<UserScreen> {
               IconButton(
                 icon: Icon(Icons.visibility, color: Colors.green),
                 onPressed: () {
-                  // TODO: Navigate to ViewProfilePage
+                  _showUserProfileDialog(user);
                 },
               ),
 
@@ -644,53 +1073,51 @@ class _UserScreenState extends State<UserScreen> {
                                           ),
                                         ],
 
-                                        rows: _filteredUsers.isEmpty
+                                        rows: displayedUsers.isEmpty
                                             ? [
                                                 DataRow(
                                                   cells: List.generate(
                                                     9,
-                                                    (index) => index == 0
-                                                        ? DataCell(
-                                                            Container(
-                                                              alignment: Alignment
-                                                                  .centerLeft,
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    vertical:
-                                                                        40,
-                                                                  ),
-                                                              child: Text(
-                                                                'No Users found',
-                                                                style: GoogleFonts.inter(
-                                                                  fontSize: 16,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color: Colors
-                                                                      .grey
-                                                                      .shade600,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          )
-                                                        : const DataCell(
-                                                            SizedBox(),
-                                                          ),
+                                                    (_) => const DataCell(
+                                                      SizedBox(),
+                                                    ),
                                                   ),
                                                 ),
                                               ]
-                                            : _filteredUsers
+                                            : displayedUsers
                                                   .map(_buildDataRow)
                                                   .toList(),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
+                                  if (displayedUsers.isEmpty)
+                                    Positioned(
+                                      left: 426,
+                                      top: 200,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.search_off,
+                                            color: Colors.red,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'No Users found',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  const SizedBox(height: 16),
                                   Align(
                                     alignment: Alignment.bottomLeft,
                                     child: Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.start,
+                                          MainAxisAlignment.center,
                                       children: [
                                         ElevatedButton.icon(
                                           onPressed: _previousPage,
@@ -745,12 +1172,21 @@ class _UserScreenState extends State<UserScreen> {
                         ),
                   const SizedBox(height: 20),
 
-                  Center(
-                    child: Text(
-                      '© 2025 All rights reserved. Church CRM System',
-                      style: GoogleFonts.inter(
-                        color: Colors.grey[600],
-                        fontSize: 13,
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Text(
+                          '© 2025 All rights reserved. Church CRM System',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -770,7 +1206,7 @@ class _UserScreenState extends State<UserScreen> {
       height: 40,
       child: TextField(
         controller: controller,
-        onChanged: (_) => _applySearchFilter(),
+        onChanged: (_) => _onFilterChanged(),
         style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
         decoration: InputDecoration(
           hintText: hint,
@@ -799,7 +1235,7 @@ class _UserScreenState extends State<UserScreen> {
         onChanged: (value) {
           setState(() {
             _statusFilter = value!;
-            _applySearchFilter();
+            _onFilterChanged();
           });
         },
         items: ['All Status', 'Active', 'Inactive'].map((status) {
@@ -845,7 +1281,7 @@ class _UserScreenState extends State<UserScreen> {
         onChanged: (value) {
           setState(() {
             _roleFilter = value!;
-            _applySearchFilter();
+            _onFilterChanged();
           });
         },
         items:
