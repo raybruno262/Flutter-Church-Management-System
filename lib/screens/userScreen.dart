@@ -4,6 +4,7 @@ import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
+import 'package:flutter_churchcrm_system/screens/addUserScreen.dart';
 
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -84,7 +85,7 @@ class _UserScreenState extends State<UserScreen> {
     final nationalIdQuery = _nationalIdFilterController.text.toLowerCase();
     final levelQuery = _levelFilterController.text.toLowerCase();
 
-    _filteredUsers = _users.where((user) {
+    final filtered = _allUsers.where((user) {
       final matchesName = user.names.toLowerCase().contains(nameQuery);
       final matchesUserName = user.username.toLowerCase().contains(
         usernameQuery,
@@ -98,7 +99,8 @@ class _UserScreenState extends State<UserScreen> {
       final matchesLevel =
           user.level.name?.toLowerCase().contains(levelQuery) ?? false;
 
-      final status = (user.isActive) ? 'Active' : 'Inactive';
+      final status = user.isActive == true ? 'Active' : 'Inactive';
+
       final matchesStatus =
           _statusFilter == 'All Status' || status == _statusFilter;
 
@@ -115,7 +117,10 @@ class _UserScreenState extends State<UserScreen> {
           matchesStatus;
     }).toList();
 
-    setState(() {});
+    setState(() {
+      _filteredUsers = filtered;
+      _currentPage = 0;
+    });
   }
 
   Future<void> _fetchAllUsers() async {
@@ -155,7 +160,7 @@ class _UserScreenState extends State<UserScreen> {
         setState(() => _currentPage++);
       }
     } else {
-      _currentPage++;
+      setState(() => _currentPage++);
       await _fetchUsers();
     }
   }
@@ -165,7 +170,7 @@ class _UserScreenState extends State<UserScreen> {
       if (_isFiltering) {
         setState(() => _currentPage--);
       } else {
-        _currentPage--;
+        setState(() => _currentPage--);
         await _fetchUsers();
       }
     }
@@ -634,9 +639,10 @@ class _UserScreenState extends State<UserScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: (user.isActive)
+              color: (user.isActive == true)
                   ? Colors.green.shade100
                   : Colors.red.shade100,
+
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -647,16 +653,19 @@ class _UserScreenState extends State<UserScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: (user.isActive) ? Colors.green : Colors.redAccent,
+                    color: user.isActive == true
+                        ? Colors.green
+                        : Colors.redAccent,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  (user.isActive) ? 'Active' : 'Inactive',
+                  (user.isActive == true) ? 'Active' : 'Inactive',
+
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: (user.isActive)
+                    color: user.isActive == true
                         ? Colors.green.shade800
                         : Colors.red.shade500,
                   ),
@@ -809,46 +818,46 @@ class _UserScreenState extends State<UserScreen> {
                           ),
                         ),
                         SizedBox(width: 280),
-                        // if (widget.loggedInUser.role == 'CellAdmin') ...[
-                        //   ElevatedButton.icon(
-                        //     onPressed: () async {
-                        //       final newMember = await Navigator.push(
-                        //         context,
-                        //         MaterialPageRoute(
-                        //           builder: (context) => AddUserScreen(
-                        //             loggedInUser: widget.loggedInUser,
-                        //           ),
-                        //         ),
-                        //       );
 
-                        //       if (newMember != null && newMember is Member) {
-                        //         setState(() {
-                        //           _members.insert(0, newMember);
-                        //           _filteredMembers = _members;
-                        //           _currentPage = 0;
-                        //         });
-                        //       }
-                        //     },
-                        //     icon: SvgPicture.asset("assets/icons/member.svg"),
-                        //     label: Text(
-                        //       'Add Member',
-                        //       style: GoogleFonts.inter(
-                        //         fontWeight: FontWeight.w600,
-                        //       ),
-                        //     ),
-                        //     style: ElevatedButton.styleFrom(
-                        //       backgroundColor: Colors.deepPurple,
-                        //       foregroundColor: Colors.white,
-                        //       padding: const EdgeInsets.symmetric(
-                        //         horizontal: 20,
-                        //         vertical: 15,
-                        //       ),
-                        //       shape: RoundedRectangleBorder(
-                        //         borderRadius: BorderRadius.circular(12),
-                        //       ),
-                        //     ),
-                        //   ),
-                        // ],
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddUserScreen(
+                                  loggedInUser: widget.loggedInUser,
+                                ),
+                              ),
+                            );
+
+                            if (result != null) {
+                              setState(() {
+                                _currentPage = 0;
+                              });
+
+                              await _fetchUsers();
+                              await _fetchUserStats();
+                            }
+                          },
+                          icon: SvgPicture.asset("assets/icons/user.svg"),
+                          label: Text(
+                            'Add User',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 15,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -923,201 +932,210 @@ class _UserScreenState extends State<UserScreen> {
                                     ),
                                   ),
 
-                                  ConstrainedBox(
-                                    constraints: BoxConstraints(minHeight: 300),
-                                    child: SizedBox(
-                                      width: 1700,
-
-                                      child: DataTable(
-                                        horizontalMargin: 12,
-                                        dataRowMaxHeight: 56,
-                                        headingRowHeight: 48,
-                                        dividerThickness: 1,
-                                        headingRowColor:
-                                            WidgetStateProperty.all(
-                                              Colors.deepPurple,
-                                            ),
-
-                                        dataRowColor: WidgetStateProperty.all(
-                                          backgroundcolor,
+                                  Stack(
+                                    children: [
+                                      ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minHeight: 300,
                                         ),
+                                        child: SizedBox(
+                                          width: 1700,
 
-                                        border: TableBorder(
-                                          horizontalInside: BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1,
-                                          ),
-                                          verticalInside: BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1,
-                                          ),
-                                          top: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          bottom: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          left: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          right: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                        columns: [
-                                          DataColumn(
-                                            label: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.person,
-                                                  size: 16,
-                                                  color: Colors.white,
+                                          child: DataTable(
+                                            horizontalMargin: 12,
+                                            dataRowMaxHeight: 56,
+                                            headingRowHeight: 48,
+                                            dividerThickness: 1,
+                                            headingRowColor:
+                                                WidgetStateProperty.all(
+                                                  Colors.deepPurple,
                                                 ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  'User',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
+
+                                            dataRowColor:
+                                                WidgetStateProperty.all(
+                                                  backgroundcolor,
                                                 ),
-                                              ],
-                                            ),
-                                          ),
 
-                                          DataColumn(
-                                            label: Text(
-                                              'Username',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
+                                            border: TableBorder(
+                                              horizontalInside: BorderSide(
+                                                color: Colors.grey.shade300,
+                                                width: 1,
+                                              ),
+                                              verticalInside: BorderSide(
+                                                color: Colors.grey.shade300,
+                                                width: 1,
+                                              ),
+                                              top: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              bottom: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              left: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              right: BorderSide(
+                                                color: Colors.grey.shade300,
                                               ),
                                             ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Email',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Phone',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'NationalID',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Row(
-                                              children: [
-                                                Text(
-                                                  'Role',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Status',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Level',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-
-                                          DataColumn(
-                                            label: Text(
-                                              'Actions',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-
-                                        rows: displayedUsers.isEmpty
-                                            ? [
-                                                DataRow(
-                                                  cells: List.generate(
-                                                    9,
-                                                    (_) => const DataCell(
-                                                      SizedBox(),
+                                            columns: [
+                                              DataColumn(
+                                                label: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.person,
+                                                      size: 16,
+                                                      color: Colors.white,
                                                     ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      'User',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                              DataColumn(
+                                                label: Text(
+                                                  'Username',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
                                                   ),
                                                 ),
-                                              ]
-                                            : displayedUsers
-                                                  .map(_buildDataRow)
-                                                  .toList(),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Email',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Phone',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'NationalID',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Row(
+                                                  children: [
+                                                    Text(
+                                                      'Role',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Status',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Level',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+
+                                              DataColumn(
+                                                label: Text(
+                                                  'Actions',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+
+                                            rows: displayedUsers.isEmpty
+                                                ? [
+                                                    DataRow(
+                                                      cells: List.generate(
+                                                        9,
+                                                        (_) => const DataCell(
+                                                          SizedBox(),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ]
+                                                : displayedUsers
+                                                      .map(_buildDataRow)
+                                                      .toList(),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (displayedUsers.isEmpty)
+                                        Positioned(
+                                          left: 426,
+                                          top: 120,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.search_off,
+                                                color: Colors.red,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'No Users found',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  if (displayedUsers.isEmpty)
-                                    Positioned(
-                                      left: 426,
-                                      top: 200,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.search_off,
-                                            color: Colors.red,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'No Users found',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                   const SizedBox(height: 16),
-                                  Align(
-                                    alignment: Alignment.bottomLeft,
+
+                                  Positioned(
+                                    left: 426,
+                                    top: 10,
                                     child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
                                       children: [
                                         ElevatedButton.icon(
                                           onPressed: _previousPage,

@@ -14,9 +14,10 @@ class UserController {
     UserModel user, {
     required Uint8List profilePic,
     required String fileExtension,
+    required String userId,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/createrUser');
+      final url = Uri.parse('$baseUrl/createrUser/$userId');
       final request = http.MultipartRequest('POST', url);
 
       // Attach user JSON
@@ -29,18 +30,20 @@ class UserController {
         ),
       );
 
-      // Attach image
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          profilePic,
-          filename: 'profile.$fileExtension',
-          contentType: MediaType('image', fileExtension.toLowerCase()),
-        ),
-      );
+      // Attach image if provided
+      if (profilePic.isNotEmpty) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            profilePic,
+            filename: 'profile.$fileExtension',
+            contentType: MediaType('image', fileExtension.toLowerCase()),
+          ),
+        );
+      }
 
-      final response = await request.send();
-      return await response.stream.bytesToString();
+      final streamedResponse = await request.send();
+      return await streamedResponse.stream.bytesToString();
     } catch (e) {
       return 'Status 7000';
     }
@@ -48,15 +51,15 @@ class UserController {
 
   Future<String> updateUser(
     String userId,
+    String loggedInUser,
     UserModel updatedUser, {
     required Uint8List profilePic,
     required String fileExtension,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/updateUser/$userId');
+      final url = Uri.parse('$baseUrl/updateUser/$userId/$loggedInUser');
       final request = http.MultipartRequest('PUT', url);
 
-      // Attach user JSON as a file part
       request.files.add(
         http.MultipartFile.fromString(
           'user',
@@ -66,19 +69,19 @@ class UserController {
         ),
       );
 
-      // Attach image file
+      if (profilePic.isNotEmpty) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            profilePic,
+            filename: 'profile.$fileExtension',
+            contentType: MediaType('image', fileExtension.toLowerCase()),
+          ),
+        );
+      }
 
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          profilePic,
-          filename: 'profile.$fileExtension',
-          contentType: MediaType('image', fileExtension.toLowerCase()),
-        ),
-      );
-
-      final response = await request.send();
-      return await response.stream.bytesToString();
+      final streamedResponse = await request.send();
+      return await streamedResponse.stream.bytesToString();
     } catch (e) {
       return 'Status 7000';
     }

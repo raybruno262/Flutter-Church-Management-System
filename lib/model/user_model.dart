@@ -12,7 +12,7 @@ class UserModel {
   final int nationalId;
   final String role;
   final Uint8List profilePic;
-  final bool isActive;
+  final bool? isActive;
   final Level level;
 
   UserModel({
@@ -25,7 +25,7 @@ class UserModel {
     required this.nationalId,
     required this.role,
     required this.profilePic,
-    required this.isActive,
+    this.isActive,
     required this.level,
   });
 

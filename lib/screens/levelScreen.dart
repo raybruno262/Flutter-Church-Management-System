@@ -131,7 +131,7 @@ class _LevelScreenState extends State<LevelScreen> {
         setState(() => _currentPage++);
       }
     } else {
-      _currentPage++;
+      setState(() => _currentPage++);
       await _fetchLevels();
     }
   }
@@ -141,7 +141,7 @@ class _LevelScreenState extends State<LevelScreen> {
       if (_isFiltering) {
         setState(() => _currentPage--);
       } else {
-        _currentPage--;
+        setState(() => _currentPage--);
         await _fetchLevels();
       }
     }
