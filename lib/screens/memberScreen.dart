@@ -311,7 +311,7 @@ class _MemberScreenState extends State<MemberScreen> {
                   _showMemberDetailsDialog(member);
                 },
               ),
-              if (widget.loggedInUser.role == 'CellAdmin' &&
+              if (widget.loggedInUser.role == 'CellAdmin' ||
                   widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
@@ -641,7 +641,8 @@ class _MemberScreenState extends State<MemberScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (widget.loggedInUser.role == 'CellAdmin')
+                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                            widget.loggedInUser.role == 'SuperAdmin')
                           Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(

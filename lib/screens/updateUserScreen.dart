@@ -27,16 +27,21 @@ import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mime/mime.dart';
 
-class AddUserScreen extends StatefulWidget {
+class UpdateUserScreen extends StatefulWidget {
   final UserModel loggedInUser;
+  final UserModel user;
 
-  const AddUserScreen({super.key, required this.loggedInUser});
+  const UpdateUserScreen({
+    super.key,
+    required this.loggedInUser,
+    required this.user,
+  });
 
   @override
-  State<AddUserScreen> createState() => _AddUserScreenState();
+  State<UpdateUserScreen> createState() => _UpdateUserScreenState();
 }
 
-class _AddUserScreenState extends State<AddUserScreen> {
+class _UpdateUserScreenState extends State<UpdateUserScreen> {
   final _formKey = GlobalKey<FormState>();
   final UserController userController = UserController();
   // Controllers
@@ -54,6 +59,12 @@ class _AddUserScreenState extends State<AddUserScreen> {
     RoleType.ChapelAdmin,
     RoleType.CellAdmin,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _populateExistingData();
+  }
 
   Level? _selectedLevel;
   // ignore: unused_field
@@ -115,6 +126,8 @@ class _AddUserScreenState extends State<AddUserScreen> {
     _isClearing = false;
   }
 
+  // ignore: unused_field
+  String? _isActive;
   // State variables
   bool _isLoading = false;
   Uint8List? _imageBytes;
@@ -134,6 +147,56 @@ class _AddUserScreenState extends State<AddUserScreen> {
     _nationalIdController.dispose();
 
     super.dispose();
+  }
+
+  void _populateExistingData() async {
+    _nameController.text = widget.user.names;
+    _usernameController.text = widget.user.username;
+    _emailController.text = widget.user.email;
+
+    // Parse and populate phone number
+    final phone = widget.user.phone;
+    if (phone.isNotEmpty) {
+      // Remove leading '+' if present
+      final normalized = phone.startsWith('+') ? phone.substring(1) : phone;
+
+      // Remove country code (assumed to be 250 for Rwanda)
+      if (normalized.startsWith('250')) {
+        _phoneController.text = normalized.substring(3); // Strip '250'
+      } else {
+        _phoneController.text = normalized; // Use full number if no match
+      }
+    }
+
+    _nationalIdController.text = widget.user.nationalId.toString();
+
+    // Role type
+    final roleMatch = _roleTypes.firstWhere(
+      (r) => r.name == widget.user.role,
+      orElse: () => RoleType.CellAdmin,
+    );
+    _selectedRoleType = roleMatch;
+
+    // Level type
+    final levelTypeMatch = LevelType.values.firstWhere(
+      (lt) => lt.name == widget.user.level.levelType,
+      orElse: () => LevelType.CELL,
+    );
+
+    final levels = await LevelController().getLevelsByType(levelTypeMatch);
+    final matchedLevel = levels.firstWhere(
+      (lvl) => lvl.levelId == widget.user.level.levelId,
+      orElse: () => widget.user.level,
+    );
+    setState(() {
+      _selectedLevelType = levelTypeMatch;
+      _availableLevels = levels;
+      _selectedLevel = matchedLevel;
+      _selectedLevelId = matchedLevel.levelId;
+    });
+
+    _imageBytes = widget.user.profilePic;
+    _isActive = widget.user.isActive == true ? 'Active' : 'Inactive';
   }
 
   Future<void> _pickImage() async {
@@ -161,16 +224,57 @@ class _AddUserScreenState extends State<AddUserScreen> {
       setState(() {
         _message = 'Please enter a valid email address';
         _isSuccess = false;
-        _isLoading = false;
       });
       return;
     }
 
-    if (widget.loggedInUser.userId == null) {
+    if (_imageBytes == null) {
+      setState(() {
+        _message = 'Please select a profile image';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_selectedRoleType == null) {
+      setState(() {
+        _message = 'Please select a Role Type';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_selectedLevelType == null) {
+      setState(() {
+        _message = 'Please select a Level Type';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_selectedLevel == null) {
+      setState(() {
+        _message = 'Please select a Level Name';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    int? nationalId;
+    try {
+      nationalId = int.parse(_nationalIdController.text.trim());
+    } catch (e) {
+      setState(() {
+        _message = 'Please enter a valid numeric National ID';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (widget.loggedInUser.userId == null || widget.user.userId == null) {
       setState(() {
         _message = 'User ID not found. Please log in again.';
         _isSuccess = false;
-        _isLoading = false;
       });
       return;
     }
@@ -181,108 +285,48 @@ class _AddUserScreenState extends State<AddUserScreen> {
         _message = null;
       });
     }
-    final password = _passwordController.text.trim();
-    final passwordRegex = RegExp(
-      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
-    );
 
-    if (!passwordRegex.hasMatch(password)) {
-      setState(() {
-        _message =
-            'Password is too weak. Use at least:'
-            ' 8 characters,'
-            ' 1 uppercase letter,'
-            ' 1 lowercase letter,'
-            ' 1 number,'
-            ' 1 special character (@\$!%*?&)';
-        _isSuccess = false;
-        _isLoading = false;
-      });
-      return;
-    }
-    final phoneCode = _selectedCountry != null
-        ? '+${_selectedCountry!.phoneCode}'
-        : '+250';
-    final fullPhone = '$phoneCode${_phoneController.text.trim()}';
-
-    int? nationalId;
     try {
-      nationalId = int.parse(_nationalIdController.text.trim());
-    } catch (e) {
-      setState(() {
-        _message = 'Please enter a valid numeric National ID';
-        _isSuccess = false;
-        _isLoading = false;
-      });
-      return;
-    }
-    if (_selectedRoleType == null) {
-      setState(() {
-        _message = 'Please select a Role Type';
-        _isSuccess = false;
-        _isLoading = false;
-      });
-      return;
-    }
+      final phoneCode = _selectedCountry != null
+          ? '+${_selectedCountry!.phoneCode}'
+          : '+250';
+      final fullPhone = '$phoneCode${_phoneController.text.trim()}';
 
-    if (_selectedLevelType == null) {
-      setState(() {
-        _message = 'Please select a Level Type';
-        _isSuccess = false;
-        _isLoading = false;
-      });
-      return;
-    }
-
-    if (_selectedLevel == null) {
-      setState(() {
-        _message = 'Please select a Level Name';
-        _isSuccess = false;
-        _isLoading = false;
-      });
-      return;
-    }
-
-    if (_imageBytes == null ||
-        _fileExtension == null ||
-        _fileExtension!.isEmpty) {
-      setState(() {
-        _message = 'Please select a profile image';
-        _isSuccess = false;
-        _isLoading = false;
-      });
-      return;
-    }
-    try {
-      final user = UserModel(
+      final updatedUser = UserModel(
         names: _nameController.text.trim(),
         username: _usernameController.text.trim(),
         email: email,
-        password: _passwordController.text.trim(),
+        password: widget.user.password,
         phone: fullPhone,
         nationalId: nationalId,
-        role: _selectedRoleType?.name ?? '',
-        profilePic: _imageBytes!,
+        role: _selectedRoleType!.name,
         level: _selectedLevel!,
+        isActive: _isActive == 'Active',
+        profilePic: _imageBytes!,
       );
 
-      final result = await userController.createUser(
-        user,
+      // Ensure file extension is set
+      if (_fileExtension == null || _fileExtension!.isEmpty) {
+        _fileExtension = 'jpg';
+      }
+
+      final result = await userController.updateUser(
+        widget.user.userId!,
+        widget.loggedInUser.userId!,
+        updatedUser,
         profilePic: _imageBytes!,
         fileExtension: _fileExtension!,
-        userId: widget.loggedInUser.userId!,
       );
-
-      if (mounted) setState(() => _isLoading = false);
 
       if (!mounted) return;
 
+      setState(() => _isLoading = false);
+
       if (result == 'Status 1000') {
         setState(() {
-          _message = 'User created successfully';
+          _message = 'User updated successfully';
           _isSuccess = true;
         });
-        _clearoneForm();
       } else if (result == 'Status 3000') {
         setState(() {
           _message = 'Level not found';
@@ -293,14 +337,9 @@ class _AddUserScreenState extends State<AddUserScreen> {
           _message = 'Logged-in user not found';
           _isSuccess = false;
         });
-      } else if (result == 'Status 5000') {
-        setState(() {
-          _message = 'Email already exists';
-          _isSuccess = false;
-        });
       } else if (result == 'Status 6000') {
         setState(() {
-          _message = 'Unauthorized: only SuperAdmins can create users';
+          _message = 'Unauthorized: only SuperAdmins can update users';
           _isSuccess = false;
         });
       } else if (result == 'Status 9999') {
@@ -318,7 +357,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _message = 'Error submitting user';
+          _message = 'Error updating user: $e';
           _isSuccess = false;
         });
       }
@@ -361,7 +400,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildAddUserScreen(),
+                child: _buildUpdateUserScreen(),
               ),
             ),
           ],
@@ -370,7 +409,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
     );
   }
 
-  Widget _buildAddUserScreen() {
+  Widget _buildUpdateUserScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -387,7 +426,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add User",
+                        "Update User",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -472,7 +511,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                         _buildTextField('Name', _nameController),
                         _buildTextField('Username', _usernameController),
                         _buildTextField('Email', _emailController),
-                        _buildTextField('Password', _passwordController),
+
                         _buildPhoneField(_phoneController),
                         _buildTextField('NationalID', _nationalIdController),
                         _buildRoleTypeDropdown(

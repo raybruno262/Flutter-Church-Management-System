@@ -131,127 +131,129 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
       }
     }
   }
-Future<void> _submitUpdateLevel(String levelId) async {
-  if (!_formKey.currentState!.validate()) return;
 
-  final levelName = _levelNameController.text.trim();
-  final levelAddress = _levelAddressController.text.trim();
-  final levelTypeString = _levelTypeController.text.trim();
+  Future<void> _submitUpdateLevel(String levelId) async {
+    if (!_formKey.currentState!.validate()) return;
 
-  String? missingField;
-  if (levelName.isEmpty) {
-    missingField = 'Level Name';
-  } else if (levelAddress.isEmpty) {
-    missingField = 'Level Address';
-  } else if (levelTypeString.isEmpty) {
-    missingField = 'Level Type';
-  }
+    final levelName = _levelNameController.text.trim();
+    final levelAddress = _levelAddressController.text.trim();
+    final levelTypeString = _levelTypeController.text.trim();
 
-  if (missingField != null) {
+    String? missingField;
+    if (levelName.isEmpty) {
+      missingField = 'Level Name';
+    } else if (levelAddress.isEmpty) {
+      missingField = 'Level Address';
+    } else if (levelTypeString.isEmpty) {
+      missingField = 'Level Type';
+    }
+
+    if (missingField != null) {
+      setState(() {
+        _message = '$missingField is required.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_isActive == null) {
+      setState(() {
+        _message = 'Please select Status';
+        _isSuccess = false;
+      });
+      return;
+    }
+
     setState(() {
-      _message = '$missingField is required.';
-      _isSuccess = false;
+      _issaveOneLoading = true;
+      _message = null;
     });
-    return;
-  }
 
-  if (_isActive == null) {
-    setState(() {
-      _message = 'Please select Status';
-      _isSuccess = false;
-    });
-    return;
-  }
-
-  setState(() {
-    _issaveOneLoading = true;
-    _message = null;
-  });
-
-  final loggedInUser = await userController.loadUserFromStorage();
-  if (loggedInUser == null || loggedInUser.userId == null) {
-    setState(() {
-      _issaveOneLoading = false;
-      _message = 'User ID not found. Please log in again.';
-      _isSuccess = false;
-    });
-    return;
-  }
-
-  try {
-    final levelTypeEnum = LevelType.values.firstWhere(
-      (type) => type.name == levelTypeString,
-      orElse: () => LevelType.CHAPEL,
-    );
-    final statusString = _isActive ?? 'Inactive';
-    final isActiveBool = statusString == 'Active';
-
-    final updatedLevel = Level(
-      levelId: levelId,
-      name: levelName,
-      address: levelAddress,
-      levelType: levelTypeEnum.name,
-      parent: _selectedParentLevel,
-      isActive: isActiveBool,
-    );
-
-    final result = await levelController.updateLevel(
-      levelId: levelId,
-      userId: loggedInUser.userId!,
-      updatedData: updatedLevel,
-    );
-
-    setState(() => _issaveOneLoading = false);
-
-    if (result == 'Status 1000') {
+    final loggedInUser = await userController.loadUserFromStorage();
+    if (loggedInUser == null || loggedInUser.userId == null) {
       setState(() {
-        _message = 'Level updated successfully';
-        _isSuccess = true;
-      });
-    } else if (result.startsWith('Blocked by')) {
-      setState(() {
-        _message = result;
+        _issaveOneLoading = false;
+        _message = 'User ID not found. Please log in again.';
         _isSuccess = false;
       });
-    } else if (result == 'Invalid level data or parent mismatch.') {
+      return;
+    }
+
+    try {
+      final levelTypeEnum = LevelType.values.firstWhere(
+        (type) => type.name == levelTypeString,
+        orElse: () => LevelType.CHAPEL,
+      );
+      final statusString = _isActive ?? 'Inactive';
+      final isActiveBool = statusString == 'Active';
+
+      final updatedLevel = Level(
+        levelId: levelId,
+        name: levelName,
+        address: levelAddress,
+        levelType: levelTypeEnum.name,
+        parent: _selectedParentLevel,
+        isActive: isActiveBool,
+      );
+
+      final result = await levelController.updateLevel(
+        levelId: levelId,
+        userId: loggedInUser.userId!,
+        updatedData: updatedLevel,
+      );
+
+      setState(() => _issaveOneLoading = false);
+
+      if (result == 'Status 1000') {
+        setState(() {
+          _message = 'Level updated successfully';
+          _isSuccess = true;
+        });
+      } else if (result.startsWith('Blocked by')) {
+        setState(() {
+          _message = result;
+          _isSuccess = false;
+        });
+      } else if (result == 'Invalid level data or parent mismatch.') {
+        setState(() {
+          _message = result;
+          _isSuccess = false;
+        });
+      } else if (result == 'User not found.') {
+        setState(() {
+          _message = result;
+          _isSuccess = false;
+        });
+      } else if (result ==
+          'Unauthorized: only SuperAdmins can update levels.') {
+        setState(() {
+          _message = result;
+          _isSuccess = false;
+        });
+      } else if (result == 'Server error.') {
+        setState(() {
+          _message = result;
+          _isSuccess = false;
+        });
+      } else if (result == 'Network error.') {
+        setState(() {
+          _message = result;
+          _isSuccess = false;
+        });
+      } else {
+        setState(() {
+          _message = 'Unexpected error: $result';
+          _isSuccess = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        _message = result;
-        _isSuccess = false;
-      });
-    } else if (result == 'User not found.') {
-      setState(() {
-        _message = result;
-        _isSuccess = false;
-      });
-    } else if (result == 'Unauthorized: only SuperAdmins can update levels.') {
-      setState(() {
-        _message = result;
-        _isSuccess = false;
-      });
-    } else if (result == 'Server error.') {
-      setState(() {
-        _message = result;
-        _isSuccess = false;
-      });
-    } else if (result == 'Network error.') {
-      setState(() {
-        _message = result;
-        _isSuccess = false;
-      });
-    } else {
-      setState(() {
-        _message = 'Unexpected error: $result';
+        _issaveOneLoading = false;
+        _message = 'Error updating level: $e';
         _isSuccess = false;
       });
     }
-  } catch (e) {
-    setState(() {
-      _issaveOneLoading = false;
-      _message = 'Error updating level: $e';
-      _isSuccess = false;
-    });
   }
-}
 
   @override
   Widget build(BuildContext context) {

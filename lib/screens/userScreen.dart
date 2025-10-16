@@ -5,6 +5,7 @@ import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addUserScreen.dart';
+import 'package:flutter_churchcrm_system/screens/updateUserScreen.dart';
 
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -443,6 +444,53 @@ class _UserScreenState extends State<UserScreen> {
                     children: [
                       Container(
                         decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue.shade600,
+                              Colors.blue.shade800,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextButton.icon(
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          label: Text(
+                            'Update Profile',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => UpdateUserScreen(
+                                  loggedInUser: widget.loggedInUser,
+                                  user: user,
+                                ),
+                              ),
+                            );
+
+                            if (result != null) {
+                              setState(() {
+                                _currentPage = 0;
+                              });
+
+                              _fetchUsers();
+
+                              _fetchUserStats();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        decoration: BoxDecoration(
                           border: Border.all(color: Colors.grey.shade400),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -689,8 +737,26 @@ class _UserScreenState extends State<UserScreen> {
 
               IconButton(
                 icon: Icon(Icons.edit, color: Colors.blue),
-                onPressed: () {
-                  // TODO: Navigate to UpdateMemberPage
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UpdateUserScreen(
+                        loggedInUser: widget.loggedInUser,
+                        user: user,
+                      ),
+                    ),
+                  );
+
+                  if (result != null) {
+                    setState(() {
+                      _currentPage = 0;
+                    });
+
+                    _fetchUsers();
+
+                    _fetchUserStats();
+                  }
                 },
               ),
             ],

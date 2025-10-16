@@ -60,7 +60,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: SafeArea(
           child: Center(
             child: Container(
-              height: 473,
+              height: 514,
               width: isTablet
                   ? 750
                   : isMobile
@@ -243,6 +243,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               if (email.isEmpty || newPassword.isEmpty) {
                 setState(() {
                   message = 'Please enter both Email and New Password';
+                  isSuccess = false;
+                });
+                return;
+              }
+              final passwordRegex = RegExp(
+                r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
+              );
+
+              if (!passwordRegex.hasMatch(newPassword)) {
+                setState(() {
+                  message =
+                      'Password is too weak. Use at least:'
+                      ' 8 characters,'
+                      ' 1 uppercase letter,'
+                      ' 1 lowercase letter,'
+                      ' 1 number,'
+                      ' 1 special character (@\$!%*?&)';
                   isSuccess = false;
                 });
                 return;
