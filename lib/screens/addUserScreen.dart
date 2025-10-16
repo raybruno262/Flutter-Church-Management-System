@@ -56,9 +56,11 @@ class _AddUserScreenState extends State<AddUserScreen> {
   ];
 
   Level? _selectedLevel;
+  // ignore: unused_field
   String? _selectedLevelId;
-
+  Country? _selectedCountry;
   LevelType? _selectedLevelType;
+  // ignore: unused_field
   List<LevelType> _levelTypes = [
     LevelType.HEADQUARTER,
     LevelType.REGION,
@@ -83,20 +85,34 @@ class _AddUserScreenState extends State<AddUserScreen> {
     }
   }
 
+  bool _isClearing = false;
   void _clearoneForm() {
-    _nameController.clear();
-    _usernameController.clear();
-    _emailController.clear();
-    _passwordController.clear();
-    _phoneController.clear();
-    _nationalIdController.clear();
-    _selectedRoleType = null;
-    _selectedLevelId = null;
-    _selectedLevel = null;
-    _selectedLevelType = null;
+    _isClearing = true;
+    setState(() {
+      // Reset form validation
+      _formKey.currentState?.reset();
+      // Clear text fields
+      _nameController.clear();
+      _usernameController.clear();
+      _emailController.clear();
+      _passwordController.clear();
+      _phoneController.clear();
+      _nationalIdController.clear();
 
-    // Reset form validation
-    _formKey.currentState?.reset();
+      // Clear dropdown selections
+      _selectedRoleType = null;
+      _selectedLevelType = null;
+      _selectedLevel = null;
+      _selectedLevelId = null;
+      _selectedCountry = null;
+      _availableLevels = [];
+
+      // Clear image
+      _imageBytes = null;
+      _fileExtension = null;
+    });
+
+    _isClearing = false;
   }
 
   // State variables
@@ -145,16 +161,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
       setState(() {
         _message = 'Please enter a valid email address';
         _isSuccess = false;
-      });
-      return;
-    }
-
-    if (_imageBytes == null ||
-        _fileExtension == null ||
-        _fileExtension!.isEmpty) {
-      setState(() {
-        _message = 'Please select a profile image';
-        _isSuccess = false;
+        _isLoading = false;
       });
       return;
     }
@@ -163,6 +170,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
       setState(() {
         _message = 'User ID not found. Please log in again.';
         _isSuccess = false;
+        _isLoading = false;
       });
       return;
     }
@@ -173,15 +181,86 @@ class _AddUserScreenState extends State<AddUserScreen> {
         _message = null;
       });
     }
+    final password = _passwordController.text.trim();
+    final passwordRegex = RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
+    );
 
+    if (!passwordRegex.hasMatch(password)) {
+      setState(() {
+        _message =
+            'Password is too weak. Use at least:'
+            ' 8 characters,'
+            ' 1 uppercase letter,'
+            ' 1 lowercase letter,'
+            ' 1 number,'
+            ' 1 special character (@\$!%*?&)';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+    final phoneCode = _selectedCountry != null
+        ? '+${_selectedCountry!.phoneCode}'
+        : '+250';
+    final fullPhone = '$phoneCode${_phoneController.text.trim()}';
+
+    int? nationalId;
+    try {
+      nationalId = int.parse(_nationalIdController.text.trim());
+    } catch (e) {
+      setState(() {
+        _message = 'Please enter a valid numeric National ID';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+    if (_selectedRoleType == null) {
+      setState(() {
+        _message = 'Please select a Role Type';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_selectedLevelType == null) {
+      setState(() {
+        _message = 'Please select a Level Type';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_selectedLevel == null) {
+      setState(() {
+        _message = 'Please select a Level Name';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_imageBytes == null ||
+        _fileExtension == null ||
+        _fileExtension!.isEmpty) {
+      setState(() {
+        _message = 'Please select a profile image';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
     try {
       final user = UserModel(
         names: _nameController.text.trim(),
         username: _usernameController.text.trim(),
         email: email,
         password: _passwordController.text.trim(),
-        phone: _phoneController.text.trim(),
-        nationalId: int.parse(_nationalIdController.text.trim()),
+        phone: fullPhone,
+        nationalId: nationalId,
         role: _selectedRoleType?.name ?? '',
         profilePic: _imageBytes!,
         level: _selectedLevel!,
@@ -391,23 +470,54 @@ class _AddUserScreenState extends State<AddUserScreen> {
                       runSpacing: 16,
                       children: [
                         _buildTextField('Name', _nameController),
-                        _buildTextField('Username', _nameController),
+                        _buildTextField('Username', _usernameController),
                         _buildTextField('Email', _emailController),
                         _buildTextField('Password', _passwordController),
-                        _buildTextField('Phone', _phoneController),
+                        _buildPhoneField(_phoneController),
                         _buildTextField('NationalID', _nationalIdController),
                         _buildRoleTypeDropdown(
                           label: 'Role Type',
-                          selectedType: _selectedRoleType,
+                          selectedroleType: _selectedRoleType,
+                          readOnly: false,
                           onChanged: (type) async {
                             setState(() {
                               _selectedRoleType = type;
+                              _selectedLevelType = _mapRoleToLevelType(type);
+                              _selectedLevel = null;
+                              _availableLevels = [];
                             });
+
+                            if (_selectedLevelType != null) {
+                              await _loadLevels(_selectedLevelType!);
+                              if (mounted && _availableLevels.isNotEmpty) {
+                                setState(() {
+                                  _selectedLevel = _availableLevels.first;
+                                  _selectedLevelId = _selectedLevel?.levelId;
+                                });
+                              }
+                            }
                           },
                         ),
+
+                        _buildLevelTypeDropdown(
+                          label: ' Level Type',
+                          selectedType: _selectedLevelType,
+                          readOnly: true,
+                          onChanged: (type) async {
+                            setState(() {
+                              _selectedLevelType = type;
+                              _selectedLevel = null;
+                              _availableLevels = [];
+                            });
+                            if (type != null) {
+                              await _loadLevels(type);
+                            }
+                          },
+                        ),
+
                         _buildLevelNameDropdown(
                           label: 'Level Name',
-                          selectedLevel: _selectedLevel,
+                          selectednameLevel: _selectedLevel,
                           onChanged: (level) => setState(() {
                             _selectedLevel = level;
                             _selectedLevelId = level?.levelId;
@@ -426,7 +536,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 10),
 
                     /// Save Button
                     Center(
@@ -464,6 +574,36 @@ class _AddUserScreenState extends State<AddUserScreen> {
     );
   }
 
+  Widget _buildLevelTypeDropdown({
+    required String label,
+    required LevelType? selectedType,
+    required void Function(LevelType?) onChanged,
+    required bool readOnly,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<LevelType>(
+        value: selectedType,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: LevelType.values.map((type) {
+          return DropdownMenuItem<LevelType>(
+            value: type,
+            child: Text(type.name),
+          );
+        }).toList(),
+        onChanged: readOnly ? null : onChanged,
+      ),
+    );
+  }
+
   Widget _buildTextField(String label, TextEditingController controller) {
     return SizedBox(
       width: 300,
@@ -479,6 +619,171 @@ class _AddUserScreenState extends State<AddUserScreen> {
           ),
         ),
         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+      ),
+    );
+  }
+
+  LevelType? _mapRoleToLevelType(RoleType? role) {
+    switch (role) {
+      case RoleType.SuperAdmin:
+        return LevelType.HEADQUARTER;
+      case RoleType.RegionAdmin:
+        return LevelType.REGION;
+      case RoleType.ParishAdmin:
+        return LevelType.PARISH;
+      case RoleType.ChapelAdmin:
+        return LevelType.CHAPEL;
+      case RoleType.CellAdmin:
+        return LevelType.CELL;
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildRoleTypeDropdown({
+    required String label,
+    required RoleType? selectedroleType,
+    required void Function(RoleType?) onChanged,
+    required bool readOnly,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<RoleType>(
+        value: selectedroleType,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: _roleTypes.map((type) {
+          return DropdownMenuItem<RoleType>(
+            value: type,
+            child: Text(type.name),
+          );
+        }).toList(),
+        onChanged: readOnly
+            ? null
+            : (RoleType? selectedRole) async {
+                if (_isClearing) return;
+                setState(() {
+                  _selectedRoleType = selectedRole;
+                  _selectedLevelType = _mapRoleToLevelType(selectedRole);
+                  _selectedLevel = null;
+                  _availableLevels = [];
+                });
+
+                if (_selectedLevelType != null) {
+                  final levels = await LevelController().getLevelsByType(
+                    _selectedLevelType!,
+                  );
+                  if (mounted) {
+                    setState(() {
+                      _availableLevels = levels;
+                      if (levels.isNotEmpty) {
+                        _selectedLevel = levels.first;
+                        _selectedLevelId = levels.first.levelId;
+                      }
+                    });
+                  }
+                }
+
+                onChanged(selectedRole);
+              },
+      ),
+    );
+  }
+
+  Widget _buildPhoneField(TextEditingController controller) {
+    return SizedBox(
+      width: 300,
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        style: GoogleFonts.inter(fontSize: 16),
+        decoration: InputDecoration(
+          labelText: 'Phone Number',
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          prefixIcon: InkWell(
+            onTap: () {
+              showCountryPicker(
+                context: context,
+                showPhoneCode: true,
+                countryListTheme: CountryListThemeData(
+                  backgroundColor: backgroundcolor,
+                ),
+                onSelect: (Country country) {
+                  setState(() {
+                    _selectedCountry = country;
+                  });
+                },
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              alignment: Alignment.centerLeft,
+              width: 80,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _selectedCountry?.flagEmoji ?? '🇷🇼',
+                      style: GoogleFonts.inter(fontSize: 20),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _selectedCountry != null
+                          ? '+${_selectedCountry!.phoneCode}'
+                          : '+250',
+                      style: GoogleFonts.inter(fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+      ),
+    );
+  }
+
+  Widget _buildLevelNameDropdown({
+    required String label,
+    required Level? selectednameLevel,
+    required void Function(Level?) onChanged,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<Level>(
+        value: selectednameLevel,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: _availableLevels.map((level) {
+          return DropdownMenuItem<Level>(
+            value: level,
+            child: Text(level.name ?? 'Unknown'),
+          );
+        }).toList(),
+        onChanged: onChanged,
       ),
     );
   }
@@ -523,64 +828,6 @@ class _AddUserScreenState extends State<AddUserScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildRoleTypeDropdown({
-    required String label,
-    required RoleType? selectedType,
-    required void Function(RoleType?) onChanged,
-  }) {
-    return SizedBox(
-      width: 300,
-      child: DropdownButtonFormField<RoleType>(
-        value: selectedType,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.inter(fontSize: 13),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-        ),
-        items: _roleTypes.map((type) {
-          return DropdownMenuItem<RoleType>(
-            value: type,
-            child: Text(type.name),
-          );
-        }).toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildLevelNameDropdown({
-    required String label,
-    required Level? selectedLevel,
-    required void Function(Level?) onChanged,
-  }) {
-    return SizedBox(
-      width: 300,
-      child: DropdownButtonFormField<Level>(
-        value: selectedLevel,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.inter(fontSize: 13),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-        ),
-        items: _availableLevels.map((level) {
-          return DropdownMenuItem<Level>(
-            value: level,
-            child: Text(level.name ?? 'Unknown'),
-          );
-        }).toList(),
-        onChanged: onChanged,
       ),
     );
   }
