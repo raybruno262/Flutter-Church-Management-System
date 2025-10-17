@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'department_model.dart';
 import 'level_model.dart';
 import 'baptismInformation_model.dart';
@@ -20,7 +19,6 @@ class Member {
   final Uint8List? profilePic;
   final Department? department;
   final Level? level;
-
   Member({
     this.memberId,
     required this.names,
@@ -37,7 +35,6 @@ class Member {
     this.department,
     this.level,
   });
-
   factory Member.fromJson(Map<String, dynamic> json) {
     return Member(
       memberId: json['memberId'] ?? '',
@@ -62,9 +59,7 @@ class Member {
       level: json['level'] != null ? Level.fromJson(json['level']) : null,
     );
   }
-
   get tags => null;
-
   Map<String, dynamic> toJson() {
     return {
       'memberId': memberId,
