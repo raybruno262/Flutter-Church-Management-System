@@ -497,7 +497,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       ),
 
                     ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, 'refresh'),
                       icon: const Icon(Icons.arrow_back),
                       label: Text(
                         'Back',
@@ -740,6 +740,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           );
         }).toList(),
         onChanged: onChanged,
+
+        menuMaxHeight: 250,
       ),
     );
   }
@@ -769,6 +771,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           );
         }).toList(),
         onChanged: onChanged,
+
+        menuMaxHeight: 250,
       ),
     );
   }
@@ -892,6 +896,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         },
         validator: (value) =>
             value == null || value == 'none' ? 'Required' : null,
+
+        menuMaxHeight: 250,
       ),
     );
   }

@@ -48,6 +48,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
   final _otherChurchAddressController = TextEditingController();
   final _phoneController = TextEditingController();
   final _dobController = TextEditingController();
+  final _membershipDateController = TextEditingController();
 
   // Data lists
   List<Department> _departments = [];
@@ -63,6 +64,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
   Uint8List? _imageBytes;
   String? _fileExtension;
   String? _maritalStatus;
+  String? _memberStatus;
   String? _gender;
   DateTime? _dob;
 
@@ -89,6 +91,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
     _nameController.text = widget.member.names;
     _emailController.text = widget.member.email;
     _addressController.text = widget.member.address;
+    _membershipDateController.text = widget.member.membershipDate!;
 
     // Parse and populate phone number
     final phone = widget.member.phone;
@@ -105,6 +108,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
     }
 
     // Populate gender and marital status
+    _memberStatus = widget.member.status;
     _gender = widget.member.gender;
     _maritalStatus = widget.member.maritalStatus;
 
@@ -258,7 +262,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
     }
 
     // Validate same religion
-    if (_sameReligion == null) {
+    if (_sameReligion == null && _baptismStatus == "Baptized") {
       setState(() {
         _message = 'Please select same religion option';
         _isSuccess = false;
@@ -274,9 +278,8 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
       });
       return;
     }
-
     // Validate other church fields when same religion is No
-    if (_sameReligion == 'No') {
+    if (_sameReligion == 'No' && _baptismStatus == "Baptized") {
       if (_otherChurchNameController.text.trim().isEmpty) {
         setState(() {
           _message = 'Please enter other church name';
@@ -292,7 +295,6 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
         return;
       }
     }
-
     // Validate gender
     if (_gender == null) {
       setState(() {
@@ -311,6 +313,12 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
       return;
     }
 
+    if (_memberStatus == null) {
+      setState(() {
+        _message = 'Please select Member Status';
+        _isSuccess = false;
+      });
+    }
     // Start loading only after all validations pass
     if (mounted) {
       setState(() {
@@ -359,15 +367,15 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
         address: _addressController.text.trim(),
         phone: fullPhone,
         maritalStatus: _maritalStatus ?? '',
+        status: _memberStatus ?? '',
         gender: _gender ?? '',
-        status: widget.member.status, // Keep existing status
+
         dateOfBirth: _dob != null
             ? '${_dob!.month.toString().padLeft(2, '0')}/'
                   '${_dob!.day.toString().padLeft(2, '0')}/'
                   '${_dob!.year}'
             : widget.member.dateOfBirth,
-        membershipDate:
-            widget.member.membershipDate, // Keep existing membership date
+        membershipDate: widget.member.membershipDate,
         level: widget.loggedInUser.level,
         department: _selectedDepartment,
         baptismInformation: baptismInfo,
@@ -558,7 +566,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                       ),
 
                     ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, 'refresh'),
                       icon: const Icon(Icons.arrow_back),
                       label: Text(
                         'Back',
@@ -600,6 +608,12 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                           _maritalStatus,
                           (val) => setState(() => _maritalStatus = val),
                         ),
+                        _buildDropdown(
+                          'Member Status',
+                          ['Active', 'Inactive', 'Transferred'],
+                          _memberStatus,
+                          (val) => setState(() => _memberStatus = val),
+                        ),
                         _buildDatePickerField(
                           'Date of Birth (MM/dd/yyyy)',
                           _dobController,
@@ -617,6 +631,12 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                         ),
                         _buildTextField('Address', _addressController),
                         _buildPhoneField(_phoneController),
+                        _buildMembershipdateTextField(
+                          'Membership Date',
+                          _membershipDateController,
+                          readOnly: true,
+                        ),
+
                         _buildFilePicker(
                           previewBytes: _imageBytes,
                           onPicked: (bytes, ext) {
@@ -758,6 +778,30 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
       width: 300,
       child: TextFormField(
         controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+      ),
+    );
+  }
+
+  Widget _buildMembershipdateTextField(
+    String label,
+    TextEditingController controller, {
+    required bool readOnly,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: TextFormField(
+        controller: controller,
+        readOnly: readOnly,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-
+import 'package:flutter_churchcrm_system/controller/department_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+import 'package:flutter_churchcrm_system/model/department_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addMemberScreen.dart';
 import 'package:flutter_churchcrm_system/screens/updateMemberScreen.dart';
@@ -23,139 +24,136 @@ class MemberScreen extends StatefulWidget {
 }
 
 class _MemberScreenState extends State<MemberScreen> {
-  String _statusFilter = 'All'; // Options: All, Active, Inactive, Transferred
+  String _statusFilter =
+      'All Status'; // Options: All, Active, Inactive, Transferred
   final _nameFilterController = TextEditingController();
   final _phoneFilterController = TextEditingController();
   final _emailFilterController = TextEditingController();
-  final _genderFilterController = TextEditingController();
-  final _maritalFilterController = TextEditingController();
+  String _genderFilter = 'All Gender';
+  String _maritalFilter = 'All Marital Status';
+  String _baptismFilter = 'All Baptism Status';
+
   final _addressFilterController = TextEditingController();
   final _dobFilterController = TextEditingController();
   final _membershipFilterController = TextEditingController();
   final _departmentFilterController = TextEditingController();
   final _levelFilterController = TextEditingController();
-  final _parentFilterController = TextEditingController();
-  final _baptizedFilterController = TextEditingController();
+
   final ScrollController _horizontalScrollController = ScrollController();
 
   final MemberController _controller = MemberController();
-  final TextEditingController _searchController = TextEditingController();
   final UserController _usercontroller = UserController();
   int _currentPage = 0;
-  final int _pageSize = 5;
+  int _pageSize = 5;
+  final List<int> _pageSizeOptions = [5, 10, 15, 20];
   List<Member> _members = [];
+  List<Member> _allMembers = [];
   List<Member> _filteredMembers = [];
-
+  List<Department> _departments = [];
+  final DepartmentController _departmentController = DepartmentController();
+  Department? _selectedDepartment;
   bool _isLoading = true;
 
-  @override
-  void dispose() {
-    _horizontalScrollController.dispose();
-    _nameFilterController.dispose();
-    _phoneFilterController.dispose();
-    _emailFilterController.dispose();
-    _genderFilterController.dispose();
-    _maritalFilterController.dispose();
-    _addressFilterController.dispose();
-    _dobFilterController.dispose();
-    _membershipFilterController.dispose();
-    _departmentFilterController.dispose();
-    _levelFilterController.dispose();
-    _parentFilterController.dispose();
-    _baptizedFilterController.dispose();
-    _searchController.dispose();
-    super.dispose();
+  bool _isFiltering = false;
+  Future<void> _loadDepartments() async {
+    final departments = await _departmentController.getAllDepartments();
+    if (mounted) {
+      setState(() => _departments = departments);
+    }
   }
 
   @override
   void initState() {
     super.initState();
     _fetchMembers();
-    _searchController.addListener(_applySearchFilter);
+    _fetchAllMembers();
     _fetchMemberStats();
+    _loadDepartments();
   }
 
   Future<void> _fetchMembers() async {
     setState(() => _isLoading = true);
-
     try {
-      final loggedInUser = await _usercontroller.loadUserFromStorage();
-
-      if (loggedInUser == null || loggedInUser.userId == null) {
-        setState(() {
-          _members = [];
-          _filteredMembers = [];
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final members = await _controller.getScopedPaginatedMembers(
-        userId: loggedInUser.userId!,
+      final members = await _controller.getPaginatedMembers(
         page: _currentPage,
         size: _pageSize,
       );
-
       setState(() {
-        _members = members.reversed.toList();
+        _members = members;
         _filteredMembers = _members;
         _isLoading = false;
       });
     } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchAllMembers() async {
+    try {
+      final allMembers = await _controller.getAllMembers();
       setState(() {
-        _members = [];
-        _filteredMembers = [];
-        _isLoading = false;
+        _allMembers = allMembers;
       });
+    } catch (e) {
+      // Handle error
     }
   }
 
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
-    final phoneQuery = _phoneFilterController.text.toLowerCase();
-    final emailQuery = _emailFilterController.text.toLowerCase();
-    final genderQuery = _genderFilterController.text.toLowerCase();
-    final maritalQuery = _maritalFilterController.text.toLowerCase();
-    final addressQuery = _addressFilterController.text.toLowerCase();
     final dobQuery = _dobFilterController.text;
-    final membershipQuery = _membershipFilterController.text;
-    final deptQuery = _departmentFilterController.text.toLowerCase();
-    final levelQuery = _levelFilterController.text.toLowerCase();
-    final parentQuery = _parentFilterController.text.toLowerCase();
-    final baptizedQuery = _baptizedFilterController.text.toLowerCase();
+    final phoneQuery = _phoneFilterController.text.toLowerCase();
 
-    _filteredMembers = _members.where((member) {
+    final emailQuery = _emailFilterController.text.toLowerCase();
+    final addressQuery = _addressFilterController.text.toLowerCase();
+    final membershipQuery = _membershipFilterController.text;
+
+    final levelQuery = _levelFilterController.text.toLowerCase();
+
+    final filtered = _allMembers.where((member) {
       final matchesName = member.names.toLowerCase().contains(nameQuery);
       final matchesPhone = member.phone.toLowerCase().contains(phoneQuery);
       final matchesEmail = member.email.toLowerCase().contains(emailQuery);
-      final matchesGender = member.gender.toLowerCase().contains(genderQuery);
-      final matchesMarital = member.maritalStatus.toLowerCase().contains(
-        maritalQuery,
-      );
+      final matchesGender =
+          _genderFilter == 'All Gender' || member.gender == _genderFilter;
+      final matchesMarital =
+          _maritalFilter == 'All Marital Status' ||
+          member.maritalStatus == _maritalFilter;
+
+      final selectedDeptId = _selectedDepartment?.departmentId;
+
+      final matchesDept = selectedDeptId == null || selectedDeptId == 'all'
+          ? true
+          : selectedDeptId == 'none'
+          ? member.department == null
+          : selectedDeptId == 'others'
+          ? member.department == null || member.department?.name == 'Others'
+          : member.department!.departmentId == selectedDeptId;
+
       final matchesAddress = member.address.toLowerCase().contains(
         addressQuery,
       );
-      final matchesDOB = dobQuery.isEmpty || member.dateOfBirth == dobQuery;
+
+      // Date filters - only apply if query is not empty
+      final matchesDOB =
+          dobQuery.isEmpty || (member.dateOfBirth?.contains(dobQuery) ?? false);
       final matchesMembership =
-          membershipQuery.isEmpty || member.membershipDate == membershipQuery;
+          membershipQuery.isEmpty ||
+          (member.membershipDate?.contains(membershipQuery) ?? false);
 
-      final matchesDept =
-          member.department?.name.toLowerCase().contains(deptQuery) ?? false;
       final matchesLevel =
-          member.level?.name?.toLowerCase().contains(levelQuery) ?? false;
-      final matchesParent = parentQuery.isEmpty
-          ? true
-          : member.level?.parent?.name?.toLowerCase().contains(parentQuery) ??
-                false;
+          levelQuery.isEmpty ||
+          (member.level?.name?.toLowerCase().contains(levelQuery) ?? false);
 
-      final baptized = member.baptismInformation?.baptized == true
-          ? 'true'
-          : 'false';
+      final status = (member.baptismInformation!.baptized)
+          ? 'Baptized'
+          : 'Not Baptized';
+      final matchesBaptismStatus =
+          _baptismFilter == 'All Baptism Status' || status == _baptismFilter;
 
-      final matchesBaptized = baptized.contains(baptizedQuery);
-
+      // Status filter
       final matchesStatus =
-          _statusFilter == 'All' || member.status == _statusFilter;
+          _statusFilter == 'All Status' || member.status == _statusFilter;
 
       return matchesName &&
           matchesPhone &&
@@ -167,23 +165,76 @@ class _MemberScreenState extends State<MemberScreen> {
           matchesMembership &&
           matchesDept &&
           matchesLevel &&
-          matchesParent &&
-          matchesBaptized &&
+          matchesBaptismStatus &&
           matchesStatus;
     }).toList();
 
-    setState(() {});
+    setState(() {
+      _filteredMembers = filtered;
+      _currentPage = 0; // Reset to first page when filtering
+    });
   }
 
-  void _nextPage() {
-    _currentPage++;
-    _fetchMembers();
+  void _onFilterChanged() async {
+    final isDefaultFilter =
+        _nameFilterController.text.isEmpty &&
+        _phoneFilterController.text.isEmpty &&
+        _emailFilterController.text.isEmpty &&
+        _genderFilter == 'All Gender' &&
+        _maritalFilter == 'All Marital Status' &&
+        _addressFilterController.text.isEmpty &&
+        _dobFilterController.text.isEmpty &&
+        _membershipFilterController.text.isEmpty &&
+        _departmentFilterController.text.isEmpty &&
+        _levelFilterController.text.isEmpty &&
+        _baptismFilter == 'All Baptism Status' &&
+        _statusFilter == 'All Status';
+
+    if (isDefaultFilter) {
+      _isFiltering = false;
+      _currentPage = 0;
+      await _fetchMembers();
+    } else {
+      _isFiltering = true;
+      await _fetchAllMembers();
+      _applySearchFilter();
+    }
   }
 
-  void _previousPage() {
+  Future<void> _nextPage() async {
+    if (_isFiltering) {
+      if ((_currentPage + 1) * _pageSize < _filteredMembers.length) {
+        setState(() => _currentPage++);
+      }
+    } else {
+      setState(() => _currentPage++);
+      await _fetchMembers();
+    }
+  }
+
+  Future<void> _previousPage() async {
     if (_currentPage > 0) {
-      _currentPage--;
-      _fetchMembers();
+      setState(() => _currentPage--);
+      if (_isFiltering) {
+        // No need to fetch for filtered data, just update UI
+        setState(() {});
+      } else {
+        await _fetchMembers();
+      }
+    }
+  }
+
+  List<Member> get displayedMembers {
+    if (_isFiltering) {
+      if (_filteredMembers.isEmpty) return [];
+      final start = _currentPage * _pageSize;
+      final end = start + _pageSize;
+      return _filteredMembers.sublist(
+        start,
+        end > _filteredMembers.length ? _filteredMembers.length : end,
+      );
+    } else {
+      return _members;
     }
   }
 
@@ -1074,28 +1125,28 @@ class _MemberScreenState extends State<MemberScreen> {
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _dobFilterController,
-                                          'Search DOB (MM/dd/yyyy)',
+                                          'Search DOB(MM/dd/yyyy)',
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _phoneFilterController,
                                           'Search Phone',
                                         ),
+
+                                        const SizedBox(width: 8),
+                                        _buildGenderDropdown(),
+
+                                        const SizedBox(width: 8),
+                                        _buildMaritalDropdown(),
+
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _emailFilterController,
                                           'Search Email',
                                         ),
                                         const SizedBox(width: 8),
-                                        _buildFilterField(
-                                          _genderFilterController,
-                                          'Search Gender',
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildFilterField(
-                                          _maritalFilterController,
-                                          'Search Marital Status',
-                                        ),
+                                        _buildStatusDropdown(),
+
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _addressFilterController,
@@ -1107,252 +1158,253 @@ class _MemberScreenState extends State<MemberScreen> {
                                           'Search Membership Date',
                                         ),
                                         const SizedBox(width: 8),
-                                        _buildFilterField(
-                                          _departmentFilterController,
-                                          'Search Department',
+                                        _buildDepartmentDropdown(
+                                          _selectedDepartment,
+                                          (dept) {
+                                            setState(() {
+                                              _selectedDepartment = dept;
+                                            });
+                                            _onFilterChanged();
+                                          },
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _levelFilterController,
                                           'Search Level',
                                         ),
+
                                         const SizedBox(width: 8),
-                                        _buildFilterField(
-                                          _parentFilterController,
-                                          'Search Parent Level',
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildFilterField(
-                                          _baptizedFilterController,
-                                          'Baptized (true/false)',
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildStatusDropdown(),
+                                        _buildBaptismStatusDropdown(),
                                       ],
                                     ),
                                   ),
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      minHeight: 300,
-                                    ),
-                                    child: SizedBox(
-                                      width: 2000,
-                                      child: DataTable(
-                                        horizontalMargin: 12,
-                                        dataRowMaxHeight: 56,
-                                        headingRowHeight: 48,
-                                        dividerThickness: 1,
-                                        headingRowColor:
-                                            WidgetStateProperty.all(
-                                              Colors.deepPurple,
-                                            ),
-                                        dataRowColor: WidgetStateProperty.all(
-                                          backgroundcolor,
+
+                                  Stack(
+                                    children: [
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          minHeight: 300,
                                         ),
-                                        border: TableBorder(
-                                          horizontalInside: BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1,
-                                          ),
-                                          verticalInside: BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1,
-                                          ),
-                                          top: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          bottom: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          left: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          right: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                        columns: [
-                                          DataColumn(
-                                            label: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.person,
-                                                  size: 16,
-                                                  color: Colors.white,
+                                        child: SizedBox(
+                                          width: 2200,
+                                          child: DataTable(
+                                            horizontalMargin: 12,
+                                            dataRowMaxHeight: 56,
+                                            headingRowHeight: 48,
+                                            dividerThickness: 1,
+                                            headingRowColor:
+                                                WidgetStateProperty.all(
+                                                  Colors.deepPurple,
                                                 ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  'Member',
+                                            dataRowColor:
+                                                WidgetStateProperty.all(
+                                                  backgroundcolor,
+                                                ),
+                                            border: TableBorder(
+                                              horizontalInside: BorderSide(
+                                                color: Colors.grey.shade300,
+                                                width: 1,
+                                              ),
+                                              verticalInside: BorderSide(
+                                                color: Colors.grey.shade300,
+                                                width: 1,
+                                              ),
+                                              top: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              bottom: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              left: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                              right: BorderSide(
+                                                color: Colors.grey.shade300,
+                                              ),
+                                            ),
+                                            columns: [
+                                              DataColumn(
+                                                label: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.person,
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      'Member',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Date of Birth',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
                                                     color: Colors.white,
                                                   ),
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Date of Birth',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
                                               ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Phone',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Gender',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Marital Status',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Email',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'STATUS',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Address',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Membership Date',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Department',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Level Name',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Baptized',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Actions',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        rows: _filteredMembers.isEmpty
-                                            ? [
-                                                DataRow(
-                                                  cells: List.generate(
-                                                    13,
-                                                    (index) => index == 0
-                                                        ? DataCell(
-                                                            Container(
-                                                              alignment: Alignment
-                                                                  .centerLeft,
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    vertical:
-                                                                        40,
-                                                                  ),
-                                                              child: Text(
-                                                                'No members found',
-                                                                style: GoogleFonts.inter(
-                                                                  fontSize: 16,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color: Colors
-                                                                      .grey
-                                                                      .shade600,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          )
-                                                        : const DataCell(
-                                                            SizedBox(),
-                                                          ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Phone',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
                                                   ),
                                                 ),
-                                              ]
-                                            : _filteredMembers
-                                                  .map(_buildDataRow)
-                                                  .toList(),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Gender',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Marital Status',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Email',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'STATUS',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Address',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Membership Date',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Department',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Level Name',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Baptized',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Actions',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            rows: displayedMembers.isEmpty
+                                                ? [
+                                                    DataRow(
+                                                      cells: List.generate(
+                                                        13,
+                                                        (_) => const DataCell(
+                                                          SizedBox(),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ]
+                                                : displayedMembers
+                                                      .map(_buildDataRow)
+                                                      .toList(),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (displayedMembers.isEmpty)
+                                        Positioned(
+                                          left: 426,
+                                          top: 120,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.search_off,
+                                                color: Colors.red,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'No Members found',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   const SizedBox(height: 10),
                                   Align(
@@ -1404,6 +1456,117 @@ class _MemberScreenState extends State<MemberScreen> {
                                             ),
                                           ),
                                         ),
+                                        const SizedBox(width: 36),
+                                        // Page size selector
+                                        Container(
+                                          height: 43,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Colors.deepPurple.shade700,
+                                                Colors.deepPurple.shade500,
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.deepPurple
+                                                    .withOpacity(0.3),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: DropdownButton<int>(
+                                            value: _pageSize,
+                                            underline: const SizedBox(),
+                                            dropdownColor:
+                                                Colors.deepPurple.shade600,
+                                            icon: Icon(
+                                              Icons.arrow_drop_down,
+                                              color: Colors.white,
+                                            ),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                            items: _pageSizeOptions.map((size) {
+                                              return DropdownMenuItem(
+                                                value: size,
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.table_rows,
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      '$size rows',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                            selectedItemBuilder: (context) {
+                                              return _pageSizeOptions.map((
+                                                size,
+                                              ) {
+                                                return Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.view_list,
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      '$size rows',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              }).toList();
+                                            },
+                                            onChanged: (value) {
+                                              if (value != null) {
+                                                setState(() {
+                                                  _pageSize = value;
+                                                  _currentPage = 0;
+                                                });
+                                                if (_isFiltering) {
+                                                  _applySearchFilter();
+                                                } else {
+                                                  _fetchMembers();
+                                                }
+                                              }
+                                            },
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -1413,12 +1576,22 @@ class _MemberScreenState extends State<MemberScreen> {
                           ),
                         ),
                   const SizedBox(height: 20),
-                  Center(
-                    child: Text(
-                      '© 2025 All rights reserved. Church CRM System',
-                      style: GoogleFonts.inter(
-                        color: Colors.grey[600],
-                        fontSize: 13,
+
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Text(
+                          '© 2025 All rights reserved. Church CRM System',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1434,15 +1607,15 @@ class _MemberScreenState extends State<MemberScreen> {
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SizedBox(
-      width: 147,
+      width: 180, // Increased width for better usability
       height: 40,
       child: TextField(
         controller: controller,
-        onChanged: (_) => _applySearchFilter(),
+        onChanged: (_) => _onFilterChanged(),
         style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
+          hintStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: 12),
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(
@@ -1460,25 +1633,291 @@ class _MemberScreenState extends State<MemberScreen> {
 
   Widget _buildStatusDropdown() {
     return SizedBox(
-      width: 130,
+      width: 150,
       height: 40,
       child: DropdownButtonFormField<String>(
-        value: _statusFilter,
+        initialValue: _statusFilter,
         onChanged: (value) {
           setState(() {
             _statusFilter = value!;
-            _applySearchFilter();
+            _onFilterChanged();
           });
         },
-        items: ['All', 'Active', 'Inactive', 'Transferred'].map((status) {
+        items: ['All Status', 'Active', 'Inactive', 'Transferred'].map((
+          status,
+        ) {
           return DropdownMenuItem(
             value: status,
             child: Text(
               status,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[700]),
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
             ),
           );
         }).toList(),
+        selectedItemBuilder: (context) {
+          return ['All Status', 'Active', 'Inactive', 'Transferred'].map((
+            role,
+          ) {
+            return Text(
+              role,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderDropdown() {
+    return SizedBox(
+      width: 150,
+      height: 40,
+      child: DropdownButtonFormField<String>(
+        initialValue: _genderFilter,
+        onChanged: (value) {
+          setState(() {
+            _genderFilter = value!;
+            _onFilterChanged();
+          });
+        },
+        items: ['All Gender', 'Male', 'Female'].map((gender) {
+          return DropdownMenuItem(
+            value: gender,
+            child: Text(
+              gender,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+            ),
+          );
+        }).toList(),
+        selectedItemBuilder: (context) {
+          return ['All Gender', 'Male', 'Female'].map((role) {
+            return Text(
+              role,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMaritalDropdown() {
+    return SizedBox(
+      width: 180,
+      height: 40,
+      child: DropdownButtonFormField<String>(
+        initialValue: _maritalFilter,
+        onChanged: (value) {
+          setState(() {
+            _maritalFilter = value!;
+            _onFilterChanged();
+          });
+        },
+        items: ['All Marital Status', 'Single', 'Married', 'Divorced'].map((
+          maritalStatus,
+        ) {
+          return DropdownMenuItem(
+            value: maritalStatus,
+            child: Text(
+              maritalStatus,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+            ),
+          );
+        }).toList(),
+        selectedItemBuilder: (context) {
+          return ['All Marital Status', 'Single', 'Married', 'Divorced'].map((
+            role,
+          ) {
+            return Text(
+              role,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDepartmentDropdown(
+    Department? selectedDepartment,
+    void Function(Department?) onChanged,
+  ) {
+    return SizedBox(
+      width: 180,
+      height: 40,
+      child: DropdownButtonFormField<String>(
+        value: selectedDepartment?.departmentId ?? 'all',
+        onChanged: (String? selectedId) {
+          if (selectedId == 'others') {
+            setState(() {
+              _selectedDepartment = Department(
+                departmentId: 'others',
+                name: 'Others',
+              );
+            });
+            onChanged(_selectedDepartment);
+          } else if (selectedId == 'none') {
+            setState(() {
+              _selectedDepartment = Department(
+                departmentId: 'none',
+                name: 'None',
+              );
+            });
+            onChanged(_selectedDepartment);
+          } else if (selectedId == 'all') {
+            setState(() {
+              _selectedDepartment = null;
+            });
+            onChanged(null);
+          } else {
+            final dept = _departments.firstWhere(
+              (d) => d.departmentId == selectedId,
+              orElse: () => _departments.first,
+            );
+            setState(() {
+              _selectedDepartment = dept;
+            });
+            onChanged(dept);
+          }
+        },
+        items: [
+          DropdownMenuItem(
+            value: 'all',
+            child: Text(
+              'All Departments',
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'none',
+            child: Text(
+              'None',
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+            ),
+          ),
+          ..._departments.map((department) {
+            return DropdownMenuItem<String>(
+              value: department.departmentId,
+              child: Text(
+                department.name,
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+              ),
+            );
+          }),
+          DropdownMenuItem(
+            value: 'others',
+            child: Text(
+              'Others',
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+            ),
+          ),
+        ],
+        selectedItemBuilder: (context) {
+          final labels = [
+            'All Departments',
+            'None',
+            ..._departments.map((d) => d.name),
+            'Others',
+          ];
+          return labels.map((label) {
+            return Text(
+              label,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
+  Widget _buildBaptismStatusDropdown() {
+    return SizedBox(
+      width: 200,
+      height: 40,
+      child: DropdownButtonFormField<String>(
+        initialValue: _baptismFilter,
+        onChanged: (value) {
+          setState(() {
+            _baptismFilter = value!;
+            _onFilterChanged();
+          });
+        },
+        items: ['All Baptism Status', 'Baptized', 'Not Baptized'].map((
+          baptism,
+        ) {
+          return DropdownMenuItem(
+            value: baptism,
+            child: Text(
+              baptism,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+            ),
+          );
+        }).toList(),
+        selectedItemBuilder: (context) {
+          return ['All Baptism Status', 'Baptized', 'Not Baptized'].map((
+            baptism,
+          ) {
+            return Text(
+              baptism,
+              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+            );
+          }).toList();
+        },
+        dropdownColor: backgroundcolor,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,

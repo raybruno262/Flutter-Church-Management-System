@@ -784,6 +784,8 @@ class _AddUserScreenState extends State<AddUserScreen> {
           );
         }).toList(),
         onChanged: onChanged,
+
+        menuMaxHeight: 250,
       ),
     );
   }

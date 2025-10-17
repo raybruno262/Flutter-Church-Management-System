@@ -158,6 +158,27 @@ class MemberController {
     }
   }
 
+  // Get scoped birthday members for current month (unpaginated)
+  Future<List<Member>> getUnpaginatedScopedBirthdayMembers({
+    required String userId,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '$baseUrl/scopedUnpaginatedBirthdayMembers?userId=$userId',
+      );
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Member.fromJson(json)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
   //get member stats
 
   Future<Map<String, int>> getMemberStats(String userId) async {
@@ -188,7 +209,7 @@ class MemberController {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final int count = int.tryParse(response.body) ?? 0;
+        final count = int.tryParse(response.body.trim()) ?? 0;
         return count;
       } else {
         return 0;

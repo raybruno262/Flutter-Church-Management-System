@@ -713,6 +713,8 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
           );
         }).toList(),
         onChanged: onChanged,
+
+        menuMaxHeight: 250,
       ),
     );
   }

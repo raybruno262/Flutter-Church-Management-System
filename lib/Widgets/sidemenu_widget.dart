@@ -63,7 +63,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      height: 34,
+      height: 31,
       width: 133,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),

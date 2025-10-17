@@ -42,7 +42,9 @@ class _UserScreenState extends State<UserScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   int _currentPage = 0;
-  final int _pageSize = 5;
+
+  int _pageSize = 5;
+  final List<int> _pageSizeOptions = [5, 10, 15, 20];
   List<UserModel> _users = [];
   List<UserModel> _allUsers = [];
   List<UserModel> _filteredUsers = [];
@@ -1246,6 +1248,119 @@ class _UserScreenState extends State<UserScreen> {
                                             ),
                                           ),
                                         ),
+                                        const SizedBox(width: 36),
+                                        // Page size selector
+                                        Container(
+                                          height: 43,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Colors.deepPurple.shade700,
+                                                Colors.deepPurple.shade500,
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.deepPurple
+                                                    .withOpacity(0.3),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: DropdownButton<int>(
+                                            value: _pageSize,
+                                            underline: const SizedBox(),
+                                            dropdownColor:
+                                                Colors.deepPurple.shade600,
+                                            icon: Icon(
+                                              Icons.arrow_drop_down,
+                                              color: Colors.white,
+                                            ),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                            items: _pageSizeOptions.map((size) {
+                                              return DropdownMenuItem(
+                                                value: size,
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.table_rows,
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      '$size rows',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                            selectedItemBuilder: (context) {
+                                              return _pageSizeOptions.map((
+                                                size,
+                                              ) {
+                                                return Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.view_list,
+                                                      size: 16,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      '$size rows',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              }).toList();
+                                            },
+                                            onChanged: (value) {
+                                              if (value != null) {
+                                                setState(() {
+                                                  _pageSize = value;
+                                                  _currentPage = 0;
+                                                });
+                                                if (_isFiltering) {
+                                                  _applySearchFilter();
+                                                } else {
+                                                  _fetchUsers();
+                                                }
+                                              }
+                                            },
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 20),
                                       ],
                                     ),
                                   ),

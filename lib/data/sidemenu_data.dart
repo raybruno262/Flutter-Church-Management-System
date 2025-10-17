@@ -14,6 +14,7 @@ import 'package:flutter_churchcrm_system/screens/login.dart';
 import 'package:flutter_churchcrm_system/screens/memberScreen.dart';
 import 'package:flutter_churchcrm_system/screens/messageScreen.dart';
 import 'package:flutter_churchcrm_system/screens/reportScreen.dart';
+import 'package:flutter_churchcrm_system/screens/settingsScreen.dart';
 import 'package:flutter_churchcrm_system/screens/userScreen.dart';
 import 'package:flutter_churchcrm_system/screens/visitorScreen.dart';
 import 'package:flutter_svg/svg.dart';
@@ -87,6 +88,11 @@ class SidemenuData {
         icon: SvgPicture.asset('assets/icons/backup.svg', fit: BoxFit.cover),
         title: 'Data Backup',
         page: DataBackupScreen(loggedInUser: loggedInUser),
+      ),
+      SideMenuModel(
+        icon: SvgPicture.asset('assets/icons/settings.svg', fit: BoxFit.cover),
+        title: 'Settings',
+        page: SettingsScreen(loggedInUser: loggedInUser),
       ),
       SideMenuModel(
         icon: SvgPicture.asset('assets/icons/logout.svg', fit: BoxFit.cover),

@@ -823,6 +823,8 @@ class _UpdateUserScreenState extends State<UpdateUserScreen> {
           );
         }).toList(),
         onChanged: onChanged,
+
+        menuMaxHeight: 250,
       ),
     );
   }

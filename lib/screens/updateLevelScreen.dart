@@ -598,6 +598,8 @@ class _UpdateLevelScreenState extends State<UpdateLevelScreen> {
           );
         }).toList(),
         onChanged: onChanged,
+
+        menuMaxHeight: 250,
       ),
     );
   }
