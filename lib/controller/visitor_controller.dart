@@ -121,12 +121,25 @@ class VisitorController {
           'new': data['newVisitors'] ?? 0,
           'followedUp': data['followedUpVisitors'] ?? 0,
           'converted': data['convertedVisitors'] ?? 0,
+          'dropped': data['droppedVisitors'] ?? 0,
         };
       } else {
-        return {'total': 0, 'new': 0, 'followedUp': 0, 'converted': 0};
+        return {
+          'total': 0,
+          'new': 0,
+          'followedUp': 0,
+          'converted': 0,
+          'dropped': 0,
+        };
       }
     } catch (e) {
-      return {'total': 0, 'new': 0, 'followedUp': 0, 'converted': 0};
+      return {
+        'total': 0,
+        'new': 0,
+        'followedUp': 0,
+        'converted': 0,
+        'dropped': 0,
+      };
     }
   }
 }

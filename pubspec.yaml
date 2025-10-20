@@ -47,6 +47,7 @@ dependencies:
   syncfusion_flutter_datepicker: ^23.1.36
   country_picker: ^2.0.20
   dropdown_button2: ^2.3.3
+  flutter_riverpod: ^2.4.0
 
 
 

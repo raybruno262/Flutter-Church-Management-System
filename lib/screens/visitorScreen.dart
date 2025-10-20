@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+import 'package:flutter_churchcrm_system/Widgets/visitorBoxWidget.dart';
 import 'package:flutter_churchcrm_system/controller/department_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+import 'package:flutter_churchcrm_system/controller/visitor_controller.dart';
 import 'package:flutter_churchcrm_system/model/department_model.dart';
+import 'package:flutter_churchcrm_system/model/followup_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
+import 'package:flutter_churchcrm_system/model/visitor_model.dart';
 import 'package:flutter_churchcrm_system/screens/addVisitorScreen.dart';
 import 'package:flutter_churchcrm_system/screens/updateVisitorScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_churchcrm_system/controller/member_controller.dart';
-import 'package:flutter_churchcrm_system/model/member_model.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 
@@ -24,63 +26,68 @@ class VisitorScreen extends StatefulWidget {
 }
 
 class _VisitorScreenState extends State<VisitorScreen> {
-  String _statusFilter =
-      'All Status'; // Options: All, Active, Inactive, Transferred
   final _nameFilterController = TextEditingController();
   final _phoneFilterController = TextEditingController();
-  final _emailFilterController = TextEditingController();
   String _genderFilter = 'All Gender';
-  String _maritalFilter = 'All Marital Status';
-  String _baptismFilter = 'All Baptism Status';
-
+  final _emailFilterController = TextEditingController();
   final _addressFilterController = TextEditingController();
-  final _dobFilterController = TextEditingController();
-  final _membershipFilterController = TextEditingController();
-  final _departmentFilterController = TextEditingController();
+  final _visitDateFilterController = TextEditingController();
+  String _statusFilter =
+      'All Status'; // Options: New, Follow-up, Converted, Dropped
   final _levelFilterController = TextEditingController();
 
   final ScrollController _horizontalScrollController = ScrollController();
-
-  final MemberController _controller = MemberController();
+  final VisitorController _visitorController = VisitorController();
   final UserController _usercontroller = UserController();
+
   int _currentPage = 0;
   int _pageSize = 5;
   final List<int> _pageSizeOptions = [5, 10, 15, 20];
-  List<Member> _members = [];
-  List<Member> _allMembers = [];
-  List<Member> _filteredMembers = [];
-  List<Department> _departments = [];
-  final DepartmentController _departmentController = DepartmentController();
-  Department? _selectedDepartment;
-  bool _isLoading = true;
+  List<Visitor> _visitors = [];
+  List<Visitor> _allVisitors = [];
+  List<Visitor> _filteredVisitors = [];
 
+  bool _isLoading = true;
   bool _isFiltering = false;
-  Future<void> _loadDepartments() async {
-    final departments = await _departmentController.getAllDepartments();
-    if (mounted) {
-      setState(() => _departments = departments);
-    }
-  }
+
+  Map<String, int> _visitorStats = {
+    'total': 0,
+    'new': 0,
+    'followedUp': 0,
+    'converted': 0,
+    'dropped': 0,
+  };
 
   @override
   void initState() {
     super.initState();
-    _fetchMembers();
-    _fetchAllMembers();
-    _fetchMemberStats();
-    _loadDepartments();
+    _fetchVisitors();
+    _fetchAllVisitors();
+    _fetchVisitorStats();
   }
 
-  Future<void> _fetchMembers() async {
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    _nameFilterController.dispose();
+    _phoneFilterController.dispose();
+    _emailFilterController.dispose();
+    _addressFilterController.dispose();
+    _visitDateFilterController.dispose();
+    _levelFilterController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchVisitors() async {
     setState(() => _isLoading = true);
     try {
-      final members = await _controller.getPaginatedMembers(
+      final visitors = await _visitorController.getPaginatedVisitors(
         page: _currentPage,
         size: _pageSize,
       );
       setState(() {
-        _members = members;
-        _filteredMembers = _members;
+        _visitors = visitors;
+        _filteredVisitors = visitors;
         _isLoading = false;
       });
     } catch (e) {
@@ -88,11 +95,11 @@ class _VisitorScreenState extends State<VisitorScreen> {
     }
   }
 
-  Future<void> _fetchAllMembers() async {
+  Future<void> _fetchAllVisitors() async {
     try {
-      final allMembers = await _controller.getAllMembers();
+      final allVisitors = await _visitorController.getAllVisitors();
       setState(() {
-        _allMembers = allMembers;
+        _allVisitors = allVisitors;
       });
     } catch (e) {
       // Handle error
@@ -101,217 +108,181 @@ class _VisitorScreenState extends State<VisitorScreen> {
 
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
-    final dobQuery = _dobFilterController.text;
     final phoneQuery = _phoneFilterController.text.toLowerCase();
-
     final emailQuery = _emailFilterController.text.toLowerCase();
     final addressQuery = _addressFilterController.text.toLowerCase();
-    final membershipQuery = _membershipFilterController.text;
-
+    final visitDateQuery = _visitDateFilterController.text;
     final levelQuery = _levelFilterController.text.toLowerCase();
 
-    final filtered = _allMembers.where((member) {
-      final matchesName = member.names.toLowerCase().contains(nameQuery);
-      final matchesPhone = member.phone.toLowerCase().contains(phoneQuery);
-      final matchesEmail = member.email.toLowerCase().contains(emailQuery);
+    final filtered = _allVisitors.where((visitor) {
+      final matchesName = visitor.names.toLowerCase().contains(nameQuery);
+      final matchesPhone = visitor.phone.toLowerCase().contains(phoneQuery);
       final matchesGender =
-          _genderFilter == 'All Gender' || member.gender == _genderFilter;
-      final matchesMarital =
-          _maritalFilter == 'All Marital Status' ||
-          member.maritalStatus == _maritalFilter;
-
-      final selectedDeptId = _selectedDepartment?.departmentId;
-
-      final matchesDept = selectedDeptId == null || selectedDeptId == 'all'
-          ? true
-          : selectedDeptId == 'none'
-          ? member.department == null
-          : selectedDeptId == 'others'
-          ? member.department == null || member.department?.name == 'Others'
-          : member.department!.departmentId == selectedDeptId;
-
-      final matchesAddress = member.address.toLowerCase().contains(
+          _genderFilter == 'All Gender' || visitor.gender == _genderFilter;
+      final matchesEmail = visitor.email.toLowerCase().contains(emailQuery);
+      final matchesAddress = visitor.address.toLowerCase().contains(
         addressQuery,
       );
-
-      // Date filters - only apply if query is not empty
-      final matchesDOB =
-          dobQuery.isEmpty || (member.dateOfBirth?.contains(dobQuery) ?? false);
-      final matchesMembership =
-          membershipQuery.isEmpty ||
-          (member.membershipDate?.contains(membershipQuery) ?? false);
-
+      final matchesVisitDate =
+          visitDateQuery.isEmpty ||
+          (visitor.visitDate?.contains(visitDateQuery) ?? false);
+      final matchesStatus =
+          _statusFilter == 'All Status' || visitor.status == _statusFilter;
       final matchesLevel =
           levelQuery.isEmpty ||
-          (member.level?.name?.toLowerCase().contains(levelQuery) ?? false);
-
-      final status = (member.baptismInformation!.baptized)
-          ? 'Baptized'
-          : 'Not Baptized';
-      final matchesBaptismStatus =
-          _baptismFilter == 'All Baptism Status' || status == _baptismFilter;
-
-      // Status filter
-      final matchesStatus =
-          _statusFilter == 'All Status' || member.status == _statusFilter;
+          (visitor.level?.name?.toLowerCase().contains(levelQuery) ?? false);
 
       return matchesName &&
           matchesPhone &&
           matchesEmail &&
           matchesGender &&
-          matchesMarital &&
           matchesAddress &&
-          matchesDOB &&
-          matchesMembership &&
-          matchesDept &&
+          matchesVisitDate &&
           matchesLevel &&
-          matchesBaptismStatus &&
           matchesStatus;
     }).toList();
 
     setState(() {
-      _filteredMembers = filtered;
-      _currentPage = 0; // Reset to first page when filtering
+      _filteredVisitors = filtered;
+      _currentPage = 0;
     });
   }
 
   void _onFilterChanged() async {
-    final isDefaultFilter =
-        _nameFilterController.text.isEmpty &&
-        _phoneFilterController.text.isEmpty &&
-        _emailFilterController.text.isEmpty &&
-        _genderFilter == 'All Gender' &&
-        _maritalFilter == 'All Marital Status' &&
-        _addressFilterController.text.isEmpty &&
-        _dobFilterController.text.isEmpty &&
-        _membershipFilterController.text.isEmpty &&
-        _departmentFilterController.text.isEmpty &&
-        _levelFilterController.text.isEmpty &&
-        _baptismFilter == 'All Baptism Status' &&
-        _statusFilter == 'All Status';
+    final hasActiveFilters =
+        _nameFilterController.text.isNotEmpty ||
+        _phoneFilterController.text.isNotEmpty ||
+        _genderFilter != 'All Gender' ||
+        _emailFilterController.text.isNotEmpty ||
+        _addressFilterController.text.isNotEmpty ||
+        _visitDateFilterController.text.isNotEmpty ||
+        _statusFilter != 'All Status' ||
+        _levelFilterController.text.isNotEmpty;
 
-    if (isDefaultFilter) {
-      _isFiltering = false;
-      _currentPage = 0;
-      await _fetchMembers();
-    } else {
-      _isFiltering = true;
-      await _fetchAllMembers();
+    if (!hasActiveFilters && _isFiltering) {
+      setState(() {
+        _isFiltering = false;
+        _currentPage = 0;
+      });
+      await _fetchVisitors();
+    } else if (hasActiveFilters && !_isFiltering) {
+      setState(() {
+        _isFiltering = true;
+        _currentPage = 0;
+      });
+      _applySearchFilter();
+    } else if (hasActiveFilters && _isFiltering) {
       _applySearchFilter();
     }
   }
 
   Future<void> _nextPage() async {
     if (_isFiltering) {
-      if ((_currentPage + 1) * _pageSize < _filteredMembers.length) {
+      final totalPages = (_filteredVisitors.length / _pageSize).ceil();
+      if (_currentPage + 1 < totalPages) {
         setState(() => _currentPage++);
       }
     } else {
-      setState(() => _currentPage++);
-      await _fetchMembers();
+      final totalPages = (_visitorStats['total']! / _pageSize).ceil();
+      if (_currentPage + 1 < totalPages) {
+        setState(() => _currentPage++);
+        await _fetchVisitors();
+      }
     }
   }
 
   Future<void> _previousPage() async {
     if (_currentPage > 0) {
       setState(() => _currentPage--);
-      if (_isFiltering) {
-        // No need to fetch for filtered data, just update UI
-        setState(() {});
-      } else {
-        await _fetchMembers();
+      if (!_isFiltering) {
+        await _fetchVisitors();
       }
     }
   }
 
-  List<Member> get displayedMembers {
+  List<Visitor> get displayedVisitors {
     if (_isFiltering) {
-      if (_filteredMembers.isEmpty) return [];
+      if (_filteredVisitors.isEmpty) return [];
       final start = _currentPage * _pageSize;
       final end = start + _pageSize;
-      return _filteredMembers.sublist(
+      return _filteredVisitors.sublist(
         start,
-        end > _filteredMembers.length ? _filteredMembers.length : end,
+        end > _filteredVisitors.length ? _filteredVisitors.length : end,
       );
     } else {
-      return _members;
+      return _visitors;
     }
   }
 
-  Map<String, int> _memberStats = {
-    'total': 0,
-    'active': 0,
-    'inactive': 0,
-    'transferred': 0,
-  };
+  bool get hasNextPage {
+    if (_isFiltering) {
+      return (_currentPage + 1) * _pageSize < _filteredVisitors.length;
+    } else {
+      return (_currentPage + 1) * _pageSize < _visitorStats['total']!;
+    }
+  }
 
-  Future<void> _fetchMemberStats() async {
+  bool get hasPreviousPage {
+    return _currentPage > 0;
+  }
+
+  Future<void> _fetchVisitorStats() async {
     try {
       final loggedInUser = await _usercontroller.loadUserFromStorage();
 
       if (loggedInUser == null || loggedInUser.userId == null) {
         setState(() {
-          _memberStats = {
+          _visitorStats = {
             'total': 0,
-            'active': 0,
-            'inactive': 0,
-            'transferred': 0,
+            'new': 0,
+            'followedUp': 0,
+            'converted': 0,
+            'dropped': 0,
           };
         });
         return;
       }
 
-      final stats = await _controller.getMemberStats(loggedInUser.userId!);
-
-      final updatedStats = {
-        'total': stats['total'] ?? 0,
-        'active': stats['active'] ?? 0,
-        'inactive': stats['inactive'] ?? 0,
-        'transferred': stats['transferred'] ?? 0,
-      };
+      final stats = await _visitorController.getVisitorStats(
+        loggedInUser.userId!,
+      );
 
       setState(() {
-        _memberStats = updatedStats;
+        _visitorStats = {
+          'total': stats['total'] ?? 0,
+          'new': stats['new'] ?? 0,
+          'followedUp': stats['followedUp'] ?? 0,
+          'converted': stats['converted'] ?? 0,
+          'dropped': stats['dropped'] ?? 0,
+        };
       });
     } catch (e) {
       setState(() {
-        _memberStats = {
+        _visitorStats = {
           'total': 0,
-          'active': 0,
-          'inactive': 0,
-          'transferred': 0,
+          'new': 0,
+          'followedUp': 0,
+          'converted': 0,
+          'dropped': 0,
         };
       });
     }
   }
 
-  DataRow _buildDataRow(Member member) {
+  DataRow _buildDataRow(Visitor visitor) {
     return DataRow(
       cells: [
-        DataCell(
-          Row(
-            children: [
-              member.profilePic != null
-                  ? CircleAvatar(
-                      radius: 12,
-                      backgroundImage: MemoryImage(member.profilePic!),
-                    )
-                  : const Icon(Icons.person, size: 16, color: Colors.grey),
-              const SizedBox(width: 8),
-              Text(member.names, style: GoogleFonts.inter(fontSize: 13)),
-            ],
-          ),
-        ),
-        DataCell(Text(member.dateOfBirth ?? 'N/A', style: GoogleFonts.inter())),
-        DataCell(Text(member.phone, style: GoogleFonts.inter())),
-        DataCell(Text(member.gender, style: GoogleFonts.inter())),
-        DataCell(Text(member.maritalStatus, style: GoogleFonts.inter())),
-        DataCell(Text(member.email, style: GoogleFonts.inter())),
+        DataCell(Text(visitor.names, style: GoogleFonts.inter())),
+        DataCell(Text(visitor.phone, style: GoogleFonts.inter())),
+        DataCell(Text(visitor.gender, style: GoogleFonts.inter())),
+        DataCell(Text(visitor.email, style: GoogleFonts.inter())),
+        DataCell(Text(visitor.address, style: GoogleFonts.inter())),
+        DataCell(Text(visitor.visitDate ?? 'N/A', style: GoogleFonts.inter())),
         DataCell(
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _getStatusBackgroundColor(member.status),
+              color: _getStatusBackgroundColor(visitor.status),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -322,85 +293,73 @@ class _VisitorScreenState extends State<VisitorScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _getStatusDotColor(member.status),
+                    color: _getStatusDotColor(visitor.status),
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  member.status,
+                  visitor.status,
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _getStatusTextColor(member.status),
+                    color: _getStatusTextColor(visitor.status),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        DataCell(Text(member.address, style: GoogleFonts.inter())),
         DataCell(
-          Text(member.membershipDate ?? 'N/A', style: GoogleFonts.inter()),
-        ),
-        DataCell(
-          Text(member.department?.name ?? 'N/A', style: GoogleFonts.inter()),
-        ),
-        DataCell(Text(member.level?.name ?? 'N/A', style: GoogleFonts.inter())),
-        DataCell(
-          Text(
-            member.baptismInformation?.baptized == true ? 'Yes' : 'No',
-            style: GoogleFonts.inter(),
-          ),
+          Text(visitor.level?.name ?? 'N/A', style: GoogleFonts.inter()),
         ),
         DataCell(
           Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.visibility, color: Colors.green),
-                tooltip: 'View Member',
+                tooltip: 'View Visitor',
                 onPressed: () {
-                  _showMemberDetailsDialog(member);
+                  _showVisitorDetailsDialog(visitor);
                 },
               ),
               if (widget.loggedInUser.role == 'CellAdmin' ||
-                  widget.loggedInUser.role == 'SuperAdmin') ...[
+                  widget.loggedInUser.role == 'SuperAdmin')
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
-                  tooltip: 'Update Member',
+                  tooltip: 'Update Visitor',
                   onPressed: () async {
-                    final updatedMember = await Navigator.push(
+                    final updatedVisitor = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => UpdateVisitorScreen(
                           loggedInUser: widget.loggedInUser,
-                          member: member,
+                          visitor: visitor,
                         ),
                       ),
                     );
 
-                    if (updatedMember != null && updatedMember is Member) {
+                    if (updatedVisitor != null && updatedVisitor is Visitor) {
                       setState(() {
-                        final index = _members.indexWhere(
-                          (m) => m.memberId == updatedMember.memberId,
+                        final index = _visitors.indexWhere(
+                          (v) => v.visitorId == updatedVisitor.visitorId,
                         );
                         if (index != -1) {
-                          _members[index] = updatedMember;
+                          _visitors[index] = updatedVisitor;
                         }
 
-                        final filteredIndex = _filteredMembers.indexWhere(
-                          (m) => m.memberId == updatedMember.memberId,
+                        final filteredIndex = _filteredVisitors.indexWhere(
+                          (v) => v.visitorId == updatedVisitor.visitorId,
                         );
                         if (filteredIndex != -1) {
-                          _filteredMembers[filteredIndex] = updatedMember;
+                          _filteredVisitors[filteredIndex] = updatedVisitor;
                         }
                       });
 
-                      await _fetchMemberStats();
-                      await _fetchMembers();
+                      await _fetchVisitorStats();
+                      await _fetchVisitors();
                     }
                   },
                 ),
-              ],
             ],
           ),
         ),
@@ -408,7 +367,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
     );
   }
 
-  void _showMemberDetailsDialog(Member member) {
+  void _showVisitorDetailsDialog(Visitor visitor) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -425,13 +384,13 @@ class _VisitorScreenState extends State<VisitorScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header with profile image
+                  // Header section
                   Container(
                     width: 600,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.blue.shade700, Colors.purple.shade700],
+                        colors: [Colors.orange.shade700, Colors.red.shade700],
                       ),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(20),
@@ -440,7 +399,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Large Profile Image
+                        // Visitor Icon
                         Container(
                           width: 150,
                           height: 150,
@@ -454,25 +413,17 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                 offset: const Offset(0, 4),
                               ),
                             ],
+                            color: Colors.white.withOpacity(0.2),
                           ),
-                          child: ClipOval(
-                            child: member.profilePic != null
-                                ? Image.memory(
-                                    member.profilePic!,
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            _buildDefaultAvatar(120),
-                                  )
-                                : _buildDefaultAvatar(120),
+                          child: Icon(
+                            Icons.person_add_alt_1,
+                            size: 80,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Name with beautiful typography
                         Text(
-                          member.names,
+                          visitor.names,
                           style: GoogleFonts.poppins(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -482,18 +433,17 @@ class _VisitorScreenState extends State<VisitorScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 4),
-                        // Status badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(member.status),
+                            color: _getVisitorStatusColor(visitor.status),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            member.status,
+                            _formatVisitorStatus(visitor.status),
                             style: GoogleFonts.inter(
                               color: Colors.white,
                               fontSize: 12,
@@ -510,11 +460,9 @@ class _VisitorScreenState extends State<VisitorScreen> {
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
-                        // Personal Information Section
-                        _buildSectionHeader('Personal Information'),
+                        _buildSectionHeader('Visitor Information'),
                         const SizedBox(height: 16),
 
-                        // Two-column layout for better space utilization
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -523,21 +471,21 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                 children: [
                                   _buildEnhancedDetailCard(
                                     'Email',
-                                    member.email,
+                                    visitor.email ?? 'N/A',
                                     Icons.email_outlined,
                                     Colors.blue,
                                   ),
                                   const SizedBox(height: 12),
                                   _buildEnhancedDetailCard(
                                     'Phone',
-                                    member.phone,
+                                    visitor.phone ?? 'N/A',
                                     Icons.phone_outlined,
                                     Colors.green,
                                   ),
                                   const SizedBox(height: 12),
                                   _buildEnhancedDetailCard(
                                     'Gender',
-                                    member.gender,
+                                    visitor.gender ?? 'N/A',
                                     Icons.person_outline,
                                     Colors.purple,
                                   ),
@@ -549,23 +497,23 @@ class _VisitorScreenState extends State<VisitorScreen> {
                               child: Column(
                                 children: [
                                   _buildEnhancedDetailCard(
-                                    'Marital Status',
-                                    member.maritalStatus,
-                                    Icons.favorite_outline,
-                                    Colors.red,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildEnhancedDetailCard(
-                                    'Date of Birth',
-                                    member.dateOfBirth ?? 'N/A',
-                                    Icons.cake_outlined,
+                                    'Visit Date',
+                                    visitor.visitDate ?? 'N/A',
+                                    Icons.calendar_today_outlined,
                                     Colors.orange,
                                   ),
                                   const SizedBox(height: 12),
                                   _buildEnhancedDetailCard(
-                                    'Membership Date',
-                                    member.membershipDate ?? 'N/A',
-                                    Icons.date_range_outlined,
+                                    'Status',
+                                    _formatVisitorStatus(visitor.status),
+                                    Icons.flag_outlined,
+                                    _getVisitorStatusColor(visitor.status),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildEnhancedDetailCard(
+                                    'Church Level',
+                                    visitor.level?.name ?? 'N/A',
+                                    Icons.church_outlined,
                                     Colors.teal,
                                   ),
                                 ],
@@ -576,7 +524,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                         const SizedBox(height: 12),
                         _buildEnhancedDetailCard(
                           'Address',
-                          member.address,
+                          visitor.address ?? 'N/A',
                           Icons.location_on_outlined,
                           Colors.deepOrange,
                           fullWidth: true,
@@ -584,97 +532,32 @@ class _VisitorScreenState extends State<VisitorScreen> {
 
                         const SizedBox(height: 24),
 
-                        // Church Information Section
-                        _buildSectionHeader('Church Information'),
+                        // Follow-up History Section
+                        _buildSectionHeader('Follow-up History'),
                         const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildEnhancedDetailCard(
-                                'Department',
-                                member.department?.name ?? 'N/A',
-                                Icons.account_tree_outlined,
-                                Colors.indigo,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildEnhancedDetailCard(
-                                'Level',
-                                member.level?.name ?? 'N/A',
-                                Icons.leaderboard_outlined,
-                                Colors.cyan,
-                              ),
-                            ),
-                          ],
-                        ),
 
+                        // if (visitor.followUp.isEmpty)
+                        //   _buildEmptyStateCard(
+                        //     'No follow-ups recorded yet',
+                        //     Icons.history_toggle_off_outlined,
+                        //     Colors.grey,
+                        //   )
+                        // else
+                        //   ...visitor.followUps
+                        //       .map((followUp) => _buildFollowUpCard(followUp))
+                        //       .toList(),
                         const SizedBox(height: 24),
 
-                        // Baptism Information Section
-                        _buildSectionHeader('Baptism Information'),
-                        const SizedBox(height: 16),
-                        _buildEnhancedDetailCard(
-                          'Baptized',
-                          member.baptismInformation?.baptized == true
-                              ? 'Yes'
-                              : 'No',
-                          Icons.water_drop_outlined,
-                          member.baptismInformation?.baptized == true
-                              ? Colors.blue
-                              : Colors.grey,
-                          fullWidth: true,
-                        ),
-
-                        if (member.baptismInformation?.baptized == true) ...[
-                          const SizedBox(height: 12),
-                          _buildEnhancedDetailCard(
-                            'Same Religion',
-                            member.baptismInformation?.sameReligion == true
-                                ? 'Yes'
-                                : 'No',
-                            Icons.church_outlined,
-                            member.baptismInformation?.sameReligion == true
-                                ? Colors.green
-                                : Colors.grey,
-                            fullWidth: true,
-                          ),
-
-                          if (member.baptismInformation?.sameReligion ==
-                              true) ...[
-                            const SizedBox(height: 12),
-                            _buildEnhancedDetailCard(
-                              'Baptism Cell',
-                              member.baptismInformation?.baptismCell?.name ??
-                                  'N/A',
-                              Icons.groups_outlined,
-                              Colors.purple,
-                              fullWidth: true,
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 12),
-                            _buildEnhancedDetailCard(
-                              'Other Church Name',
-                              member.baptismInformation?.otherChurchName ??
-                                  'N/A',
-                              Icons.church_outlined,
-                              Colors.orange,
-                              fullWidth: true,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildEnhancedDetailCard(
-                              'Other Church Address',
-                              member.baptismInformation?.otherChurchAddress ??
-                                  'N/A',
-                              Icons.location_city_outlined,
-                              Colors.brown,
-                              fullWidth: true,
-                            ),
-                          ],
-                        ],
-
-                        const SizedBox(height: 24),
+                        // Quick Actions Section
+                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                            widget.loggedInUser.role == 'SuperAdmin')
+                          _buildSectionHeader('Quick Actions'),
+                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                            widget.loggedInUser.role == 'SuperAdmin')
+                          const SizedBox(height: 16),
+                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                            widget.loggedInUser.role == 'SuperAdmin')
+                          _buildQuickActions(visitor),
                       ],
                     ),
                   ),
@@ -698,8 +581,8 @@ class _VisitorScreenState extends State<VisitorScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.blue.shade600,
-                                  Colors.blue.shade800,
+                                  Colors.orange.shade600,
+                                  Colors.orange.shade800,
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(12),
@@ -711,48 +594,47 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                 size: 18,
                               ),
                               label: Text(
-                                'Update Profile',
+                                'Update Visitor',
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               onPressed: () async {
-                                final updatedMember = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UpdateVisitorScreen(
-                                      loggedInUser: widget.loggedInUser,
-                                      member: member,
-                                    ),
-                                  ),
-                                );
-                                if (updatedMember != null &&
-                                    updatedMember is Member) {
-                                  setState(() {
-                                    final index = _members.indexWhere(
-                                      (m) =>
-                                          m.memberId == updatedMember.memberId,
-                                    );
-                                    if (index != -1) {
-                                      _members[index] = updatedMember;
-                                    }
-
-                                    final filteredIndex = _filteredMembers
-                                        .indexWhere(
-                                          (m) =>
-                                              m.memberId ==
-                                              updatedMember.memberId,
-                                        );
-                                    if (filteredIndex != -1) {
-                                      _filteredMembers[filteredIndex] =
-                                          updatedMember;
-                                    }
-                                  });
-
-                                  await _fetchMemberStats();
-                                  await _fetchMembers();
-                                }
+                                // final updatedVisitor = await Navigator.push(
+                                //   context,
+                                //   // MaterialPageRoute(
+                                //   //   builder: (context) => UpdateVisitorScreen(
+                                //   //     loggedInUser: widget.loggedInUser,
+                                //   //     visitor: visitor,
+                                //   //   ),
+                                //   // ),
+                                // // );
+                                // if (updatedVisitor != null &&
+                                //     updatedVisitor is Visitor) {
+                                //   setState(() {
+                                //     final index = _visitors.indexWhere(
+                                //       (v) =>
+                                //           v.visitorId ==
+                                //           updatedVisitor.visitorId,
+                                //     );
+                                //     if (index != -1) {
+                                //       _visitors[index] = updatedVisitor;
+                                //     }
+                                //     final filteredIndex = _filteredVisitors
+                                //         .indexWhere(
+                                //           (v) =>
+                                //               v.visitorId ==
+                                //               updatedVisitor.visitorId,
+                                //         );
+                                //     if (filteredIndex != -1) {
+                                //       _filteredVisitors[filteredIndex] =
+                                //           updatedVisitor;
+                                //     }
+                                //   });
+                                //   await _fetchVisitorStats();
+                                //   await _fetchVisitors();
+                                // }
                               },
                             ),
                           ),
@@ -785,20 +667,243 @@ class _VisitorScreenState extends State<VisitorScreen> {
     );
   }
 
-  // Helper method for default avatar
-  Widget _buildDefaultAvatar(double size) {
+  Widget _buildFollowUpCard(FollowUp followUp) {
     return Container(
-      width: size,
-      height: size,
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.grey.shade300,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
       ),
-      child: Icon(Icons.person, size: size * 0.5, color: Colors.grey.shade600),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getFollowUpMethodColor(followUp.method).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _getFollowUpMethodIcon(followUp.method),
+              color: _getFollowUpMethodColor(followUp.method),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      followUp.followUpDate ?? 'N/A',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getFollowUpOutcomeColor(
+                          followUp.outcome,
+                        ).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _getFollowUpOutcomeColor(
+                            followUp.outcome,
+                          ).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        followUp.outcome,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _getFollowUpOutcomeColor(followUp.outcome),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.record_voice_over_outlined,
+                      size: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Method: ${followUp.method}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.person_outline,
+                      size: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'By: ${followUp.followedUpBy}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                if (followUp.notes != null && followUp.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Notes: ${followUp.notes!}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.grey.shade700,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // Helper method for section headers
+  Widget _buildQuickActions(Visitor visitor) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildQuickActionButton(
+            'Add Follow-up',
+            Icons.add_circle_outline,
+            Colors.green,
+            () {
+              _showAddFollowUpDialog(visitor);
+            },
+          ),
+          _buildQuickActionButton(
+            'Convert to Member',
+            Icons.person_add,
+            Colors.blue,
+            () {
+              _showConvertToMemberDialog(visitor);
+            },
+          ),
+          _buildQuickActionButton(
+            'Schedule Visit',
+            Icons.calendar_today,
+            Colors.orange,
+            () {
+              _showScheduleVisitDialog(visitor);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: Icon(icon, color: color),
+            onPressed: onPressed,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade700,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyStateCard(String message, IconData icon, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: color.withOpacity(0.5)),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper methods
   Widget _buildSectionHeader(String title) {
     return Row(
       children: [
@@ -836,7 +941,6 @@ class _VisitorScreenState extends State<VisitorScreen> {
     );
   }
 
-  // Enhanced detail card widget
   Widget _buildEnhancedDetailCard(
     String label,
     String value,
@@ -903,18 +1007,178 @@ class _VisitorScreenState extends State<VisitorScreen> {
     );
   }
 
-  // Helper method to get status color
-  Color _getStatusColor(String status) {
+  // Status color helpers
+  Color _getVisitorStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'active':
-        return Colors.green;
-      case 'inactive':
-        return Colors.red;
-      case 'pending':
+      case 'new':
+        return Colors.blue;
+      case 'follow-up':
         return Colors.orange;
+      case 'converted':
+        return Colors.green;
+      case 'dropped':
+        return Colors.red;
       default:
         return Colors.grey;
     }
+  }
+
+  String _formatVisitorStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return 'New Visitor';
+      case 'follow-up':
+        return 'In Follow-up ';
+      case 'converted':
+        return 'Converted to Member';
+      case 'dropped':
+        return 'No Longer Visiting';
+      default:
+        return status;
+    }
+  }
+
+  Color _getFollowUpMethodColor(String method) {
+    switch (method.toLowerCase()) {
+      case 'call':
+        return Colors.green;
+      case 'visit':
+        return Colors.blue;
+      case 'sms':
+        return Colors.purple;
+      case 'whatsapp':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getFollowUpMethodIcon(String method) {
+    switch (method.toLowerCase()) {
+      case 'call':
+        return Icons.phone;
+      case 'visit':
+        return Icons.home;
+      case 'sms':
+        return Icons.sms;
+      case 'whatsapp':
+        return Icons.chat;
+      default:
+        return Icons.record_voice_over;
+    }
+  }
+
+  Color _getFollowUpOutcomeColor(String outcome) {
+    switch (outcome.toLowerCase()) {
+      case 'interested':
+        return Colors.green;
+      case 'needs prayer':
+        return Colors.orange;
+      case 'converted':
+        return Colors.blue;
+      case 'not interested':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Table status colors
+  Color _getStatusBackgroundColor(String status) {
+    switch (status) {
+      case 'New':
+        return Colors.blue.shade100;
+      case 'Follow-up':
+        return Colors.orange.shade100;
+      case 'Converted':
+        return Colors.green.shade100;
+      case 'Dropped':
+        return Colors.red.shade100;
+      default:
+        return Colors.grey.shade200;
+    }
+  }
+
+  Color _getStatusDotColor(String status) {
+    switch (status) {
+      case 'New':
+        return Colors.blue;
+      case 'Follow-up':
+        return Colors.orange;
+      case 'Converted':
+        return Colors.green;
+      case 'Dropped':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusTextColor(String status) {
+    switch (status) {
+      case 'New':
+        return Colors.blue.shade800;
+      case 'Follow-up':
+        return Colors.orange.shade800;
+      case 'Converted':
+        return Colors.green.shade800;
+      case 'Dropped':
+        return Colors.red.shade800;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
+  // TODO: Implement these dialog methods
+  void _showAddFollowUpDialog(Visitor visitor) {
+    // Implement add follow-up dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Follow-up for ${visitor.names}'),
+        content: Text('Follow-up functionality to be implemented'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showConvertToMemberDialog(Visitor visitor) {
+    // Implement convert to member dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Convert ${visitor.names} to Member'),
+        content: Text('Convert to member functionality to be implemented'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showScheduleVisitDialog(Visitor visitor) {
+    // Implement schedule visit dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Schedule Visit for ${visitor.names}'),
+        content: Text('Schedule visit functionality to be implemented'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -983,6 +1247,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Statistics
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Container(
@@ -995,28 +1260,34 @@ class _VisitorScreenState extends State<VisitorScreen> {
                         spacing: 16,
                         runSpacing: 16,
                         children: [
-                          StatBox(
-                            iconPath: 'assets/icons/allvisitors.svg',
+                          Visitorboxwidget(
+                            iconPath: 'assets/icons/allvi.svg',
                             label: 'Total Visitors',
-                            count: _memberStats['total'].toString(),
+                            count: _visitorStats['total'].toString(),
                             backgroundColor: statboxColor,
                           ),
-                          StatBox(
-                            label: 'New ',
-                            count: _memberStats['active'].toString(),
-                            iconPath: 'assets/icons/newvisitor.svg',
+                          Visitorboxwidget(
+                            label: 'New',
+                            count: _visitorStats['new'].toString(),
+                            iconPath: 'assets/icons/newm.svg',
                             backgroundColor: statboxColor,
                           ),
-                          StatBox(
+                          Visitorboxwidget(
                             label: 'In Follow-up',
-                            count: _memberStats['inactive'].toString(),
-                            iconPath: 'assets/icons/inactive.svg',
+                            count: _visitorStats['followedUp'].toString(),
+                            iconPath: 'assets/icons/followup.svg',
                             backgroundColor: statboxColor,
                           ),
-                          StatBox(
+                          Visitorboxwidget(
                             label: 'Converted',
-                            count: _memberStats['transferred'].toString(),
-                            iconPath: 'assets/icons/tran.svg',
+                            count: _visitorStats['converted'].toString(),
+                            iconPath: 'assets/icons/converted.svg',
+                            backgroundColor: statboxColor,
+                          ),
+                          Visitorboxwidget(
+                            label: 'Dropped',
+                            count: _visitorStats['dropped'].toString(),
+                            iconPath: 'assets/icons/drop.svg',
                             backgroundColor: statboxColor,
                           ),
                         ],
@@ -1026,6 +1297,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
 
                   const SizedBox(height: 24),
 
+                  // Header with Add Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -1033,7 +1305,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                       children: [
                         const SizedBox(width: 460),
                         Text(
-                          "Members List",
+                          "Visitors List",
                           style: GoogleFonts.inter(
                             color: titlepageColor,
                             fontSize: 20,
@@ -1042,10 +1314,10 @@ class _VisitorScreenState extends State<VisitorScreen> {
                         ),
                         const SizedBox(width: 280),
                         if (widget.loggedInUser.role == 'CellAdmin' ||
-                            widget.loggedInUser.role == 'SuperAdmin') ...[
+                            widget.loggedInUser.role == 'SuperAdmin')
                           ElevatedButton.icon(
                             onPressed: () async {
-                              final newMember = await Navigator.push(
+                              final newVisitor = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => AddVisitorScreen(
@@ -1053,21 +1325,18 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                   ),
                                 ),
                               );
-
-                              if (newMember != null && newMember is Member) {
+                              if (newVisitor != null && newVisitor is Visitor) {
                                 setState(() {
-                                  _members.insert(0, newMember);
-                                  _filteredMembers = _members;
+                                  _visitors.insert(0, newVisitor);
+                                  _filteredVisitors = _visitors;
                                   _currentPage = 0;
                                 });
-
-                                // Refresh stats
-                                await _fetchMemberStats();
+                                await _fetchVisitorStats();
                               }
                             },
-                            icon: SvgPicture.asset("assets/icons/member.svg"),
+                            icon: SvgPicture.asset("assets/icons/visitor.svg"),
                             label: Text(
-                              'Add Member',
+                              'Add Visitor',
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1084,13 +1353,13 @@ class _VisitorScreenState extends State<VisitorScreen> {
                               ),
                             ),
                           ),
-                        ],
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
+                  // Data Table
                   _isLoading
                       ? Container(
                           height: 300,
@@ -1112,6 +1381,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                               controller: _horizontalScrollController,
                               child: Column(
                                 children: [
+                                  // Filter Row
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
@@ -1124,29 +1394,16 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
-                                          _dobFilterController,
-                                          'Search DOB(MM/dd/yyyy)',
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildFilterField(
                                           _phoneFilterController,
                                           'Search Phone',
                                         ),
-
                                         const SizedBox(width: 8),
                                         _buildGenderDropdown(),
-
-                                        const SizedBox(width: 8),
-                                        _buildMaritalDropdown(),
-
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _emailFilterController,
                                           'Search Email',
                                         ),
-                                        const SizedBox(width: 8),
-                                        _buildStatusDropdown(),
-
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _addressFilterController,
@@ -1154,31 +1411,21 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
-                                          _membershipFilterController,
-                                          'Search Membership Date',
+                                          _visitDateFilterController,
+                                          'Visit Date (MM/dd/yyyy)',
                                         ),
                                         const SizedBox(width: 8),
-                                        _buildDepartmentDropdown(
-                                          _selectedDepartment,
-                                          (dept) {
-                                            setState(() {
-                                              _selectedDepartment = dept;
-                                            });
-                                            _onFilterChanged();
-                                          },
-                                        ),
+                                        _buildStatusDropdown(),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _levelFilterController,
                                           'Search Level',
                                         ),
-
-                                        const SizedBox(width: 8),
-                                        _buildBaptismStatusDropdown(),
                                       ],
                                     ),
                                   ),
 
+                                  // Data Table
                                   Stack(
                                     children: [
                                       ConstrainedBox(
@@ -1186,7 +1433,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                           minHeight: 300,
                                         ),
                                         child: SizedBox(
-                                          width: 2200,
+                                          width: 1600,
                                           child: DataTable(
                                             horizontalMargin: 12,
                                             dataRowMaxHeight: 56,
@@ -1224,29 +1471,8 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                             ),
                                             columns: [
                                               DataColumn(
-                                                label: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.person,
-                                                      size: 16,
-                                                      color: Colors.white,
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    Text(
-                                                      'Member',
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              DataColumn(
                                                 label: Text(
-                                                  'Date of Birth',
+                                                  'Name',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -1276,27 +1502,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Marital Status',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataColumn(
-                                                label: Text(
                                                   'Email',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataColumn(
-                                                label: Text(
-                                                  'STATUS',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -1316,7 +1522,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Membership Date',
+                                                  'Visit Date',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -1326,7 +1532,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Department',
+                                                  'STATUS',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -1346,16 +1552,6 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Baptized',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataColumn(
-                                                label: Text(
                                                   'Actions',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
@@ -1365,24 +1561,24 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                                 ),
                                               ),
                                             ],
-                                            rows: displayedMembers.isEmpty
+                                            rows: displayedVisitors.isEmpty
                                                 ? [
                                                     DataRow(
                                                       cells: List.generate(
-                                                        13,
+                                                        9,
                                                         (_) => const DataCell(
                                                           SizedBox(),
                                                         ),
                                                       ),
                                                     ),
                                                   ]
-                                                : displayedMembers
+                                                : displayedVisitors
                                                       .map(_buildDataRow)
                                                       .toList(),
                                           ),
                                         ),
                                       ),
-                                      if (displayedMembers.isEmpty)
+                                      if (displayedVisitors.isEmpty)
                                         Positioned(
                                           left: 426,
                                           top: 120,
@@ -1394,7 +1590,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                               ),
                                               const SizedBox(width: 8),
                                               Text(
-                                                'No Members found',
+                                                'No Visitors found',
                                                 style: GoogleFonts.inter(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
@@ -1407,6 +1603,8 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 10),
+
+                                  // Pagination Controls
                                   Align(
                                     alignment: Alignment.bottomLeft,
                                     child: Row(
@@ -1414,11 +1612,15 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                           MainAxisAlignment.start,
                                       children: [
                                         ElevatedButton.icon(
-                                          onPressed: _previousPage,
+                                          onPressed: hasPreviousPage
+                                              ? _previousPage
+                                              : null,
                                           icon: const Icon(Icons.arrow_back),
                                           label: const Text('Previous'),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.deepPurple,
+                                            backgroundColor: hasPreviousPage
+                                                ? Colors.deepPurple
+                                                : Colors.grey,
                                             foregroundColor: Colors.white,
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 20,
@@ -1440,11 +1642,15 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                         ),
                                         const SizedBox(width: 16),
                                         ElevatedButton.icon(
-                                          onPressed: _nextPage,
+                                          onPressed: hasNextPage
+                                              ? _nextPage
+                                              : null,
                                           icon: const Icon(Icons.arrow_forward),
                                           label: const Text('Next'),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.deepPurple,
+                                            backgroundColor: hasNextPage
+                                                ? Colors.deepPurple
+                                                : Colors.grey,
                                             foregroundColor: Colors.white,
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 20,
@@ -1561,7 +1767,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                                                 if (_isFiltering) {
                                                   _applySearchFilter();
                                                 } else {
-                                                  _fetchMembers();
+                                                  _fetchVisitors();
                                                 }
                                               }
                                             },
@@ -1577,21 +1783,13 @@ class _VisitorScreenState extends State<VisitorScreen> {
                         ),
                   const SizedBox(height: 20),
 
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      color: Colors.transparent,
-                      child: Center(
-                        child: Text(
-                          '© 2025 All rights reserved. Church CRM System',
-                          style: GoogleFonts.inter(
-                            color: Colors.grey[600],
-                            fontSize: 13,
-                          ),
-                        ),
+                  // Footer
+                  Center(
+                    child: Text(
+                      '© 2025 All rights reserved. Church CRM System',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[600],
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -1607,7 +1805,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SizedBox(
-      width: 180, // Increased width for better usability
+      width: 207,
       height: 40,
       child: TextField(
         controller: controller,
@@ -1636,14 +1834,14 @@ class _VisitorScreenState extends State<VisitorScreen> {
       width: 150,
       height: 40,
       child: DropdownButtonFormField<String>(
-        initialValue: _statusFilter,
+        value: _statusFilter,
         onChanged: (value) {
           setState(() {
             _statusFilter = value!;
             _onFilterChanged();
           });
         },
-        items: ['All Status', 'Active', 'Inactive', 'Transferred'].map((
+        items: ['All Status', 'New', 'Follow-up', 'Converted', 'Dropped'].map((
           status,
         ) {
           return DropdownMenuItem(
@@ -1655,14 +1853,14 @@ class _VisitorScreenState extends State<VisitorScreen> {
           );
         }).toList(),
         selectedItemBuilder: (context) {
-          return ['All Status', 'Active', 'Inactive', 'Transferred'].map((
-            role,
-          ) {
-            return Text(
-              role,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
-            );
-          }).toList();
+          return ['All Status', 'New', 'Follow-up', 'Converted', 'Dropped'].map(
+            (status) {
+              return Text(
+                status,
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
+              );
+            },
+          ).toList();
         },
         dropdownColor: backgroundcolor,
         decoration: InputDecoration(
@@ -1686,7 +1884,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
       width: 150,
       height: 40,
       child: DropdownButtonFormField<String>(
-        initialValue: _genderFilter,
+        value: _genderFilter,
         onChanged: (value) {
           setState(() {
             _genderFilter = value!;
@@ -1703,9 +1901,9 @@ class _VisitorScreenState extends State<VisitorScreen> {
           );
         }).toList(),
         selectedItemBuilder: (context) {
-          return ['All Gender', 'Male', 'Female'].map((role) {
+          return ['All Gender', 'Male', 'Female'].map((gender) {
             return Text(
-              role,
+              gender,
               style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
             );
           }).toList();
@@ -1725,251 +1923,5 @@ class _VisitorScreenState extends State<VisitorScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildMaritalDropdown() {
-    return SizedBox(
-      width: 180,
-      height: 40,
-      child: DropdownButtonFormField<String>(
-        initialValue: _maritalFilter,
-        onChanged: (value) {
-          setState(() {
-            _maritalFilter = value!;
-            _onFilterChanged();
-          });
-        },
-        items: ['All Marital Status', 'Single', 'Married', 'Divorced'].map((
-          maritalStatus,
-        ) {
-          return DropdownMenuItem(
-            value: maritalStatus,
-            child: Text(
-              maritalStatus,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-            ),
-          );
-        }).toList(),
-        selectedItemBuilder: (context) {
-          return ['All Marital Status', 'Single', 'Married', 'Divorced'].map((
-            role,
-          ) {
-            return Text(
-              role,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
-            );
-          }).toList();
-        },
-        dropdownColor: backgroundcolor,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDepartmentDropdown(
-    Department? selectedDepartment,
-    void Function(Department?) onChanged,
-  ) {
-    return SizedBox(
-      width: 180,
-      height: 40,
-      child: DropdownButtonFormField<String>(
-        value: selectedDepartment?.departmentId ?? 'all',
-        onChanged: (String? selectedId) {
-          if (selectedId == 'others') {
-            setState(() {
-              _selectedDepartment = Department(
-                departmentId: 'others',
-                name: 'Others',
-              );
-            });
-            onChanged(_selectedDepartment);
-          } else if (selectedId == 'none') {
-            setState(() {
-              _selectedDepartment = Department(
-                departmentId: 'none',
-                name: 'None',
-              );
-            });
-            onChanged(_selectedDepartment);
-          } else if (selectedId == 'all') {
-            setState(() {
-              _selectedDepartment = null;
-            });
-            onChanged(null);
-          } else {
-            final dept = _departments.firstWhere(
-              (d) => d.departmentId == selectedId,
-              orElse: () => _departments.first,
-            );
-            setState(() {
-              _selectedDepartment = dept;
-            });
-            onChanged(dept);
-          }
-        },
-        items: [
-          DropdownMenuItem(
-            value: 'all',
-            child: Text(
-              'All Departments',
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-            ),
-          ),
-          DropdownMenuItem(
-            value: 'none',
-            child: Text(
-              'None',
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-            ),
-          ),
-          ..._departments.map((department) {
-            return DropdownMenuItem<String>(
-              value: department.departmentId,
-              child: Text(
-                department.name,
-                style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-              ),
-            );
-          }),
-          DropdownMenuItem(
-            value: 'others',
-            child: Text(
-              'Others',
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-            ),
-          ),
-        ],
-        selectedItemBuilder: (context) {
-          final labels = [
-            'All Departments',
-            'None',
-            ..._departments.map((d) => d.name),
-            'Others',
-          ];
-          return labels.map((label) {
-            return Text(
-              label,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
-            );
-          }).toList();
-        },
-        dropdownColor: backgroundcolor,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-
-        menuMaxHeight: 250,
-      ),
-    );
-  }
-
-  Widget _buildBaptismStatusDropdown() {
-    return SizedBox(
-      width: 200,
-      height: 40,
-      child: DropdownButtonFormField<String>(
-        initialValue: _baptismFilter,
-        onChanged: (value) {
-          setState(() {
-            _baptismFilter = value!;
-            _onFilterChanged();
-          });
-        },
-        items: ['All Baptism Status', 'Baptized', 'Not Baptized'].map((
-          baptism,
-        ) {
-          return DropdownMenuItem(
-            value: baptism,
-            child: Text(
-              baptism,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-            ),
-          );
-        }).toList(),
-        selectedItemBuilder: (context) {
-          return ['All Baptism Status', 'Baptized', 'Not Baptized'].map((
-            baptism,
-          ) {
-            return Text(
-              baptism,
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
-            );
-          }).toList();
-        },
-        dropdownColor: backgroundcolor,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getStatusBackgroundColor(String status) {
-    switch (status) {
-      case 'Active':
-        return Colors.green.shade100;
-      case 'Inactive':
-        return Colors.red.shade100;
-      case 'Transferred':
-        return Colors.blue.shade100;
-      default:
-        return Colors.grey.shade200;
-    }
-  }
-
-  Color _getStatusDotColor(String status) {
-    switch (status) {
-      case 'Active':
-        return Colors.green;
-      case 'Inactive':
-        return Colors.redAccent;
-      case 'Transferred':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _getStatusTextColor(String status) {
-    switch (status) {
-      case 'Active':
-        return Colors.green.shade800;
-      case 'Inactive':
-        return Colors.red.shade500;
-      case 'Transferred':
-        return Colors.blue.shade800;
-      default:
-        return Colors.grey.shade600;
-    }
   }
 }

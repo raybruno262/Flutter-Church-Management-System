@@ -97,34 +97,6 @@ class _UpdateUserScreenState extends State<UpdateUserScreen> {
   }
 
   bool _isClearing = false;
-  void _clearoneForm() {
-    _isClearing = true;
-    setState(() {
-      // Reset form validation
-      _formKey.currentState?.reset();
-      // Clear text fields
-      _nameController.clear();
-      _usernameController.clear();
-      _emailController.clear();
-      _passwordController.clear();
-      _phoneController.clear();
-      _nationalIdController.clear();
-
-      // Clear dropdown selections
-      _selectedRoleType = null;
-      _selectedLevelType = null;
-      _selectedLevel = null;
-      _selectedLevelId = null;
-      _selectedCountry = null;
-      _availableLevels = [];
-
-      // Clear image
-      _imageBytes = null;
-      _fileExtension = null;
-    });
-
-    _isClearing = false;
-  }
 
   // ignore: unused_field
   String? _isActive;

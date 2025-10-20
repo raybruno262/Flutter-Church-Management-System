@@ -1,24 +1,16 @@
 import 'dart:typed_data';
-import 'package:flutter_churchcrm_system/controller/department_controller.dart';
 import 'package:flutter_churchcrm_system/controller/level_controller.dart';
-import 'package:flutter_churchcrm_system/controller/member_controller.dart';
-import 'package:flutter_churchcrm_system/model/baptismInformation_model.dart';
-import 'package:flutter_churchcrm_system/model/department_model.dart';
+import 'package:flutter_churchcrm_system/controller/visitor_controller.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
-import 'package:flutter_churchcrm_system/model/member_model.dart';
-import 'package:flutter_churchcrm_system/screens/deparmentScreen.dart';
+import 'package:flutter_churchcrm_system/model/visitor_model.dart';
+import 'package:flutter_churchcrm_system/screens/levelScreen.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
-
 import 'package:flutter/material.dart';
-
 import 'package:image_picker/image_picker.dart';
 import 'package:country_picker/country_picker.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -40,31 +32,26 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  final _otherChurchNameController = TextEditingController();
-  final _otherChurchAddressController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _dobController = TextEditingController();
+  final _visitDateController = TextEditingController();
 
   // Data lists
-  List<Department> _departments = [];
+  List<Level> _levels = [];
   List<Level> _cells = [];
 
   // Controllers
   final LevelController _levelController = LevelController();
-  final DepartmentController _departmentController = DepartmentController();
+  final VisitorController _visitorController = VisitorController();
 
   // State variables
   bool _isLoading = false;
   Uint8List? _imageBytes;
   String? _fileExtension;
-  String? _maritalStatus;
   String? _gender;
-  DateTime? _dob;
-  String? _baptismStatus;
-  String? _sameReligion;
-  Department? _selectedDepartment;
-  Level? _selectedBaptismCell;
-  Level? _selectedSuperAdminBaptismCell;
+  DateTime? _visitDate;
+  String? _status;
+  Level? _selectedLevel;
+  Level? _selectedSuperAdminLevel;
   Country? _selectedCountry;
 
   // Message state variables
@@ -74,7 +61,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDepartments();
+    _loadLevels();
     _loadCells();
   }
 
@@ -83,10 +70,8 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _addressController.dispose();
-    _otherChurchNameController.dispose();
-    _otherChurchAddressController.dispose();
     _phoneController.dispose();
-    _dobController.dispose();
+    _visitDateController.dispose();
     super.dispose();
   }
 
@@ -97,10 +82,10 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
     }
   }
 
-  Future<void> _loadDepartments() async {
-    final departments = await _departmentController.getAllDepartments();
+  Future<void> _loadLevels() async {
+    final levels = await _levelController.getAllLevels();
     if (mounted) {
-      setState(() => _departments = departments);
+      setState(() => _levels = levels);
     }
   }
 
@@ -125,22 +110,18 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
     _nameController.clear();
     _emailController.clear();
     _addressController.clear();
-    _otherChurchNameController.clear();
-    _otherChurchAddressController.clear();
     _phoneController.clear();
-    _dobController.clear();
+    _visitDateController.clear();
 
     // Reset state variables
     setState(() {
       _imageBytes = null;
       _fileExtension = null;
-      _maritalStatus = null;
       _gender = null;
-      _dob = null;
-      _baptismStatus = null;
-      _sameReligion = null;
-      _selectedDepartment = null;
-      _selectedBaptismCell = null;
+      _visitDate = null;
+      _status = null;
+      _selectedLevel = null;
+      _selectedSuperAdminLevel = null;
       _selectedCountry = null;
     });
 
@@ -154,16 +135,19 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
       return;
     }
 
-    //  Email format validation
+    // Email format validation
     final email = _emailController.text.trim();
-    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
-    if (!emailRegex.hasMatch(email)) {
-      setState(() {
-        _message = 'Please enter a valid email address';
-        _isSuccess = false;
-      });
-      return;
+    if (email.isNotEmpty) {
+      final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
+      if (!emailRegex.hasMatch(email)) {
+        setState(() {
+          _message = 'Please enter a valid email address';
+          _isSuccess = false;
+        });
+        return;
+      }
     }
+
     // Validate image
     if (_imageBytes == null ||
         _fileExtension == null ||
@@ -175,63 +159,20 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
       return;
     }
 
-    // Validate department
-    if (_selectedDepartment == null) {
-      setState(() {
-        _message = 'Please select a department';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    // Validate baptism status
-    if (_baptismStatus == null) {
-      setState(() {
-        _message = 'Please select baptism status';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    // Validate same religion
-    if (_sameReligion == null && _baptismStatus == "Baptized") {
-      setState(() {
-        _message = 'Please select same religion option';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    // Validate baptism cell when same religion is Yes
-    if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
-      setState(() {
-        _message = 'Please select a baptism cell';
-        _isSuccess = false;
-      });
-      return;
-    }
-
-    // Validate other church fields when same religion is No
-    if (_sameReligion == 'No') {
-      if (_otherChurchNameController.text.trim().isEmpty) {
-        setState(() {
-          _message = 'Please enter other church name';
-          _isSuccess = false;
-        });
-        return;
-      }
-      if (_otherChurchAddressController.text.trim().isEmpty) {
-        setState(() {
-          _message = 'Please enter other church address';
-          _isSuccess = false;
-        });
-        return;
-      }
-    }
+    // Validate level for SuperAdmin
     if (widget.loggedInUser.role == 'SuperAdmin' &&
-        _selectedSuperAdminBaptismCell == null) {
+        _selectedSuperAdminLevel == null) {
       setState(() {
-        _message = 'Please select a cell for this member';
+        _message = 'Please select a level for this visitor';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level for CellAdmin
+    if (widget.loggedInUser.role == 'CellAdmin' && _selectedLevel == null) {
+      setState(() {
+        _message = 'Please select a level for this visitor';
         _isSuccess = false;
       });
       return;
@@ -246,10 +187,19 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
       return;
     }
 
-    // Validate marital status
-    if (_maritalStatus == null) {
+    // Validate status
+    if (_status == null) {
       setState(() {
-        _message = 'Please select marital status';
+        _message = 'Please select visitor status';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate visit date
+    if (_visitDate == null) {
+      setState(() {
+        _message = 'Please select visit date';
         _isSuccess = false;
       });
       return;
@@ -276,57 +226,36 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
         return;
       }
 
-      // Create baptism information
-      final baptismInfo = BaptismInformation(
-        baptized: _baptismStatus == "Baptized",
-        sameReligion: _sameReligion == "Yes",
-        baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
-        otherChurchName: _sameReligion == "No"
-            ? _otherChurchNameController.text.trim()
-            : null,
-        otherChurchAddress: _sameReligion == "No"
-            ? _otherChurchAddressController.text.trim()
-            : null,
-      );
-
       // Build phone number with country code
       final phoneCode = _selectedCountry != null
           ? '+${_selectedCountry!.phoneCode}'
           : '+250';
       final fullPhone = '$phoneCode${_phoneController.text.trim()}';
 
-      // Create member object
-      final member = Member(
+      // Format visit date
+      final formattedVisitDate = _visitDate != null
+          ? '${_visitDate!.month.toString().padLeft(2, '0')}/'
+                '${_visitDate!.day.toString().padLeft(2, '0')}/'
+                '${_visitDate!.year}'
+          : '';
+
+      // Create visitor object
+      final visitor = Visitor(
         names: _nameController.text.trim(),
         email: _emailController.text.trim(),
         address: _addressController.text.trim(),
         phone: fullPhone,
-        maritalStatus: _maritalStatus ?? '',
         gender: _gender ?? '',
-        status: 'Active',
-        dateOfBirth: _dob != null
-            ? '${_dob!.month.toString().padLeft(2, '0')}/'
-                  '${_dob!.day.toString().padLeft(2, '0')}/'
-                  '${_dob!.year}'
-            : '',
-        membershipDate:
-            '${DateTime.now().month.toString().padLeft(2, '0')}/'
-            '${DateTime.now().day.toString().padLeft(2, '0')}/'
-            '${DateTime.now().year}',
+        status: _status ?? 'New',
+        visitDate: formattedVisitDate,
         level: widget.loggedInUser.role == 'SuperAdmin'
-            ? _selectedSuperAdminBaptismCell
-            : widget.loggedInUser.level,
-
-        department: _selectedDepartment,
-        baptismInformation: baptismInfo,
-        profilePic: _imageBytes!,
+            ? _selectedSuperAdminLevel
+            : _selectedLevel,
       );
 
       // Submit to backend
-      final result = await MemberController().createMember(
-        member,
-        profilePic: _imageBytes!,
-        fileExtension: _fileExtension!,
+      final result = await VisitorController().createVisitor(
+        visitor: visitor,
         userId: widget.loggedInUser.userId!,
       );
 
@@ -338,14 +267,14 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
 
       if (result == 'Status 1000') {
         setState(() {
-          _message = 'Member created successfully';
+          _message = 'Visitor created successfully';
           _isSuccess = true;
         });
         // Clear the form after successful save
         _clearForm();
       } else if (result == 'Status 3000') {
         setState(() {
-          _message = 'Invalid department or baptism info';
+          _message = 'Invalid level information';
           _isSuccess = false;
         });
       } else if (result == 'Status 4000') {
@@ -369,7 +298,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _message = 'Error submitting member: $e';
+          _message = 'Error submitting visitor: $e';
           _isSuccess = false;
         });
       }
@@ -389,7 +318,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Members',
+                selectedTitle: 'Visitors',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -406,7 +335,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Members',
+                  selectedTitle: 'Visitors',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
@@ -439,7 +368,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add Member",
+                        "Add Visitor",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -519,7 +448,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
 
                     /// Personal Information Section
                     Text(
-                      "Personal Information",
+                      "Visitor Information",
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -532,21 +461,10 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
                       runSpacing: 16,
                       children: [
                         _buildTextField('Name', _nameController),
-                        _buildTextField('Email', _emailController),
-                        _buildDropdown(
-                          'Marital Status',
-                          ['Single', 'Married', 'Divorced'],
-                          _maritalStatus,
-                          (val) => setState(() => _maritalStatus = val),
-                        ),
-                        _buildDatePickerField(
-                          'Date of Birth (MM/dd/yyyy)',
-                          _dobController,
-                          (date) => setState(() {
-                            _dob = date;
-                            _dobController.text =
-                                "${date.month}/${date.day}/${date.year}";
-                          }),
+                        _buildTextField(
+                          'Email',
+                          _emailController,
+                          optional: true,
                         ),
                         _buildDropdown(
                           'Gender',
@@ -554,18 +472,40 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
                           _gender,
                           (val) => setState(() => _gender = val),
                         ),
+                        _buildDatePickerField(
+                          'Visit Date (MM/dd/yyyy)',
+                          _visitDateController,
+                          (date) => setState(() {
+                            _visitDate = date;
+                            _visitDateController.text =
+                                "${date.month}/${date.day}/${date.year}";
+                          }),
+                        ),
                         _buildTextField('Address', _addressController),
                         _buildPhoneField(_phoneController),
 
-                        if (widget.loggedInUser.role == 'SuperAdmin') ...[
-                          _buildSuperAdminCellDropdown(
-                            'Select Cell',
-                            _selectedSuperAdminBaptismCell,
-                            (cell) => setState(
-                              () => _selectedSuperAdminBaptismCell = cell,
+                        // Level selection based on user role
+                        if (widget.loggedInUser.role == 'SuperAdmin')
+                          _buildSuperAdminLevelDropdown(
+                            'Select Level',
+                            _selectedSuperAdminLevel,
+                            (level) => setState(
+                              () => _selectedSuperAdminLevel = level,
                             ),
+                          )
+                        else
+                          _buildLevelDropdown(
+                            'Select Level',
+                            _selectedLevel,
+                            (level) => setState(() => _selectedLevel = level),
                           ),
-                        ],
+
+                        _buildDropdown(
+                          'Status',
+                          ['New', 'Follow-up', 'Converted', 'Dropped'],
+                          _status,
+                          (val) => setState(() => _status = val),
+                        ),
 
                         _buildFilePicker(
                           previewBytes: _imageBytes,
@@ -576,85 +516,6 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
                             });
                           },
                         ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    /// Church Information Section
-                    Text(
-                      "Church Information",
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: titlepageColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildDepartmentDropdown(
-                          'Department',
-                          _selectedDepartment,
-                          (dept) => setState(() => _selectedDepartment = dept),
-                        ),
-                        _buildDropdown(
-                          'Baptism Status',
-                          ['Baptized', 'Not Baptized'],
-                          _baptismStatus,
-                          (val) {
-                            setState(() {
-                              _baptismStatus = val;
-                              if (val == 'Not Baptized') {
-                                _sameReligion = null;
-                                _selectedBaptismCell = null;
-                                _otherChurchNameController.clear();
-                                _otherChurchAddressController.clear();
-                              }
-                            });
-                          },
-                        ),
-
-                        if (_baptismStatus == 'Baptized')
-                          _buildDropdown(
-                            'Same Religion',
-                            ['Yes', 'No'],
-                            _sameReligion,
-                            (val) {
-                              setState(() {
-                                _sameReligion = val;
-                                if (val == 'Yes') {
-                                  _otherChurchNameController.clear();
-                                  _otherChurchAddressController.clear();
-                                } else if (val == 'No') {
-                                  _selectedBaptismCell = null;
-                                }
-                              });
-                            },
-                          ),
-
-                        if (_baptismStatus == 'Baptized' &&
-                            _sameReligion == 'Yes')
-                          _buildCellDropdown(
-                            'Baptism Cell',
-                            _selectedBaptismCell,
-                            (cell) =>
-                                setState(() => _selectedBaptismCell = cell),
-                          ),
-
-                        if (_baptismStatus == 'Baptized' &&
-                            _sameReligion == 'No') ...[
-                          _buildTextField(
-                            'Other Church Name',
-                            _otherChurchNameController,
-                          ),
-                          _buildTextField(
-                            'Other Church Address',
-                            _otherChurchAddressController,
-                          ),
-                        ],
                       ],
                     ),
 
@@ -678,7 +539,7 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
                                 ),
                               ),
                               child: Text(
-                                "Save",
+                                "Save Visitor",
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -696,7 +557,11 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool optional = false,
+  }) {
     return SizedBox(
       width: 300,
       child: TextFormField(
@@ -710,20 +575,22 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
             vertical: 10,
           ),
         ),
-        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+        validator: optional
+            ? null
+            : (v) => v == null || v.trim().isEmpty ? 'Required' : null,
       ),
     );
   }
 
-  Widget _buildCellDropdown(
+  Widget _buildLevelDropdown(
     String label,
-    Level? selectedCell,
+    Level? selectedLevel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: selectedCell,
+        value: selectedLevel,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -733,28 +600,28 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
             vertical: 10,
           ),
         ),
-        items: _cells.map((cell) {
+        items: _levels.map((level) {
           return DropdownMenuItem<Level>(
-            value: cell,
-            child: Text(cell.name ?? 'Unknown'),
+            value: level,
+            child: Text(level.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,
-
+        validator: (value) => value == null ? 'Required' : null,
         menuMaxHeight: 250,
       ),
     );
   }
 
-  Widget _buildSuperAdminCellDropdown(
+  Widget _buildSuperAdminLevelDropdown(
     String label,
-    Level? _selectedSuperAdminBaptismCell,
+    Level? selectedLevel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: _selectedSuperAdminBaptismCell,
+        value: selectedLevel,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -764,14 +631,14 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
             vertical: 10,
           ),
         ),
-        items: _cells.map((cell) {
+        items: _levels.map((level) {
           return DropdownMenuItem<Level>(
-            value: cell,
-            child: Text(cell.name ?? 'Unknown'),
+            value: level,
+            child: Text(level.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,
-
+        validator: (value) => value == null ? 'Required' : null,
         menuMaxHeight: 250,
       ),
     );
@@ -835,69 +702,6 @@ class _AddVisitorScreenState extends State<AddVisitorScreen> {
           ),
         ),
         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-      ),
-    );
-  }
-
-  Widget _buildDepartmentDropdown(
-    String label,
-    Department? selectedDepartment,
-    void Function(Department?) onChanged,
-  ) {
-    return SizedBox(
-      width: 300,
-      child: DropdownButtonFormField<String>(
-        value: selectedDepartment?.departmentId ?? 'none',
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.inter(fontSize: 13),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-        ),
-        items: [
-          const DropdownMenuItem(value: 'none', child: Text('None')),
-          ..._departments.map((department) {
-            return DropdownMenuItem<String>(
-              value: department.departmentId,
-              child: Text(department.name),
-            );
-          }),
-          const DropdownMenuItem(value: 'others', child: Text('Others')),
-        ],
-        onChanged: (String? selectedId) async {
-          if (selectedId == 'others') {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    DepartmentScreen(loggedInUser: widget.loggedInUser),
-              ),
-            );
-            if (result != null) {
-              await _loadDepartments();
-            }
-          } else if (selectedId == 'none') {
-            setState(() {
-              _selectedDepartment = null;
-            });
-          } else {
-            final dept = _departments.firstWhere(
-              (d) => d.departmentId == selectedId,
-              orElse: () => _departments.first,
-            );
-            setState(() {
-              _selectedDepartment = dept;
-            });
-            onChanged(dept);
-          }
-        },
-        validator: (value) =>
-            value == null || value == 'none' ? 'Required' : null,
-
-        menuMaxHeight: 250,
       ),
     );
   }

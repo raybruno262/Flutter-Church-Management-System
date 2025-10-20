@@ -4,9 +4,12 @@ import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/controller/department_controller.dart';
 import 'package:flutter_churchcrm_system/model/department_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
+import 'package:flutter_churchcrm_system/screens/addDepartmentScreen.dart';
+import 'package:flutter_churchcrm_system/screens/updateDepartmentScreen.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class DepartmentScreen extends StatefulWidget {
@@ -20,11 +23,15 @@ class DepartmentScreen extends StatefulWidget {
 
 class _DepartmentScreenState extends State<DepartmentScreen> {
   final DepartmentController _departmentController = DepartmentController();
+
   int _departmentCount = 0;
   final _nameFilterController = TextEditingController();
+  final ScrollController _horizontalScrollController = ScrollController();
   int _currentPage = 0;
-  final int _pageSize = 5;
+
+  int _pageSize = 5;
   List<Department> _departments = [];
+  List<Department> _allDepartments = [];
   List<Department> _filteredDapartments = [];
   @override
   void initState() {
@@ -33,18 +40,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     _fetchDepartments();
   }
 
-  void _nextPage() {
-    _currentPage++;
-    _fetchDepartments();
-  }
-
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _currentPage--;
-      _fetchDepartments();
-    }
-  }
-
+  final List<int> _pageSizeOptions = [5, 10, 15, 20];
+  // ignore: unused_field
+  bool _isFiltering = false;
   bool _isLoading = true;
 
   Future<void> _fetchDepartments() async {
@@ -54,7 +52,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
       size: _pageSize,
     );
     setState(() {
-      _departments = departments.reversed.toList();
+      _departments = departments;
       _filteredDapartments = _departments;
 
       _isLoading = false;
@@ -64,14 +62,78 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
 
-    _filteredDapartments = _departments.where((level) {
-      final matchesName = level.name.toLowerCase().contains(nameQuery);
+    final filtered = _allDepartments.where((department) {
+      final matchesName = department.name.toLowerCase().contains(nameQuery);
 
       return matchesName;
     }).toList();
 
-    setState(() {});
+    setState(() {
+      _filteredDapartments = filtered;
+      _currentPage = 0;
+    });
   }
+
+  Future<void> _fetchAllDepartments() async {
+    final allDepartments = await _departmentController.getAllDepartments();
+    setState(() {
+      _allDepartments = allDepartments;
+      _isLoading = false;
+    });
+  }
+
+  void _onFilterChanged() async {
+    final isDefaultFilter = _nameFilterController.text.isEmpty;
+
+    if (isDefaultFilter) {
+      _isFiltering = false;
+      _currentPage = 0;
+      await _fetchDepartments();
+    } else {
+      _isFiltering = true;
+      await _fetchAllDepartments();
+      _applySearchFilter();
+    }
+  }
+
+  Future<void> _nextPage() async {
+    if (_isFiltering) {
+      if ((_currentPage + 1) * _pageSize < _filteredDapartments.length) {
+        setState(() => _currentPage++);
+      }
+    } else {
+      setState(() => _currentPage++);
+      await _fetchDepartments();
+    }
+  }
+
+  Future<void> _previousPage() async {
+    if (_currentPage > 0) {
+      if (_isFiltering) {
+        setState(() => _currentPage--);
+      } else {
+        setState(() => _currentPage--);
+        await _fetchDepartments();
+      }
+    }
+  }
+
+  List<Department> get displayedDepartments {
+    if (_isFiltering) {
+      if (_filteredDapartments.isEmpty) return [];
+      final start = _currentPage * _pageSize;
+      final end = start + _pageSize;
+      return _filteredDapartments.sublist(
+        start,
+        end > _filteredDapartments.length ? _filteredDapartments.length : end,
+      );
+    } else {
+      return _departments;
+    }
+  }
+
+  // ignore: unused_field
+  bool _isClearing = false;
 
   Future<void> _fetchDepartmentCount() async {
     try {
@@ -96,8 +158,26 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
             children: [
               IconButton(
                 icon: Icon(Icons.edit, color: Colors.blue),
-                onPressed: () {
-                  // TODO: Navigate to UpdateLevelPage
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UpdateDepartmentScreen(
+                        loggedInUser: widget.loggedInUser,
+                        department: department,
+                      ),
+                    ),
+                  );
+
+                  if (result != null) {
+                    setState(() {
+                      _currentPage = 0;
+                    });
+
+                    _fetchDepartments();
+
+                    _fetchDepartmentCount();
+                  }
                 },
               ),
             ],
@@ -157,7 +237,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
         Expanded(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -191,131 +271,146 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Main Row Layout
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left: StatBox + Add Department Form
-                      Expanded(
-                        flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: containerColor,
-                              ),
-                              child: Wrap(
-                                spacing: 16,
-                                runSpacing: 16,
-                                children: [
-                                  StatBox(
-                                    iconPath: 'assets/icons/depart.svg',
-                                    label: 'Total Departments',
-                                    count: _departmentCount.toString(),
-                                    backgroundColor: statboxColor,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 40),
-                            Text(
-                              "Add/Update Department",
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: titlepageColor,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 16,
-                              runSpacing: 16,
-                              children: [_buildTextField('Department Name')],
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton(
-                              child: Text(
-                                "Save",
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              onPressed: () {
-                                // TODO: Add save logic
-                              },
-                            ),
-                          ],
-                        ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: containerColor,
                       ),
+                      child: Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          StatBox(
+                            iconPath: 'assets/icons/depart.svg',
+                            label: 'Total Departments',
+                            count: _departmentCount.toString(),
+                            backgroundColor: statboxColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
-                      const SizedBox(width: 40),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 460),
+                        Text(
+                          "Department List",
+                          style: GoogleFonts.inter(
+                            color: titlepageColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 220),
 
-                      // Right: Levels List + Table
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(
-                              child: Text(
-                                "Department List",
-                                style: GoogleFonts.inter(
-                                  color: titlepageColor,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddDepartmentScreen(
+                                  loggedInUser: widget.loggedInUser,
                                 ),
                               ),
+                            );
+
+                            if (result != null) {
+                              setState(() {
+                                _currentPage = 0;
+                              });
+
+                              await _fetchDepartments();
+                              await _fetchDepartmentCount();
+                            }
+                          },
+                          icon: SvgPicture.asset("assets/icons/depart.svg"),
+                          label: Text(
+                            'Add Department',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(height: 12),
-                            _isLoading
-                                ? Container(
-                                    height: 300,
-                                    alignment: Alignment.center,
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: containerColor,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Align(
-                                          alignment: Alignment.center,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 15,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                                          child: SizedBox(
-                                            width: 800,
-                                            child: _buildFilterField(
-                                              _nameFilterController,
-                                              'Search Name',
-                                            ),
+                  const SizedBox(height: 10),
+
+                  _isLoading
+                      ? Center(
+                          child: Container(
+                            height: 300,
+
+                            alignment: Alignment.center,
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : Center(
+                          child: Container(
+                            width: 520,
+                            margin: const EdgeInsets.symmetric(horizontal: 18),
+                            padding: const EdgeInsets.all(12),
+
+                            decoration: BoxDecoration(
+                              color: containerColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+
+                            child: Scrollbar(
+                              controller: _horizontalScrollController,
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                controller: _horizontalScrollController,
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+
+                                        children: [
+                                          _buildFilterField(
+                                            _nameFilterController,
+                                            'Search Name',
                                           ),
-                                        ),
+                                        ],
+                                      ),
+                                    ),
 
-                                        const SizedBox(height: 8),
+                                    Stack(
+                                      children: [
                                         ConstrainedBox(
                                           constraints: BoxConstraints(
                                             minHeight: 300,
                                           ),
                                           child: SizedBox(
-                                            width: 600,
+                                            width: 495,
+
                                             child: DataTable(
                                               horizontalMargin: 12,
                                               dataRowMaxHeight: 56,
@@ -325,10 +420,12 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                   WidgetStateProperty.all(
                                                     Colors.deepPurple,
                                                   ),
+
                                               dataRowColor:
                                                   WidgetStateProperty.all(
                                                     backgroundcolor,
                                                   ),
+
                                               border: TableBorder(
                                                 horizontalInside: BorderSide(
                                                   color: Colors.grey.shade300,
@@ -354,7 +451,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                               columns: [
                                                 DataColumn(
                                                   label: Text(
-                                                    'Department Name',
+                                                    'Name',
                                                     style: GoogleFonts.inter(
                                                       fontSize: 14,
                                                       fontWeight:
@@ -363,9 +460,10 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                     ),
                                                   ),
                                                 ),
+
                                                 DataColumn(
                                                   label: Text(
-                                                    'Action',
+                                                    'Actions',
                                                     style: GoogleFonts.inter(
                                                       fontSize: 14,
                                                       fontWeight:
@@ -375,111 +473,248 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                   ),
                                                 ),
                                               ],
-                                              rows: _filteredDapartments.isEmpty
+
+                                              rows: displayedDepartments.isEmpty
                                                   ? [
                                                       DataRow(
-                                                        cells: [
-                                                          DataCell(
-                                                            Text(
-                                                              'No Department found',
-                                                              style: GoogleFonts.inter(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Colors
-                                                                    .grey
-                                                                    .shade600,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const DataCell(
+                                                        cells: List.generate(
+                                                          9,
+                                                          (_) => const DataCell(
                                                             SizedBox(),
                                                           ),
-                                                        ],
+                                                        ),
                                                       ),
                                                     ]
-                                                  : _filteredDapartments
+                                                  : displayedDepartments
                                                         .map(_buildDataRow)
                                                         .toList(),
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(height: 16),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            ElevatedButton.icon(
-                                              onPressed: _previousPage,
-                                              icon: const Icon(
-                                                Icons.arrow_back,
-                                              ),
-                                              label: Text('Previous'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.deepPurple,
-                                                foregroundColor: Colors.white,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 12,
-                                                    ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
+                                        if (displayedDepartments.isEmpty)
+                                          Positioned(
+                                            left: 426,
+                                            top: 120,
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.search_off,
+                                                  color: Colors.red,
                                                 ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'No Departments found',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    Positioned(
+                                      left: 426,
+                                      top: 10,
+                                      child: Row(
+                                        children: [
+                                          ElevatedButton.icon(
+                                            onPressed: _previousPage,
+                                            icon: Icon(Icons.arrow_back),
+                                            label: Text('Previous'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.deepPurple,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 20,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                             ),
-                                            const SizedBox(width: 16),
-                                            Text(
-                                              'Page ${_currentPage + 1}',
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Text(
+                                            'Page ${_currentPage + 1}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          ElevatedButton.icon(
+                                            onPressed: _nextPage,
+                                            icon: Icon(Icons.arrow_forward),
+                                            label: Text('Next'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.deepPurple,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 20,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 36),
+                                          // Page size selector
+                                          Container(
+                                            height: 43,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.deepPurple.shade700,
+                                                  Colors.deepPurple.shade500,
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.deepPurple
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: DropdownButton<int>(
+                                              value: _pageSize,
+                                              underline: const SizedBox(),
+                                              dropdownColor:
+                                                  Colors.deepPurple.shade600,
+                                              icon: Icon(
+                                                Icons.arrow_drop_down,
+                                                color: Colors.white,
+                                              ),
                                               style: GoogleFonts.inter(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
+                                                color: Colors.white,
                                               ),
+                                              items: _pageSizeOptions.map((
+                                                size,
+                                              ) {
+                                                return DropdownMenuItem(
+                                                  value: size,
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.table_rows,
+                                                        size: 16,
+                                                        color: Colors.white,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '$size rows',
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 13,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                              selectedItemBuilder: (context) {
+                                                return _pageSizeOptions.map((
+                                                  size,
+                                                ) {
+                                                  return Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.view_list,
+                                                        size: 16,
+                                                        color: Colors.white,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '$size rows',
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }).toList();
+                                              },
+                                              onChanged: (value) {
+                                                if (value != null) {
+                                                  setState(() {
+                                                    _pageSize = value;
+                                                    _currentPage = 0;
+                                                  });
+                                                  if (_isFiltering) {
+                                                    _applySearchFilter();
+                                                  } else {
+                                                    _fetchDepartments();
+                                                  }
+                                                }
+                                              },
                                             ),
-                                            const SizedBox(width: 16),
-                                            ElevatedButton.icon(
-                                              onPressed: _nextPage,
-                                              icon: const Icon(
-                                                Icons.arrow_forward,
-                                              ),
-                                              label: Text('Next'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.deepPurple,
-                                                foregroundColor: Colors.white,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 12,
-                                                    ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                                          ),
 
+                                          const SizedBox(height: 20),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                   const SizedBox(height: 20),
 
-                  Center(
-                    child: Text(
-                      '© 2025 All rights reserved. Church CRM System',
-                      style: GoogleFonts.inter(
-                        color: Colors.grey[600],
-                        fontSize: 13,
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Text(
+                          '© 2025 All rights reserved. Church CRM System',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -494,46 +729,25 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   }
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-
-      child: SizedBox(
-        width: 210,
-        height: 40,
-        child: TextField(
-          controller: controller,
-          onChanged: (_) => _applySearchFilter(),
-          style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label) {
     return SizedBox(
-      width: 300,
-      child: TextFormField(
+      width: 222,
+      height: 40,
+      child: TextField(
+        controller: controller,
+        onChanged: (_) => _onFilterChanged(),
+        style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
         decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.inter(fontSize: 13),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          hintText: hint,
+          hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
+          filled: true,
+          fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
-            vertical: 10,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
           ),
         ),
       ),

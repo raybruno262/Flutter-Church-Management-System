@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 class Department {
-  final String departmentId;
+  final String? departmentId;
   final String name;
 
-  Department({required this.departmentId, required this.name});
+  Department({this.departmentId, required this.name});
 
   factory Department.fromJson(Map<String, dynamic> json) {
     return Department(
