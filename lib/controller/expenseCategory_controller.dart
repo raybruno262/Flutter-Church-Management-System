@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_churchcrm_system/constants.dart';
-import '../model/incomeCategory_model.dart';
+import '../model/expenseCategory_model.dart';
 
-class IncomeCategoryController {
-  final String baseUrl = '$baseHost/api/incomeCategory';
+class ExpenseCategoryController {
+  final String baseUrl = '$baseHost/api/expenseCategory';
 
-  // Create income category
-  Future<String> createIncomeCategory(IncomeCategory category) async {
+  // Create expense category
+  Future<String> createExpenseCategory(ExpenseCategory category) async {
     try {
-      final url = Uri.parse('$baseUrl/createIncomeCategory');
+      final url = Uri.parse('$baseUrl/createExpenseCategory');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -21,13 +21,15 @@ class IncomeCategoryController {
     }
   }
 
-  // Update income category
-  Future<String> updateIncomeCategory(
-    String incomeCategoryId,
-    IncomeCategory updatedCategory,
+  // Update expense category
+  Future<String> updateExpenseCategory(
+    String expenseCategoryId,
+    ExpenseCategory updatedCategory,
   ) async {
     try {
-      final url = Uri.parse('$baseUrl/updateIncomeCategory/$incomeCategoryId');
+      final url = Uri.parse(
+        '$baseUrl/updateExpenseCategory/$expenseCategoryId',
+      );
       final response = await http.put(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -39,20 +41,20 @@ class IncomeCategoryController {
     }
   }
 
-  // Get all income categories
-  Future<List<IncomeCategory>> getAllIncomeCategories() async {
+  // Get all expense categories
+  Future<List<ExpenseCategory>> getAllExpenseCategories() async {
     try {
-      final url = Uri.parse('$baseUrl/allIncomeCategories');
+      final url = Uri.parse('$baseUrl/allExpenseCategories');
       final response = await http.get(url);
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => IncomeCategory.fromJson(json)).toList();
+      return data.map((json) => ExpenseCategory.fromJson(json)).toList();
     } catch (e) {
       return [];
     }
   }
 
-  // Get income category count
-  Future<int> getIncomeCategoryCount() async {
+  // Get expense category count
+  Future<int> getExpenseCategoryCount() async {
     try {
       final url = Uri.parse('$baseUrl/count');
       final response = await http.get(url);
@@ -68,19 +70,19 @@ class IncomeCategoryController {
     }
   }
 
-  // Get paginated income categories
-  Future<List<IncomeCategory>> getPaginatedIncomeCategories({
+  // Get paginated expense categories
+  Future<List<ExpenseCategory>> getPaginatedExpenseCategories({
     int page = 0,
     int size = 5,
   }) async {
     try {
       final url = Uri.parse(
-        '$baseUrl/getPaginatedIncomeCategories?page=$page&size=$size',
+        '$baseUrl/getPaginatedExpenseCategories?page=$page&size=$size',
       );
       final response = await http.get(url);
       final Map<String, dynamic> data = jsonDecode(response.body);
       final List<dynamic> content = data['content'];
-      return content.map((json) => IncomeCategory.fromJson(json)).toList();
+      return content.map((json) => ExpenseCategory.fromJson(json)).toList();
     } catch (e) {
       return [];
     }

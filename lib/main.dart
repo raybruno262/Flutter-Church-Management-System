@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Add this import
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_churchcrm_system/screens/login.dart';
 
 void main() {
-  runApp(
-    ProviderScope(
-      // Wrap your app with ProviderScope
-      child: const MyApp(),
-    ),
-  );
+  runApp(ProviderScope(child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {

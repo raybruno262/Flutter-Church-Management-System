@@ -2,42 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/controller/department_controller.dart';
+import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
 import 'package:flutter_churchcrm_system/model/department_model.dart';
+import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
-import 'package:flutter_churchcrm_system/screens/addDepartmentScreen.dart';
-import 'package:flutter_churchcrm_system/screens/updateDepartmentScreen.dart';
+import 'package:flutter_churchcrm_system/screens/UpdateIncomeCategory.dart';
+import 'package:flutter_churchcrm_system/screens/addIncomeCategory.dart';
+
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class DepartmentScreen extends StatefulWidget {
+class IncomeCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
 
-  const DepartmentScreen({super.key, required this.loggedInUser});
+  const IncomeCategoryScreen({super.key, required this.loggedInUser});
 
   @override
-  State<DepartmentScreen> createState() => _DepartmentScreenState();
+  State<IncomeCategoryScreen> createState() => _IncomeCategoryScreenState();
 }
 
-class _DepartmentScreenState extends State<DepartmentScreen> {
-  final DepartmentController _departmentController = DepartmentController();
+class _IncomeCategoryScreenState extends State<IncomeCategoryScreen> {
+  final IncomeCategoryController _incomeCategoryController =
+      IncomeCategoryController();
 
-  int _departmentCount = 0;
+  int _incomeCategoryCount = 0;
   final _nameFilterController = TextEditingController();
   final ScrollController _horizontalScrollController = ScrollController();
   int _currentPage = 0;
 
   int _pageSize = 5;
-  List<Department> _departments = [];
-  List<Department> _allDepartments = [];
-  List<Department> _filteredDapartments = [];
+  List<IncomeCategory> _incomeCategories = [];
+  List<IncomeCategory> _allIncomeCategories = [];
+  // ignore: unused_field
+  List<IncomeCategory> _filteredIncomeCategories = [];
   @override
   void initState() {
     super.initState();
-    _fetchDepartmentCount();
-    _fetchDepartments();
+    _fetchIncomeCategoryCount();
+    _fetchIncomeCategories();
   }
 
   final List<int> _pageSizeOptions = [5, 10, 15, 20];
@@ -45,15 +50,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   bool _isFiltering = false;
   bool _isLoading = true;
 
-  Future<void> _fetchDepartments() async {
+  Future<void> _fetchIncomeCategories() async {
     setState(() => _isLoading = true);
-    final departments = await _departmentController.getPaginatedDepartments(
-      page: _currentPage,
-      size: _pageSize,
-    );
+    final incomeCategories = await _incomeCategoryController
+        .getPaginatedIncomeCategories(page: _currentPage, size: _pageSize);
     setState(() {
-      _departments = departments;
-      _filteredDapartments = _departments;
+      _incomeCategories = incomeCategories;
+      _filteredIncomeCategories = _incomeCategories;
 
       _isLoading = false;
     });
@@ -62,22 +65,23 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
 
-    final filtered = _allDepartments.where((department) {
-      final matchesName = department.name.toLowerCase().contains(nameQuery);
+    final filtered = _allIncomeCategories.where((incomeCategory) {
+      final matchesName = incomeCategory.name.toLowerCase().contains(nameQuery);
 
       return matchesName;
     }).toList();
 
     setState(() {
-      _filteredDapartments = filtered;
+      _filteredIncomeCategories = filtered;
       _currentPage = 0;
     });
   }
 
-  Future<void> _fetchAllDepartments() async {
-    final allDepartments = await _departmentController.getAllDepartments();
+  Future<void> _fetchAllIncomeCategories() async {
+    final allIncomeCategories = await _incomeCategoryController
+        .getAllIncomeCategories();
     setState(() {
-      _allDepartments = allDepartments;
+      _allIncomeCategories = allIncomeCategories;
       _isLoading = false;
     });
   }
@@ -88,22 +92,22 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     if (isDefaultFilter) {
       _isFiltering = false;
       _currentPage = 0;
-      await _fetchDepartments();
+      await _fetchIncomeCategories();
     } else {
       _isFiltering = true;
-      await _fetchAllDepartments();
+      await _fetchAllIncomeCategories();
       _applySearchFilter();
     }
   }
 
   Future<void> _nextPage() async {
     if (_isFiltering) {
-      if ((_currentPage + 1) * _pageSize < _filteredDapartments.length) {
+      if ((_currentPage + 1) * _pageSize < _filteredIncomeCategories.length) {
         setState(() => _currentPage++);
       }
     } else {
       setState(() => _currentPage++);
-      await _fetchDepartments();
+      await _fetchIncomeCategories();
     }
   }
 
@@ -113,45 +117,47 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
         setState(() => _currentPage--);
       } else {
         setState(() => _currentPage--);
-        await _fetchDepartments();
+        await _fetchIncomeCategories();
       }
     }
   }
 
-  List<Department> get displayedDepartments {
+  List<IncomeCategory> get displayedDepartments {
     if (_isFiltering) {
-      if (_filteredDapartments.isEmpty) return [];
+      if (_filteredIncomeCategories.isEmpty) return [];
       final start = _currentPage * _pageSize;
       final end = start + _pageSize;
-      return _filteredDapartments.sublist(
+      return _filteredIncomeCategories.sublist(
         start,
-        end > _filteredDapartments.length ? _filteredDapartments.length : end,
+        end > _filteredIncomeCategories.length
+            ? _filteredIncomeCategories.length
+            : end,
       );
     } else {
-      return _departments;
+      return _incomeCategories;
     }
   }
 
   // ignore: unused_field
   bool _isClearing = false;
 
-  Future<void> _fetchDepartmentCount() async {
+  Future<void> _fetchIncomeCategoryCount() async {
     try {
-      final count = await _departmentController.getDepartmentCount();
+      final count = await _incomeCategoryController.getIncomeCategoryCount();
       setState(() {
-        _departmentCount = count;
+        _incomeCategoryCount = count;
       });
     } catch (e) {
       setState(() {
-        _departmentCount = 0;
+        _incomeCategoryCount = 0;
       });
     }
   }
 
-  DataRow _buildDataRow(Department department) {
+  DataRow _buildDataRow(IncomeCategory incomeCategory) {
     return DataRow(
       cells: [
-        DataCell(Text(department.name, style: GoogleFonts.inter())),
+        DataCell(Text(incomeCategory.name, style: GoogleFonts.inter())),
 
         DataCell(
           Row(
@@ -162,9 +168,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => UpdateDepartmentScreen(
+                      builder: (context) => UpdateIncomeCategoryScreen(
                         loggedInUser: widget.loggedInUser,
-                        department: department,
+                        incomeCategory: incomeCategory,
                       ),
                     ),
                   );
@@ -174,9 +180,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       _currentPage = 0;
                     });
 
-                    _fetchDepartments();
+                    _fetchIncomeCategories();
 
-                    _fetchDepartmentCount();
+                    _fetchIncomeCategoryCount();
                   }
                 },
               ),
@@ -195,7 +201,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Members',
+                selectedTitle: 'Finance',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -212,14 +218,14 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Members',
+                  selectedTitle: 'Finance',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildDepartmentScreen(),
+                child: _buildIncomeCategoryScreen(),
               ),
             ),
           ],
@@ -228,7 +234,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     );
   }
 
-  Widget _buildDepartmentScreen() {
+  Widget _buildIncomeCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -243,7 +249,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                 children: [
                   Center(
                     child: Text(
-                      "Manage Department",
+                      "Manage Income Category",
                       style: GoogleFonts.inter(
                         color: titlepageColor,
                         fontSize: 20,
@@ -286,9 +292,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                         runSpacing: 16,
                         children: [
                           StatBox(
-                            iconPath: 'assets/icons/depart.svg',
-                            label: 'Total Departments',
-                            count: _departmentCount.toString(),
+                            iconPath: 'assets/icons/income.svg',
+                            label: 'Total Income Categories',
+                            count: _incomeCategoryCount.toString(),
                             backgroundColor: statboxColor,
                           ),
                         ],
@@ -303,7 +309,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       children: [
                         SizedBox(width: 460),
                         Text(
-                          "Department List",
+                          "Income Category List",
                           style: GoogleFonts.inter(
                             color: titlepageColor,
                             fontSize: 20,
@@ -317,7 +323,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => AddDepartmentScreen(
+                                builder: (context) => AddIncomeCategoryScreen(
                                   loggedInUser: widget.loggedInUser,
                                 ),
                               ),
@@ -328,13 +334,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                 _currentPage = 0;
                               });
 
-                              await _fetchDepartments();
-                              await _fetchDepartmentCount();
+                              await _fetchIncomeCategories();
+                              await _fetchIncomeCategoryCount();
                             }
                           },
-                          icon: SvgPicture.asset("assets/icons/depart.svg"),
+                          icon: SvgPicture.asset("assets/icons/income.svg"),
                           label: Text(
-                            'Add Department',
+                            'Add Income Category',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
                             ),
@@ -503,7 +509,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Text(
-                                                  'No Departments found',
+                                                  'No Income Categories found',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w600,
@@ -681,7 +687,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                   if (_isFiltering) {
                                                     _applySearchFilter();
                                                   } else {
-                                                    _fetchDepartments();
+                                                    _fetchIncomeCategories();
                                                   }
                                                 }
                                               },

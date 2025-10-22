@@ -1,4 +1,6 @@
 import 'package:flutter_churchcrm_system/controller/department_controller.dart';
+import 'package:flutter_churchcrm_system/controller/expenseCategory_controller.dart';
+import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
 
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 
@@ -7,6 +9,8 @@ import 'package:flutter_churchcrm_system/model/department_model.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+import 'package:flutter_churchcrm_system/model/expenseCategory_model.dart';
+import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
 
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
@@ -15,35 +19,36 @@ import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class UpdateDepartmentScreen extends StatefulWidget {
+class AddExpenseCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
-  final Department department;
 
-  const UpdateDepartmentScreen({
-    super.key,
-    required this.loggedInUser,
-    required this.department,
-  });
+  const AddExpenseCategoryScreen({super.key, required this.loggedInUser});
 
   @override
-  State<UpdateDepartmentScreen> createState() => _UpdateDepartmentScreenState();
+  State<AddExpenseCategoryScreen> createState() =>
+      _AddExpenseCategoryScreenState();
 }
 
-class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
+class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
   final UserController userController = UserController();
-  final DepartmentController departmentController = DepartmentController();
+  final ExpenseCategoryController expenseCategoryController =
+      ExpenseCategoryController();
+
   // Controllers
   final _nameController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _populateExistingData();
-  }
-
   // ignore: unused_field
   bool _isClearing = false;
+  void _clearoneForm() {
+    _isClearing = true;
+    setState(() {
+      // Reset form validation
+      _formKey.currentState?.reset();
+    });
+
+    _isClearing = false;
+  }
 
   // State variables
   bool _isLoading = false;
@@ -59,61 +64,51 @@ class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
     super.dispose();
   }
 
-  void _populateExistingData() async {
-    _nameController.text = widget.department.name;
-  }
-
-  Future<void> _updateDepartment() async {
+  Future<void> _addExpenseCategory() async {
     if (_nameController.text.isEmpty) {
       setState(() {
-        _message = 'Please enter department name';
+        _message = 'Please enter expense category name';
         _isSuccess = false;
       });
 
       return;
     }
 
-    final departmentName = _nameController.text.trim();
+    final expenseCategoryName = _nameController.text.trim();
 
     try {
-      final updatedDepartment = Department(name: departmentName);
+      final newExpenseCategory = ExpenseCategory(name: expenseCategoryName);
 
-      final result = await departmentController.updateDepartment(
-        widget.department.departmentId!,
-        updatedDepartment,
+      final result = await expenseCategoryController.createExpenseCategory(
+        newExpenseCategory,
       );
 
       if (result == 'Status 1000') {
         setState(() {
-          _message = 'Department updated successfully!';
+          _message = 'Expense Category created successfully!';
           _isSuccess = true;
         });
-      } else if (result == 'Status 3000') {
-        if (result == 'Status 1000') {
-          setState(() {
-            _message = 'Department not found';
-            _isSuccess = false;
-          });
-        } else if (result == 'Status 5000') {
-          setState(() {
-            _message = 'Department name already exists';
-            _isSuccess = false;
-          });
-        } else if (result == 'Status 7000') {
-          setState(() {
-            _message = 'Network error';
-            _isSuccess = false;
-          });
-        } else {
-          setState(() {
-            _message = 'Unexpected error';
-            _isSuccess = false;
-          });
-        }
+
+        _clearoneForm();
+      } else if (result == 'Status 5000') {
+        setState(() {
+          _message = 'Expense Category name already exists';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 7000') {
+        setState(() {
+          _message = 'Network error';
+          _isSuccess = false;
+        });
+      } else {
+        setState(() {
+          _message = 'Unexpected error';
+          _isSuccess = false;
+        });
       }
     } catch (e) {
       setState(() {
-        _message = 'Error updating department';
+        _message = 'Error creating Expense Category';
         _isSuccess = false;
       });
     }
@@ -127,7 +122,7 @@ class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Members',
+                selectedTitle: 'Finance',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -144,14 +139,14 @@ class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Members',
+                  selectedTitle: 'Finance',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildUpdateDepartmentScreen(),
+                child: _buildAddExpenseCategoryScreen(),
               ),
             ),
           ],
@@ -160,7 +155,7 @@ class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
     );
   }
 
-  Widget _buildUpdateDepartmentScreen() {
+  Widget _buildAddExpenseCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -177,7 +172,7 @@ class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Update Department",
+                        "Add Expense Category",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -268,7 +263,7 @@ class _UpdateDepartmentScreenState extends State<UpdateDepartmentScreen> {
                       child: _isLoading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
-                              onPressed: _updateDepartment,
+                              onPressed: _addExpenseCategory,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.deepPurple,
                                 foregroundColor: Colors.white,

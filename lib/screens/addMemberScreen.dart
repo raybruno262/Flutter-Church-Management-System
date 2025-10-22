@@ -7,6 +7,7 @@ import 'package:flutter_churchcrm_system/model/department_model.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
 import 'package:flutter_churchcrm_system/model/member_model.dart';
 import 'package:flutter_churchcrm_system/screens/deparmentScreen.dart';
+import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 import 'package:flutter/material.dart';
@@ -540,14 +541,18 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                           (val) => setState(() => _maritalStatus = val),
                         ),
                         _buildDatePickerField(
+                          context,
                           'Date of Birth (MM/dd/yyyy)',
                           _dobController,
                           (date) => setState(() {
                             _dob = date;
-                            _dobController.text =
-                                "${date.month}/${date.day}/${date.year}";
+                            _dobController.text = DateFormat(
+                              'MM/dd/yyyy',
+                            ).format(date);
                           }),
+                          _dob,
                         ),
+
                         _buildDropdown(
                           'Gender',
                           ['Male', 'Female'],
@@ -903,9 +908,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   }
 
   Widget _buildDatePickerField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     void Function(DateTime) onDateSelected,
+    DateTime? initialDate,
   ) {
     return SizedBox(
       width: 300,
@@ -923,6 +930,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           suffixIcon: const Icon(Icons.calendar_today),
         ),
         onTap: () {
+          DateTime tempSelectedDate = initialDate ?? DateTime.now();
+
           showDialog(
             context: context,
             builder: (context) {
@@ -933,15 +942,24 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   child: SfDateRangePicker(
                     view: DateRangePickerView.month,
                     showNavigationArrow: true,
-                    initialSelectedDate: DateTime.now(),
+                    initialSelectedDate: tempSelectedDate,
                     minDate: DateTime(1900),
                     maxDate: DateTime.now(),
-                    onSelectionChanged:
-                        (DateRangePickerSelectionChangedArgs args) {
-                          final DateTime selected = args.value;
-                          onDateSelected(selected);
-                          Navigator.pop(context);
-                        },
+                    showActionButtons: true,
+                    onSelectionChanged: (args) {
+                      tempSelectedDate = args.value;
+                    },
+                    onSubmit: (value) {
+                      final selected = value as DateTime;
+                      controller.text = DateFormat(
+                        'MM/dd/yyyy',
+                      ).format(selected);
+                      onDateSelected(selected);
+                      Navigator.pop(context);
+                    },
+                    onCancel: () {
+                      Navigator.pop(context);
+                    },
                   ),
                 ),
               );

@@ -75,6 +75,11 @@ class SidemenuData {
         page: FinanceScreen(loggedInUser: loggedInUser),
       ),
       SideMenuModel(
+        icon: SvgPicture.asset('assets/icons/equipment.svg', fit: BoxFit.cover),
+        title: 'Equipment',
+        page: FinanceScreen(loggedInUser: loggedInUser),
+      ),
+      SideMenuModel(
         icon: SvgPicture.asset('assets/icons/report.svg', fit: BoxFit.cover),
         title: 'Reports',
         page: ReportScreen(loggedInUser: loggedInUser),

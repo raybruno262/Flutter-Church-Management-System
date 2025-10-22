@@ -2,42 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/controller/department_controller.dart';
+import 'package:flutter_churchcrm_system/controller/expenseCategory_controller.dart';
+import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
 import 'package:flutter_churchcrm_system/model/department_model.dart';
+import 'package:flutter_churchcrm_system/model/expenseCategory_model.dart';
+import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
-import 'package:flutter_churchcrm_system/screens/addDepartmentScreen.dart';
-import 'package:flutter_churchcrm_system/screens/updateDepartmentScreen.dart';
+import 'package:flutter_churchcrm_system/screens/UpdateIncomeCategory.dart';
+import 'package:flutter_churchcrm_system/screens/addExpenseCategoryScreen.dart';
+import 'package:flutter_churchcrm_system/screens/addIncomeCategory.dart';
+import 'package:flutter_churchcrm_system/screens/updateExpenseCategory.dart';
+
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class DepartmentScreen extends StatefulWidget {
+class ExpenseCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
 
-  const DepartmentScreen({super.key, required this.loggedInUser});
+  const ExpenseCategoryScreen({super.key, required this.loggedInUser});
 
   @override
-  State<DepartmentScreen> createState() => _DepartmentScreenState();
+  State<ExpenseCategoryScreen> createState() => _ExpenseCategoryScreenState();
 }
 
-class _DepartmentScreenState extends State<DepartmentScreen> {
-  final DepartmentController _departmentController = DepartmentController();
+class _ExpenseCategoryScreenState extends State<ExpenseCategoryScreen> {
+  final ExpenseCategoryController _expenseCategoryController =
+      ExpenseCategoryController();
 
-  int _departmentCount = 0;
+  int _expenseCategoryCount = 0;
   final _nameFilterController = TextEditingController();
   final ScrollController _horizontalScrollController = ScrollController();
   int _currentPage = 0;
 
   int _pageSize = 5;
-  List<Department> _departments = [];
-  List<Department> _allDepartments = [];
-  List<Department> _filteredDapartments = [];
+  List<ExpenseCategory> _expenseCategories = [];
+  List<ExpenseCategory> _allExpenseCategories = [];
+  // ignore: unused_field
+  List<ExpenseCategory> _filteredExpenseCategories = [];
   @override
   void initState() {
     super.initState();
-    _fetchDepartmentCount();
-    _fetchDepartments();
+    _fetchExpenseCategoryCount();
+    _fetchExpenseCategories();
   }
 
   final List<int> _pageSizeOptions = [5, 10, 15, 20];
@@ -45,15 +54,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   bool _isFiltering = false;
   bool _isLoading = true;
 
-  Future<void> _fetchDepartments() async {
+  Future<void> _fetchExpenseCategories() async {
     setState(() => _isLoading = true);
-    final departments = await _departmentController.getPaginatedDepartments(
-      page: _currentPage,
-      size: _pageSize,
-    );
+    final expenseCategories = await _expenseCategoryController
+        .getPaginatedExpenseCategories(page: _currentPage, size: _pageSize);
     setState(() {
-      _departments = departments;
-      _filteredDapartments = _departments;
+      _expenseCategories = expenseCategories;
+      _filteredExpenseCategories = _expenseCategories;
 
       _isLoading = false;
     });
@@ -62,22 +69,25 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
 
-    final filtered = _allDepartments.where((department) {
-      final matchesName = department.name.toLowerCase().contains(nameQuery);
+    final filtered = _allExpenseCategories.where((expenseCategory) {
+      final matchesName = expenseCategory.name.toLowerCase().contains(
+        nameQuery,
+      );
 
       return matchesName;
     }).toList();
 
     setState(() {
-      _filteredDapartments = filtered;
+      _filteredExpenseCategories = filtered;
       _currentPage = 0;
     });
   }
 
-  Future<void> _fetchAllDepartments() async {
-    final allDepartments = await _departmentController.getAllDepartments();
+  Future<void> _fetchAllExpenseCategories() async {
+    final allIncomeCategories = await _expenseCategoryController
+        .getAllExpenseCategories();
     setState(() {
-      _allDepartments = allDepartments;
+      _allExpenseCategories = allIncomeCategories;
       _isLoading = false;
     });
   }
@@ -88,22 +98,22 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     if (isDefaultFilter) {
       _isFiltering = false;
       _currentPage = 0;
-      await _fetchDepartments();
+      await _fetchExpenseCategories();
     } else {
       _isFiltering = true;
-      await _fetchAllDepartments();
+      await _fetchAllExpenseCategories();
       _applySearchFilter();
     }
   }
 
   Future<void> _nextPage() async {
     if (_isFiltering) {
-      if ((_currentPage + 1) * _pageSize < _filteredDapartments.length) {
+      if ((_currentPage + 1) * _pageSize < _filteredExpenseCategories.length) {
         setState(() => _currentPage++);
       }
     } else {
       setState(() => _currentPage++);
-      await _fetchDepartments();
+      await _fetchExpenseCategories();
     }
   }
 
@@ -113,45 +123,47 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
         setState(() => _currentPage--);
       } else {
         setState(() => _currentPage--);
-        await _fetchDepartments();
+        await _fetchExpenseCategories();
       }
     }
   }
 
-  List<Department> get displayedDepartments {
+  List<ExpenseCategory> get displayedDepartments {
     if (_isFiltering) {
-      if (_filteredDapartments.isEmpty) return [];
+      if (_filteredExpenseCategories.isEmpty) return [];
       final start = _currentPage * _pageSize;
       final end = start + _pageSize;
-      return _filteredDapartments.sublist(
+      return _filteredExpenseCategories.sublist(
         start,
-        end > _filteredDapartments.length ? _filteredDapartments.length : end,
+        end > _filteredExpenseCategories.length
+            ? _filteredExpenseCategories.length
+            : end,
       );
     } else {
-      return _departments;
+      return _expenseCategories;
     }
   }
 
   // ignore: unused_field
   bool _isClearing = false;
 
-  Future<void> _fetchDepartmentCount() async {
+  Future<void> _fetchExpenseCategoryCount() async {
     try {
-      final count = await _departmentController.getDepartmentCount();
+      final count = await _expenseCategoryController.getExpenseCategoryCount();
       setState(() {
-        _departmentCount = count;
+        _expenseCategoryCount = count;
       });
     } catch (e) {
       setState(() {
-        _departmentCount = 0;
+        _expenseCategoryCount = 0;
       });
     }
   }
 
-  DataRow _buildDataRow(Department department) {
+  DataRow _buildDataRow(ExpenseCategory expenseCategory) {
     return DataRow(
       cells: [
-        DataCell(Text(department.name, style: GoogleFonts.inter())),
+        DataCell(Text(expenseCategory.name, style: GoogleFonts.inter())),
 
         DataCell(
           Row(
@@ -162,9 +174,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => UpdateDepartmentScreen(
+                      builder: (context) => UpdateExpenseCategoryScreen(
                         loggedInUser: widget.loggedInUser,
-                        department: department,
+                        expenseCategory: expenseCategory,
                       ),
                     ),
                   );
@@ -174,9 +186,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       _currentPage = 0;
                     });
 
-                    _fetchDepartments();
+                    _fetchExpenseCategories();
 
-                    _fetchDepartmentCount();
+                    _fetchExpenseCategoryCount();
                   }
                 },
               ),
@@ -195,7 +207,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Members',
+                selectedTitle: 'Finance',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -212,14 +224,14 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Members',
+                  selectedTitle: 'Finance',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildDepartmentScreen(),
+                child: _buildExpenseCategoryScreen(),
               ),
             ),
           ],
@@ -228,7 +240,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     );
   }
 
-  Widget _buildDepartmentScreen() {
+  Widget _buildExpenseCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -243,7 +255,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                 children: [
                   Center(
                     child: Text(
-                      "Manage Department",
+                      "Manage Expense Category",
                       style: GoogleFonts.inter(
                         color: titlepageColor,
                         fontSize: 20,
@@ -286,9 +298,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                         runSpacing: 16,
                         children: [
                           StatBox(
-                            iconPath: 'assets/icons/depart.svg',
-                            label: 'Total Departments',
-                            count: _departmentCount.toString(),
+                            iconPath: 'assets/icons/expense.svg',
+                            label: 'Total Expense Categories',
+                            count: _expenseCategoryCount.toString(),
                             backgroundColor: statboxColor,
                           ),
                         ],
@@ -303,7 +315,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       children: [
                         SizedBox(width: 460),
                         Text(
-                          "Department List",
+                          "Expense Category List",
                           style: GoogleFonts.inter(
                             color: titlepageColor,
                             fontSize: 20,
@@ -317,7 +329,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => AddDepartmentScreen(
+                                builder: (context) => AddExpenseCategoryScreen(
                                   loggedInUser: widget.loggedInUser,
                                 ),
                               ),
@@ -328,13 +340,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                 _currentPage = 0;
                               });
 
-                              await _fetchDepartments();
-                              await _fetchDepartmentCount();
+                              await _fetchExpenseCategories();
+                              await _fetchExpenseCategoryCount();
                             }
                           },
-                          icon: SvgPicture.asset("assets/icons/depart.svg"),
+                          icon: SvgPicture.asset("assets/icons/expense.svg"),
                           label: Text(
-                            'Add Department',
+                            'Add Income Category',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
                             ),
@@ -503,7 +515,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Text(
-                                                  'No Departments found',
+                                                  'No Income Categories found',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w600,
@@ -681,7 +693,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                   if (_isFiltering) {
                                                     _applySearchFilter();
                                                   } else {
-                                                    _fetchDepartments();
+                                                    _fetchExpenseCategories();
                                                   }
                                                 }
                                               },

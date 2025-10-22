@@ -1,43 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/controller/department_controller.dart';
-import 'package:flutter_churchcrm_system/model/department_model.dart';
+import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
+import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
+import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
+
 import 'package:flutter_churchcrm_system/model/user_model.dart';
-import 'package:flutter_churchcrm_system/screens/addDepartmentScreen.dart';
-import 'package:flutter_churchcrm_system/screens/updateDepartmentScreen.dart';
+import 'package:flutter_churchcrm_system/screens/UpdateEquipmentScreen.dart';
+import 'package:flutter_churchcrm_system/screens/addEquipmentCategory.dart';
+
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class DepartmentScreen extends StatefulWidget {
+class EquipmentCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
 
-  const DepartmentScreen({super.key, required this.loggedInUser});
+  const EquipmentCategoryScreen({super.key, required this.loggedInUser});
 
   @override
-  State<DepartmentScreen> createState() => _DepartmentScreenState();
+  State<EquipmentCategoryScreen> createState() =>
+      _EquipmentCategoryScreenState();
 }
 
-class _DepartmentScreenState extends State<DepartmentScreen> {
-  final DepartmentController _departmentController = DepartmentController();
+class _EquipmentCategoryScreenState extends State<EquipmentCategoryScreen> {
+  final EquipmentCategoryController _equipmentCategoryController =
+      EquipmentCategoryController();
 
-  int _departmentCount = 0;
+  int _equipmentCategoryCount = 0;
   final _nameFilterController = TextEditingController();
   final ScrollController _horizontalScrollController = ScrollController();
   int _currentPage = 0;
 
   int _pageSize = 5;
-  List<Department> _departments = [];
-  List<Department> _allDepartments = [];
-  List<Department> _filteredDapartments = [];
+  List<EquipmentCategory> _equipmentCategories = [];
+  List<EquipmentCategory> _allEquipmentCategories = [];
+  // ignore: unused_field
+  List<EquipmentCategory> _filteredEquipmentCategories = [];
   @override
   void initState() {
     super.initState();
-    _fetchDepartmentCount();
-    _fetchDepartments();
+    _fetchEquipmentCategoryCount();
+    _fetchEquipmentCategories();
   }
 
   final List<int> _pageSizeOptions = [5, 10, 15, 20];
@@ -45,15 +51,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   bool _isFiltering = false;
   bool _isLoading = true;
 
-  Future<void> _fetchDepartments() async {
+  Future<void> _fetchEquipmentCategories() async {
     setState(() => _isLoading = true);
-    final departments = await _departmentController.getPaginatedDepartments(
-      page: _currentPage,
-      size: _pageSize,
-    );
+    final equipmentCategories = await _equipmentCategoryController
+        .getPaginatedEquipmentCategories(page: _currentPage, size: _pageSize);
     setState(() {
-      _departments = departments;
-      _filteredDapartments = _departments;
+      _equipmentCategories = equipmentCategories;
+      _filteredEquipmentCategories = _equipmentCategories;
 
       _isLoading = false;
     });
@@ -62,22 +66,25 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
 
-    final filtered = _allDepartments.where((department) {
-      final matchesName = department.name.toLowerCase().contains(nameQuery);
+    final filtered = _allEquipmentCategories.where((equipmentCategory) {
+      final matchesName = equipmentCategory.name.toLowerCase().contains(
+        nameQuery,
+      );
 
       return matchesName;
     }).toList();
 
     setState(() {
-      _filteredDapartments = filtered;
+      _filteredEquipmentCategories = filtered;
       _currentPage = 0;
     });
   }
 
-  Future<void> _fetchAllDepartments() async {
-    final allDepartments = await _departmentController.getAllDepartments();
+  Future<void> _fetchAllEquipmentCategories() async {
+    final allEquipmentCategories = await _equipmentCategoryController
+        .getAllEquipmentCategories();
     setState(() {
-      _allDepartments = allDepartments;
+      _allEquipmentCategories = allEquipmentCategories;
       _isLoading = false;
     });
   }
@@ -88,22 +95,23 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     if (isDefaultFilter) {
       _isFiltering = false;
       _currentPage = 0;
-      await _fetchDepartments();
+      await _fetchEquipmentCategories();
     } else {
       _isFiltering = true;
-      await _fetchAllDepartments();
+      await _fetchAllEquipmentCategories();
       _applySearchFilter();
     }
   }
 
   Future<void> _nextPage() async {
     if (_isFiltering) {
-      if ((_currentPage + 1) * _pageSize < _filteredDapartments.length) {
+      if ((_currentPage + 1) * _pageSize <
+          _filteredEquipmentCategories.length) {
         setState(() => _currentPage++);
       }
     } else {
       setState(() => _currentPage++);
-      await _fetchDepartments();
+      await _fetchEquipmentCategories();
     }
   }
 
@@ -113,45 +121,48 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
         setState(() => _currentPage--);
       } else {
         setState(() => _currentPage--);
-        await _fetchDepartments();
+        await _fetchEquipmentCategories();
       }
     }
   }
 
-  List<Department> get displayedDepartments {
+  List<EquipmentCategory> get displayedDepartments {
     if (_isFiltering) {
-      if (_filteredDapartments.isEmpty) return [];
+      if (_filteredEquipmentCategories.isEmpty) return [];
       final start = _currentPage * _pageSize;
       final end = start + _pageSize;
-      return _filteredDapartments.sublist(
+      return _filteredEquipmentCategories.sublist(
         start,
-        end > _filteredDapartments.length ? _filteredDapartments.length : end,
+        end > _filteredEquipmentCategories.length
+            ? _filteredEquipmentCategories.length
+            : end,
       );
     } else {
-      return _departments;
+      return _equipmentCategories;
     }
   }
 
   // ignore: unused_field
   bool _isClearing = false;
 
-  Future<void> _fetchDepartmentCount() async {
+  Future<void> _fetchEquipmentCategoryCount() async {
     try {
-      final count = await _departmentController.getDepartmentCount();
+      final count = await _equipmentCategoryController
+          .getEquipmentCategoryCount();
       setState(() {
-        _departmentCount = count;
+        _equipmentCategoryCount = count;
       });
     } catch (e) {
       setState(() {
-        _departmentCount = 0;
+        _equipmentCategoryCount = 0;
       });
     }
   }
 
-  DataRow _buildDataRow(Department department) {
+  DataRow _buildDataRow(EquipmentCategory equipmentCategory) {
     return DataRow(
       cells: [
-        DataCell(Text(department.name, style: GoogleFonts.inter())),
+        DataCell(Text(equipmentCategory.name, style: GoogleFonts.inter())),
 
         DataCell(
           Row(
@@ -162,9 +173,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => UpdateDepartmentScreen(
+                      builder: (context) => UpdateEquipmentCategoryScreen(
                         loggedInUser: widget.loggedInUser,
-                        department: department,
+                        equipmentCategory: equipmentCategory,
                       ),
                     ),
                   );
@@ -174,9 +185,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       _currentPage = 0;
                     });
 
-                    _fetchDepartments();
+                    _fetchEquipmentCategories();
 
-                    _fetchDepartmentCount();
+                    _fetchEquipmentCategoryCount();
                   }
                 },
               ),
@@ -195,7 +206,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Members',
+                selectedTitle: 'Equipment',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -212,14 +223,14 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Members',
+                  selectedTitle: 'Equipment',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildDepartmentScreen(),
+                child: _buildEquipmentCategoryScreen(),
               ),
             ),
           ],
@@ -228,7 +239,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
     );
   }
 
-  Widget _buildDepartmentScreen() {
+  Widget _buildEquipmentCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -243,7 +254,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                 children: [
                   Center(
                     child: Text(
-                      "Manage Department",
+                      "Manage Equipment Category",
                       style: GoogleFonts.inter(
                         color: titlepageColor,
                         fontSize: 20,
@@ -286,9 +297,9 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                         runSpacing: 16,
                         children: [
                           StatBox(
-                            iconPath: 'assets/icons/depart.svg',
-                            label: 'Total Departments',
-                            count: _departmentCount.toString(),
+                            iconPath: 'assets/icons/equipstat.svg',
+                            label: 'Total Equipment Categories',
+                            count: _equipmentCategoryCount.toString(),
                             backgroundColor: statboxColor,
                           ),
                         ],
@@ -303,7 +314,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                       children: [
                         SizedBox(width: 460),
                         Text(
-                          "Department List",
+                          "Equipment Category List",
                           style: GoogleFonts.inter(
                             color: titlepageColor,
                             fontSize: 20,
@@ -317,9 +328,10 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => AddDepartmentScreen(
-                                  loggedInUser: widget.loggedInUser,
-                                ),
+                                builder: (context) =>
+                                    AddEquipmentCategoryScreen(
+                                      loggedInUser: widget.loggedInUser,
+                                    ),
                               ),
                             );
 
@@ -328,13 +340,13 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                 _currentPage = 0;
                               });
 
-                              await _fetchDepartments();
-                              await _fetchDepartmentCount();
+                              await _fetchEquipmentCategories();
+                              await _fetchEquipmentCategoryCount();
                             }
                           },
-                          icon: SvgPicture.asset("assets/icons/depart.svg"),
+                          icon: SvgPicture.asset("assets/icons/equipment.svg"),
                           label: Text(
-                            'Add Department',
+                            'Add Equipment Category',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
                             ),
@@ -503,7 +515,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Text(
-                                                  'No Departments found',
+                                                  'No Equipment Categories found',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w600,
@@ -681,7 +693,7 @@ class _DepartmentScreenState extends State<DepartmentScreen> {
                                                   if (_isFiltering) {
                                                     _applySearchFilter();
                                                   } else {
-                                                    _fetchDepartments();
+                                                    _fetchEquipmentCategories();
                                                   }
                                                 }
                                               },
