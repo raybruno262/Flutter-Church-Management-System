@@ -3,6 +3,7 @@ import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/sidemenu_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/baptismScreen.dart';
+import 'package:flutter_churchcrm_system/screens/equipmentScreen.dart';
 import 'package:flutter_churchcrm_system/screens/financeScreen.dart';
 import 'package:flutter_churchcrm_system/screens/attendanceScreen.dart';
 import 'package:flutter_churchcrm_system/screens/birthdayScreen.dart';
@@ -74,11 +75,11 @@ class SidemenuData {
         title: 'Finance',
         page: FinanceScreen(loggedInUser: loggedInUser),
       ),
-      // SideMenuModel(
-      //   icon: SvgPicture.asset('assets/icons/equipment.svg', fit: BoxFit.cover),
-      //   title: 'Equipment',
-      //   page: EquipmentScreen(loggedInUser: loggedInUser),
-      // ),
+      SideMenuModel(
+        icon: SvgPicture.asset('assets/icons/equipment.svg', fit: BoxFit.cover),
+        title: 'Equipment',
+        page: EquipmentScreen(loggedInUser: loggedInUser),
+      ),
       SideMenuModel(
         icon: SvgPicture.asset('assets/icons/report.svg', fit: BoxFit.cover),
         title: 'Reports',

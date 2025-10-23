@@ -29,8 +29,8 @@ class FinanceController {
 
   // Update finance record
   Future<String> updateFinance(
-    String financeId,
     Finance updatedFinance,
+    String financeId,
     String userId,
   ) async {
     try {

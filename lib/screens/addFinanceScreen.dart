@@ -1,10 +1,13 @@
+import 'package:flutter_churchcrm_system/controller/expenseCategory_controller.dart';
 import 'package:flutter_churchcrm_system/controller/finance_Controller.dart';
 import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
 import 'package:flutter_churchcrm_system/controller/level_controller.dart';
+import 'package:flutter_churchcrm_system/model/expenseCategory_model.dart';
 
 import 'package:flutter_churchcrm_system/model/finance_model.dart';
 import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
+import 'package:flutter_churchcrm_system/screens/expenseCategoryScreen.dart';
 import 'package:flutter_churchcrm_system/screens/incomeCategoryScreen.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
@@ -33,25 +36,33 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Income Controllers
-
   final _incomeAmountController = TextEditingController();
-
   final _incomedescriptionController = TextEditingController();
   final _incomeTransactionDateController = TextEditingController();
+  // Expense Controllers
+  final _expenseAmountController = TextEditingController();
+  final _expensedescriptionController = TextEditingController();
+  final _expenseTransactionDateController = TextEditingController();
 
   final LevelController _levelController = LevelController();
   // Income Data lists
   List<IncomeCategory> _incomeCategories = [];
+  List<ExpenseCategory> _expenseCategories = [];
   List<Level> _cells = [];
+  List<Level> _expenseCells = [];
   final IncomeCategoryController _incomeCatController =
       IncomeCategoryController();
-
+  final ExpenseCategoryController _expenseCatController =
+      ExpenseCategoryController();
   // State variables
   bool _isLoading = false;
+  bool _isExpenseLoading = false;
   DateTime? _incometransactionDate;
+  DateTime? _expensetransactionDate;
   IncomeCategory? _selectedIncomeCategory;
+  ExpenseCategory? _selectedExpenseCategory;
   Level? _incomeselectedSuperAdminCell;
-
+  Level? _expenseselectedSuperAdminCell;
   // Message state variables
   String? _message;
   bool _isSuccess = false;
@@ -61,13 +72,16 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
     super.initState();
     _loadIncomeCategories();
     _loadCells();
+    _loadExpenseCategories();
+    _loadExpenseCells();
   }
 
   @override
   void dispose() {
     _incomeAmountController.dispose();
     _incomedescriptionController.dispose();
-
+    _expenseAmountController.dispose();
+    _expensedescriptionController.dispose();
     super.dispose();
   }
 
@@ -78,6 +92,13 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
     }
   }
 
+  Future<void> _loadExpenseCells() async {
+    final cells = await _levelController.getAllCells();
+    if (mounted) {
+      setState(() => _expenseCells = cells);
+    }
+  }
+
   Future<void> _loadIncomeCategories() async {
     final incomeCategory = await _incomeCatController.getAllIncomeCategories();
     if (mounted) {
@@ -85,7 +106,17 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
     }
   }
 
+  Future<void> _loadExpenseCategories() async {
+    final expenseCategory = await _expenseCatController
+        .getAllExpenseCategories();
+    if (mounted) {
+      setState(() => _expenseCategories = expenseCategory);
+    }
+  }
+
   void _clearIncomeForm() {
+    // Reset form validation
+    _formKey.currentState?.reset();
     // Clear text controllers
     _incomeAmountController.clear();
     _incomedescriptionController.clear();
@@ -97,9 +128,22 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
       _selectedIncomeCategory = null;
       _incomeselectedSuperAdminCell = null;
     });
+  }
 
+  void _clearExpenseForm() {
     // Reset form validation
     _formKey.currentState?.reset();
+    // Clear text controllers
+    _expenseAmountController.clear();
+    _expensedescriptionController.clear();
+    _expenseTransactionDateController.clear();
+
+    // Reset state variables
+    setState(() {
+      _expensetransactionDate = null;
+      _selectedExpenseCategory = null;
+      _expenseselectedSuperAdminCell = null;
+    });
   }
 
   Future<void> _submitFinance() async {
@@ -113,7 +157,7 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
     // Validate category selection
     if (_selectedIncomeCategory == null) {
       setState(() {
-        _message = 'Please select a category';
+        _message = 'Please select Income category';
         _isSuccess = false;
       });
       return;
@@ -234,7 +278,7 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
           setState(() {
             _message = 'Income record created successfully!';
             _isSuccess = true;
-            _clearIncomeForm(); 
+            _clearIncomeForm();
           });
 
           break;
@@ -284,6 +328,191 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
     } finally {
       if (mounted && _isLoading) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _submitExpenseFinance() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _message = null;
+      _isSuccess = false;
+    });
+
+    // Validate category selection
+    if (_selectedExpenseCategory == null) {
+      setState(() {
+        _message = 'Please select Expense category';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate amount
+    final amountText = _expenseAmountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() {
+        _message = 'Please enter an amount';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      setState(() {
+        _message = 'Please enter a valid amount greater than zero';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate transaction date
+    if (_expensetransactionDate == null) {
+      setState(() {
+        _message = 'Please select a transaction date';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_expensetransactionDate!.isAfter(DateTime.now())) {
+      setState(() {
+        _message = 'Transaction date cannot be in the future';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate user ID
+    if (widget.loggedInUser.userId == null) {
+      setState(() {
+        _message = 'User session expired. Please log in again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level/cell selection
+    final level = widget.loggedInUser.role == 'SuperAdmin'
+        ? _expenseselectedSuperAdminCell
+        : widget.loggedInUser.level;
+
+    if (level == null) {
+      setState(() {
+        _message = widget.loggedInUser.role == 'SuperAdmin'
+            ? 'Please select a cell for this transaction'
+            : 'You are not allowed to add a transaction';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level ID
+    if (level.levelId == null) {
+      setState(() {
+        _message = 'Invalid cell selection. Please try again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate expense category has ID
+    if (_selectedExpenseCategory!.expenseCategoryId == null) {
+      setState(() {
+        _message = 'Invalid category selected. Please choose a valid category.';
+        _isSuccess = false;
+      });
+      return;
+    }
+    // Validate description
+    final description = _expensedescriptionController.text.trim();
+    if (description.isEmpty) {
+      setState(() {
+        _message = 'Please enter a description';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    try {
+      final finance = Finance(
+        expenseCategory: _selectedExpenseCategory, // Set expense category
+        incomeCategory: null,
+        transactionDate: DateFormat(
+          'yyyy-MM-dd',
+        ).format(_expensetransactionDate!),
+        amount: amount,
+        transactionType: "EXPENSE", // Explicitly set transaction type
+        description: description,
+        level: level,
+      );
+
+      // Submit to backend
+      final result = await FinanceController().createFinance(
+        finance,
+        userId: widget.loggedInUser.userId!,
+      );
+
+      setState(() => _isExpenseLoading = false);
+
+      // Handle backend response with more specific messages
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Expense record created successfully!';
+            _isSuccess = true;
+            _clearExpenseForm();
+          });
+
+          break;
+
+        case 'Status 3000':
+          setState(() {
+            _message = 'Invalid data.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 4000':
+          setState(() {
+            _message = 'User not found. Please log in again.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 6000':
+          setState(() {
+            _message = 'You are not authorized to create finance records.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 2000':
+          setState(() {
+            _message = 'Server error. Please try again later.';
+            _isSuccess = false;
+          });
+          break;
+
+        default:
+          setState(() {
+            _message = 'Unexpected error';
+            _isSuccess = false;
+          });
+          break;
+      }
+    } catch (e) {
+      setState(() {
+        _isExpenseLoading = false;
+        _message = 'Network error. Please check your connection and try again.';
+        _isSuccess = false;
+      });
+      print('Error submitting finance');
+    } finally {
+      if (mounted && _isExpenseLoading) {
+        setState(() => _isExpenseLoading = false);
       }
     }
   }
@@ -424,7 +653,7 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    /// Personal Information Section
+                    /// Income Information Section
                     Text(
                       "Income Transaction",
                       style: GoogleFonts.inter(
@@ -507,110 +736,88 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
                             ),
                     ),
 
-                    /// Church Information Section
-                    // Text(
-                    //   "Church Information",
-                    //   style: GoogleFonts.inter(
-                    //     fontSize: 16,
-                    //     fontWeight: FontWeight.bold,
-                    //     color: titlepageColor,
-                    //   ),
-                    // ),
+                    /// Expense Information Section
+                    Text(
+                      "Expense Transaction",
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titlepageColor,
+                      ),
+                    ),
                     const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildExpenseCategoryDropdown(
+                          'Expense Category',
+                          _selectedExpenseCategory,
+                          (dept) =>
+                              setState(() => _selectedExpenseCategory = dept),
+                        ),
+                        _buildTextField(
+                          'Amount',
+                          _expenseAmountController,
+                          readOnly: false,
+                        ),
+                        _buildDatePickerField(
+                          context,
+                          'Transaction Date (MM/dd/yyyy)',
+                          _expenseTransactionDateController,
+                          (date) => setState(() {
+                            _expensetransactionDate = date;
+                            _expenseTransactionDateController.text = DateFormat(
+                              'MM/dd/yyyy',
+                            ).format(date);
+                          }),
+                          _expensetransactionDate,
+                        ),
 
-                    // Wrap(
-                    //   spacing: 16,
-                    //   runSpacing: 16,
-                    //   children: [
-                    //     _buildDepartmentDropdown(
-                    //       'Department',
-                    //       _selectedDepartment,
-                    //       (dept) => setState(() => _selectedDepartment = dept),
-                    //     ),
-                    //     _buildDropdown(
-                    //       'Baptism Status',
-                    //       ['Baptized', 'Not Baptized'],
-                    //       _baptismStatus,
-                    //       (val) {
-                    //         setState(() {
-                    //           _baptismStatus = val;
-                    //           if (val == 'Not Baptized') {
-                    //             _sameReligion = null;
-                    //             _selectedBaptismCell = null;
-                    //             _otherChurchNameController.clear();
-                    //             _otherChurchAddressController.clear();
-                    //           }
-                    //         });
-                    //       },
-                    //     ),
+                        if (widget.loggedInUser.role == 'SuperAdmin') ...[
+                          _buildExpenseSuperAdminCellDropdown(
+                            'Select Cell',
+                            _expenseselectedSuperAdminCell,
+                            (cell) => setState(
+                              () => _expenseselectedSuperAdminCell = cell,
+                            ),
+                          ),
+                        ],
+                        _buildTextField(
+                          'Description',
+                          _expensedescriptionController,
+                          readOnly: false,
+                        ),
+                      ],
+                    ),
 
-                    //     if (_baptismStatus == 'Baptized')
-                    //       _buildDropdown(
-                    //         'Same Religion',
-                    //         ['Yes', 'No'],
-                    //         _sameReligion,
-                    //         (val) {
-                    //           setState(() {
-                    //             _sameReligion = val;
-                    //             if (val == 'Yes') {
-                    //               _otherChurchNameController.clear();
-                    //               _otherChurchAddressController.clear();
-                    //             } else if (val == 'No') {
-                    //               _selectedBaptismCell = null;
-                    //             }
-                    //           });
-                    //         },
-                    //       ),
-
-                    //     if (_baptismStatus == 'Baptized' &&
-                    //         _sameReligion == 'Yes')
-                    //       _buildCellDropdown(
-                    //         'Baptism Cell',
-                    //         _selectedBaptismCell,
-                    //         (cell) =>
-                    //             setState(() => _selectedBaptismCell = cell),
-                    //       ),
-
-                    //     if (_baptismStatus == 'Baptized' &&
-                    //         _sameReligion == 'No') ...[
-                    //       _buildTextField(
-                    //         'Other Church Name',
-                    //         _otherChurchNameController,
-                    //       ),
-                    //       _buildTextField(
-                    //         'Other Church Address',
-                    //         _otherChurchAddressController,
-                    //       ),
-                    //     ],
-                    //   ],
-                    // ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 11),
 
                     /// Save Button
-                    // Center(
-                    //   child: _isLoading
-                    //       ? const CircularProgressIndicator()
-                    //       : ElevatedButton(
-                    //           onPressed: _submit,
-                    //           style: ElevatedButton.styleFrom(
-                    //             backgroundColor: Colors.deepPurple,
-                    //             foregroundColor: Colors.white,
-                    //             padding: const EdgeInsets.symmetric(
-                    //               horizontal: 40,
-                    //               vertical: 16,
-                    //             ),
-                    //             shape: RoundedRectangleBorder(
-                    //               borderRadius: BorderRadius.circular(12),
-                    //             ),
-                    //           ),
-                    //           child: Text(
-                    //             "Save",
-                    //             style: GoogleFonts.inter(
-                    //               fontWeight: FontWeight.bold,
-                    //             ),
-                    //           ),
-                    //         ),
-                    // ),
+                    Center(
+                      child: _isExpenseLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _submitExpenseFinance,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Save Expense",
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                    ),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -676,6 +883,37 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
     );
   }
 
+  Widget _buildExpenseSuperAdminCellDropdown(
+    String label,
+    Level? _selectedSuperAdminBaptismCell,
+    void Function(Level?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<Level>(
+        value: _selectedSuperAdminBaptismCell,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: _expenseCells.map((cell) {
+          return DropdownMenuItem<Level>(
+            value: cell,
+            child: Text(cell.name ?? 'Unknown'),
+          );
+        }).toList(),
+        onChanged: onChanged,
+
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
   Widget _buildIncomeCategoryDropdown(
     String label,
     IncomeCategory? selectedIncomeCategory,
@@ -695,7 +933,10 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
           ),
         ),
         items: [
-          const DropdownMenuItem(value: 'none', child: Text('Select Category')),
+          const DropdownMenuItem(
+            value: 'none',
+            child: Text('Select Income Category'),
+          ),
           ..._incomeCategories.map((incomeCategory) {
             return DropdownMenuItem<String>(
               value: incomeCategory.incomeCategoryId,
@@ -727,6 +968,70 @@ class _AddFinanceScreenState extends State<AddFinanceScreen> {
             );
             setState(() {
               _selectedIncomeCategory = dept;
+            });
+            onChanged(dept);
+          }
+        },
+
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
+  Widget _buildExpenseCategoryDropdown(
+    String label,
+    ExpenseCategory? selectedExpenseCategory,
+    void Function(ExpenseCategory?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<String>(
+        value: selectedExpenseCategory?.expenseCategoryId ?? 'none',
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: [
+          const DropdownMenuItem(
+            value: 'none',
+            child: Text('Select Expense Category'),
+          ),
+          ..._expenseCategories.map((expenseCategory) {
+            return DropdownMenuItem<String>(
+              value: expenseCategory.expenseCategoryId,
+              child: Text(expenseCategory.name),
+            );
+          }),
+          const DropdownMenuItem(value: 'others', child: Text('Others')),
+        ],
+        onChanged: (String? selectedId) async {
+          if (selectedId == 'others') {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    ExpenseCategoryScreen(loggedInUser: widget.loggedInUser),
+              ),
+            );
+            if (result != null) {
+              await _loadExpenseCategories();
+            }
+          } else if (selectedId == 'none') {
+            setState(() {
+              _selectedExpenseCategory = null;
+            });
+          } else {
+            final dept = _expenseCategories.firstWhere(
+              (d) => d.expenseCategoryId == selectedId,
+              orElse: () => _expenseCategories.first,
+            );
+            setState(() {
+              _selectedExpenseCategory = dept;
             });
             onChanged(dept);
           }

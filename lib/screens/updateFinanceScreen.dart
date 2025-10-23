@@ -1,1093 +1,1268 @@
-// import 'dart:typed_data';
-// import 'package:flutter_churchcrm_system/controller/department_controller.dart';
-// import 'package:flutter_churchcrm_system/controller/level_controller.dart';
-// import 'package:flutter_churchcrm_system/controller/member_controller.dart';
-// import 'package:flutter_churchcrm_system/model/baptismInformation_model.dart';
-// import 'package:flutter_churchcrm_system/model/department_model.dart';
-// import 'package:flutter_churchcrm_system/model/finance_model.dart';
-// import 'package:flutter_churchcrm_system/model/level_model.dart';
-// import 'package:flutter_churchcrm_system/model/member_model.dart';
-// import 'package:intl/intl.dart';
-// import 'package:syncfusion_flutter_datepicker/datepicker.dart';
-
-// import 'package:flutter/material.dart';
-
-// import 'package:image_picker/image_picker.dart';
-// import 'package:country_picker/country_picker.dart';
-
-// import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-
-// import 'package:flutter_churchcrm_system/model/user_model.dart';
-// import 'package:flutter_churchcrm_system/utils/responsive.dart';
-
-// import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
-// import 'package:flutter_churchcrm_system/constants.dart';
-// import 'package:google_fonts/google_fonts.dart';
-// import 'package:mime/mime.dart';
-
-// class UpdateFinanceScreen extends StatefulWidget {
-//   final UserModel loggedInUser;
-//   final Finance finance;
-
-//   const UpdateFinanceScreen({
-//     super.key,
-//     required this.loggedInUser,
-//     required this.finance,
-//   });
-
-//   @override
-//   State<UpdateFinanceScreen> createState() => _UpdateFinanceScreenState();
-// }
-
-// class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
-//   final _formKey = GlobalKey<FormState>();
-
-//   // Controllers
-//   final _nameController = TextEditingController();
-//   final _emailController = TextEditingController();
-//   final _addressController = TextEditingController();
-//   final _otherChurchNameController = TextEditingController();
-//   final _otherChurchAddressController = TextEditingController();
-//   final _phoneController = TextEditingController();
-//   final _dobController = TextEditingController();
-//   final _membershipDateController = TextEditingController();
-
-//   // Data lists
-//   List<Department> _departments = [];
-//   List<Level> _cells = [];
-
-//   // Controllers
-//   final LevelController _levelController = LevelController();
-//   final DepartmentController _departmentController = DepartmentController();
-
-//   // State variables
-//   bool _isLoading = false;
-//   bool _imageChanged = false;
-//   Uint8List? _imageBytes;
-//   String? _fileExtension;
-//   String? _maritalStatus;
-//   String? _memberStatus;
-//   String? _gender;
-//   DateTime? _dob;
-
-//   String? _baptismStatus;
-//   String? _sameReligion;
-//   Department? _selectedDepartment;
-//   Level? _selectedBaptismCell;
-//   Country? _selectedCountry;
-
-//   // Message state variables
-//   String? _message;
-//   bool _isSuccess = false;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _loadDepartments();
-//     _loadCells();
-//     _populateExistingData();
-//   }
-
-//   void _populateExistingData() {
-//     // Populate text fields
-//     _nameController.text = widget.member.names;
-//     _emailController.text = widget.member.email;
-//     _addressController.text = widget.member.address;
-//     _membershipDateController.text = widget.member.membershipDate!;
-
-//     // Parse and populate phone number
-//     final phone = widget.member.phone;
-//     if (phone.isNotEmpty) {
-//       // Remove leading '+' if present
-//       final normalized = phone.startsWith('+') ? phone.substring(1) : phone;
-
-//       // Remove country code (assumed to be 250 for Rwanda)
-//       if (normalized.startsWith('250')) {
-//         _phoneController.text = normalized.substring(3); // Strip '250'
-//       } else {
-//         _phoneController.text = normalized; // Use full number if no match
-//       }
-//     }
-
-//     // Populate gender and marital status
-//     _memberStatus = widget.member.status;
-//     _gender = widget.member.gender;
-//     _maritalStatus = widget.member.maritalStatus;
-
-//     // Parse and populate date of birth
-//     if (widget.member.dateOfBirth != null &&
-//         widget.member.dateOfBirth!.isNotEmpty) {
-//       try {
-//         List<String> parts = widget.member.dateOfBirth!.split('/');
-//         if (parts.length == 3) {
-//           int month = int.parse(parts[0]);
-//           int day = int.parse(parts[1]);
-//           int year = int.parse(parts[2]);
-//           _dob = DateTime(year, month, day);
-//           _dobController.text = widget.member.dateOfBirth!;
-//         }
-//       } catch (e) {
-//         print('Error parsing date of birth: $e');
-//       }
-//     }
-
-//     // Populate baptism information
-//     if (widget.member.baptismInformation != null) {
-//       _baptismStatus = widget.member.baptismInformation!.baptized == true
-//           ? 'Baptized'
-//           : 'Not Baptized';
-//       _sameReligion = widget.member.baptismInformation!.sameReligion == true
-//           ? 'Yes'
-//           : 'No';
-
-//       if (widget.member.baptismInformation!.sameReligion == true) {
-//         _selectedBaptismCell = widget.member.baptismInformation!.baptismCell;
-//       } else {
-//         _otherChurchNameController.text =
-//             widget.member.baptismInformation!.otherChurchName ?? '';
-//         _otherChurchAddressController.text =
-//             widget.member.baptismInformation!.otherChurchAddress ?? '';
-//       }
-//     }
-
-//     // Set existing profile picture
-//     _imageBytes = widget.member.profilePic;
-
-//     // Set department (will be matched when departments load)
-//     _selectedDepartment = widget.member.department;
-//   }
-
-//   @override
-//   void dispose() {
-//     _nameController.dispose();
-//     _emailController.dispose();
-//     _addressController.dispose();
-//     _otherChurchNameController.dispose();
-//     _otherChurchAddressController.dispose();
-//     _phoneController.dispose();
-//     _dobController.dispose();
-//     super.dispose();
-//   }
-
-//   Future<void> _loadCells() async {
-//     final cells = await _levelController.getAllCells();
-//     if (mounted) {
-//       setState(() {
-//         _cells = cells;
-//         // Match existing baptism cell if it exists
-//         if (widget.member.baptismInformation?.baptismCell != null) {
-//           _selectedBaptismCell = _cells.firstWhere(
-//             (cell) =>
-//                 cell.levelId ==
-//                 widget.member.baptismInformation!.baptismCell!.levelId,
-//             orElse: () => widget.member.baptismInformation!.baptismCell!,
-//           );
-//         }
-//       });
-//     }
-//   }
-
-//   Future<void> _loadDepartments() async {
-//     final departments = await _departmentController.getAllDepartments();
-//     if (mounted) {
-//       setState(() {
-//         _departments = departments;
-//         // Match existing department if it exists
-//         if (widget.member.department != null) {
-//           _selectedDepartment = _departments.firstWhere(
-//             (dept) =>
-//                 dept.departmentId == widget.member.department!.departmentId,
-//             orElse: () => widget.member.department!,
-//           );
-//         }
-//       });
-//     }
-//   }
-
-//   Future<void> _pickImage() async {
-//     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-//     if (picked != null) {
-//       final bytes = await picked.readAsBytes();
-//       final ext =
-//           lookupMimeType(picked.path)?.split('/').last.toLowerCase() ?? 'jpg';
-
-//       if (mounted) {
-//         setState(() {
-//           _imageBytes = bytes;
-//           _fileExtension = ext;
-//           _imageChanged = true;
-//         });
-//       }
-//     }
-//   }
-
-//   Future<void> _submit() async {
-//     // First validate the form
-//     if (!_formKey.currentState!.validate()) {
-//       return;
-//     }
-//     //  Email format validation
-//     final email = _emailController.text.trim();
-//     final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
-//     if (!emailRegex.hasMatch(email)) {
-//       setState(() {
-//         _message = 'Please enter a valid email address';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-//     // Validate image
-//     if (_imageBytes == null) {
-//       setState(() {
-//         _message = 'Please select a profile image';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-
-//     // Validate department
-//     if (_selectedDepartment == null) {
-//       setState(() {
-//         _message = 'Please select a department';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-
-//     // Validate baptism status
-//     if (_baptismStatus == null) {
-//       setState(() {
-//         _message = 'Please select baptism status';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-
-//     // Validate same religion
-//     if (_sameReligion == null && _baptismStatus == "Baptized") {
-//       setState(() {
-//         _message = 'Please select same religion option';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-
-//     // Validate baptism cell when same religion is Yes
-//     if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
-//       setState(() {
-//         _message = 'Please select a baptism cell';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-//     // Validate other church fields when same religion is No
-//     if (_sameReligion == 'No' && _baptismStatus == "Baptized") {
-//       if (_otherChurchNameController.text.trim().isEmpty) {
-//         setState(() {
-//           _message = 'Please enter other church name';
-//           _isSuccess = false;
-//         });
-//         return;
-//       }
-//       if (_otherChurchAddressController.text.trim().isEmpty) {
-//         setState(() {
-//           _message = 'Please enter other church address';
-//           _isSuccess = false;
-//         });
-//         return;
-//       }
-//     }
-//     // Validate gender
-//     if (_gender == null) {
-//       setState(() {
-//         _message = 'Please select gender';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-
-//     // Validate marital status
-//     if (_maritalStatus == null) {
-//       setState(() {
-//         _message = 'Please select marital status';
-//         _isSuccess = false;
-//       });
-//       return;
-//     }
-
-//     if (_memberStatus == null) {
-//       setState(() {
-//         _message = 'Please select Member Status';
-//         _isSuccess = false;
-//       });
-//     }
-//     // Start loading only after all validations pass
-//     if (mounted) {
-//       setState(() {
-//         _isLoading = true;
-//         _message = null;
-//       });
-//     }
-
-//     try {
-//       // Get user ID from logged in user
-//       if (widget.loggedInUser.userId == null) {
-//         if (mounted) {
-//           setState(() {
-//             _isLoading = false;
-//             _message = 'User ID not found. Please log in again.';
-//             _isSuccess = false;
-//           });
-//         }
-//         return;
-//       }
-
-//       // Create baptism information
-//       final baptismInfo = BaptismInformation(
-//         baptized: _baptismStatus == "Baptized",
-//         sameReligion: _sameReligion == "Yes",
-//         baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
-//         otherChurchName: _sameReligion == "No"
-//             ? _otherChurchNameController.text.trim()
-//             : null,
-//         otherChurchAddress: _sameReligion == "No"
-//             ? _otherChurchAddressController.text.trim()
-//             : null,
-//       );
-
-//       // Build phone number with country code
-//       final phoneCode = _selectedCountry != null
-//           ? '+${_selectedCountry!.phoneCode}'
-//           : '+250';
-//       final fullPhone = '$phoneCode${_phoneController.text.trim()}';
-
-//       // Create updated member object
-//       final updatedMember = Member(
-//         memberId: widget.member.memberId, // Keep existing ID
-//         names: _nameController.text.trim(),
-//         email: _emailController.text.trim(),
-//         address: _addressController.text.trim(),
-//         phone: fullPhone,
-//         maritalStatus: _maritalStatus ?? '',
-//         status: _memberStatus ?? '',
-//         gender: _gender ?? '',
-
-//         dateOfBirth: _dob != null
-//             ? '${_dob!.month.toString().padLeft(2, '0')}/'
-//                   '${_dob!.day.toString().padLeft(2, '0')}/'
-//                   '${_dob!.year}'
-//             : widget.member.dateOfBirth,
-//         membershipDate: widget.member.membershipDate,
-//         level: widget.loggedInUser.level,
-//         department: _selectedDepartment,
-//         baptismInformation: baptismInfo,
-//         profilePic: _imageBytes!,
-//       );
-
-//       // Submit to backend
-//       String result;
-//       if (_imageChanged && _fileExtension != null) {
-//         // If image was changed, send with new image
-//         result = await MemberController().updateMember(
-//           updatedMember.memberId!,
-//           updatedMember,
-//           userId: widget.loggedInUser.userId!,
-//           profilePic: _imageBytes!,
-//         );
-//       } else {
-//         // If image wasn't changed, send without image data
-//         result = await MemberController().updateMember(
-//           updatedMember.memberId!,
-//           updatedMember,
-//           userId: widget.loggedInUser.userId!,
-//         );
-//       }
-
-//       // Always stop loading after getting result
-//       if (mounted) setState(() => _isLoading = false);
-
-//       // Handle response
-//       if (!mounted) return;
-
-//       if (result == 'Status 1000') {
-//         setState(() {
-//           _message = 'Member updated successfully';
-//           _isSuccess = true;
-//         });
-//       } else if (result == 'Status 3000') {
-//         setState(() {
-//           _message = 'Invalid department or baptism info';
-//           _isSuccess = false;
-//         });
-//       } else if (result == 'Status 4000') {
-//         setState(() {
-//           _message = 'Member not found';
-//           _isSuccess = false;
-//         });
-//       } else if (result == 'Status 6000') {
-//         setState(() {
-//           _message = 'Unauthorized role';
-//           _isSuccess = false;
-//         });
-//       } else {
-//         setState(() {
-//           _message = 'Unexpected error: $result';
-//           _isSuccess = false;
-//         });
-//       }
-//     } catch (e) {
-//       // Always stop loading on error
-//       if (mounted) {
-//         setState(() {
-//           _isLoading = false;
-//           _message = 'Error updating member: $e';
-//           _isSuccess = false;
-//         });
-//       }
-//     } finally {
-//       // Final safety net to ensure loading stops
-//       if (mounted && _isLoading) {
-//         setState(() => _isLoading = false);
-//       }
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final isDesktop = Responsive.isDesktop(context);
-
-//     return Scaffold(
-//       drawer: !isDesktop
-//           ? Drawer(
-//               child: SideMenuWidget(
-//                 selectedTitle: 'Members',
-//                 loggedInUser: widget.loggedInUser,
-//               ),
-//             )
-//           : null,
-//       body: SafeArea(
-//         child: Row(
-//           children: [
-//             if (isDesktop)
-//               Container(
-//                 width: 250,
-//                 decoration: const BoxDecoration(
-//                   border: Border(
-//                     right: BorderSide(color: borderColor, width: 2),
-//                   ),
-//                 ),
-//                 child: SideMenuWidget(
-//                   selectedTitle: 'Members',
-//                   loggedInUser: widget.loggedInUser,
-//                 ),
-//               ),
-//             Expanded(
-//               child: Container(
-//                 color: Theme.of(context).scaffoldBackgroundColor,
-//                 child: _buildUpdateFinanceScreen(),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildUpdateFinanceScreen() {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         const SizedBox(height: 10),
-//         const TopHeaderWidget(),
-//         Expanded(
-//           child: SingleChildScrollView(
-//             child: Padding(
-//               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-//               child: Form(
-//                 key: _formKey,
-//                 child: Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Center(
-//                       child: Text(
-//                         "Update Member",
-//                         style: GoogleFonts.inter(
-//                           color: titlepageColor,
-//                           fontSize: 20,
-//                           fontWeight: FontWeight.bold,
-//                         ),
-//                       ),
-//                     ),
-//                     const SizedBox(height: 4),
-
-//                     // Message Container
-//                     if (_message != null)
-//                       Center(
-//                         child: Container(
-//                           margin: const EdgeInsets.only(bottom: 12),
-//                           padding: const EdgeInsets.symmetric(
-//                             horizontal: 10,
-//                             vertical: 6,
-//                           ),
-//                           constraints: const BoxConstraints(maxWidth: 600),
-//                           decoration: BoxDecoration(
-//                             color: Colors.grey.shade100,
-//                             borderRadius: BorderRadius.circular(10),
-//                             border: Border.all(
-//                               color: _isSuccess ? Colors.green : Colors.red,
-//                               width: 1.2,
-//                             ),
-//                           ),
-//                           child: Row(
-//                             mainAxisSize: MainAxisSize.min,
-//                             children: [
-//                               Icon(
-//                                 _isSuccess ? Icons.check_circle : Icons.error,
-//                                 color: _isSuccess
-//                                     ? Colors.green.shade800
-//                                     : Colors.red.shade800,
-//                                 size: 18,
-//                               ),
-//                               const SizedBox(width: 6),
-//                               Flexible(
-//                                 child: Text(
-//                                   _message!,
-//                                   style: GoogleFonts.inter(
-//                                     color: _isSuccess
-//                                         ? Colors.green.shade800
-//                                         : Colors.red.shade800,
-//                                     fontSize: 13,
-//                                     fontWeight: FontWeight.w500,
-//                                   ),
-//                                   textAlign: TextAlign.center,
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                         ),
-//                       ),
-
-//                     ElevatedButton.icon(
-//                       onPressed: () => Navigator.pop(context, 'refresh'),
-//                       icon: const Icon(Icons.arrow_back),
-//                       label: Text(
-//                         'Back',
-//                         style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-//                       ),
-//                       style: ElevatedButton.styleFrom(
-//                         backgroundColor: Colors.deepPurple,
-//                         foregroundColor: Colors.white,
-//                         padding: const EdgeInsets.symmetric(
-//                           horizontal: 20,
-//                           vertical: 15,
-//                         ),
-//                         shape: RoundedRectangleBorder(
-//                           borderRadius: BorderRadius.circular(12),
-//                         ),
-//                       ),
-//                     ),
-//                     const SizedBox(height: 10),
-
-//                     /// Personal Information Section
-//                     Text(
-//                       "Personal Information",
-//                       style: GoogleFonts.inter(
-//                         fontSize: 16,
-//                         fontWeight: FontWeight.bold,
-//                         color: titlepageColor,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 12),
-//                     Wrap(
-//                       spacing: 16,
-//                       runSpacing: 16,
-//                       children: [
-//                         _buildTextField('Name', _nameController),
-//                         _buildTextField('Email', _emailController),
-//                         _buildDropdown(
-//                           'Marital Status',
-//                           ['Single', 'Married', 'Divorced'],
-//                           _maritalStatus,
-//                           (val) => setState(() => _maritalStatus = val),
-//                         ),
-//                         _buildDropdown(
-//                           'Member Status',
-//                           ['Active', 'Inactive', 'Transferred'],
-//                           _memberStatus,
-//                           (val) => setState(() => _memberStatus = val),
-//                         ),
-//                         _buildDatePickerField(
-//                           context,
-//                           'Date of Birth (MM/dd/yyyy)',
-//                           _dobController,
-//                           (date) => setState(() {
-//                             _dob = date;
-//                             _dobController.text = DateFormat(
-//                               'MM/dd/yyyy',
-//                             ).format(date);
-//                           }),
-//                           _dob,
-//                         ),
-//                         _buildDropdown(
-//                           'Gender',
-//                           ['Male', 'Female'],
-//                           _gender,
-//                           (val) => setState(() => _gender = val),
-//                         ),
-//                         _buildTextField('Address', _addressController),
-//                         _buildPhoneField(_phoneController),
-//                         _buildMembershipdateTextField(
-//                           'Membership Date',
-//                           _membershipDateController,
-//                           readOnly: true,
-//                         ),
-
-//                         _buildFilePicker(
-//                           previewBytes: _imageBytes,
-//                           onPicked: (bytes, ext) {
-//                             setState(() {
-//                               _imageBytes = bytes;
-//                               _fileExtension = ext;
-//                             });
-//                           },
-//                         ),
-//                       ],
-//                     ),
-
-//                     const SizedBox(height: 32),
-
-//                     /// Church Information Section
-//                     Text(
-//                       "Church Information",
-//                       style: GoogleFonts.inter(
-//                         fontSize: 16,
-//                         fontWeight: FontWeight.bold,
-//                         color: titlepageColor,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 12),
-//                     Wrap(
-//                       spacing: 16,
-//                       runSpacing: 16,
-//                       children: [
-//                         _buildDepartmentDropdown(
-//                           'Department',
-//                           _selectedDepartment,
-//                           (dept) => setState(() => _selectedDepartment = dept),
-//                         ),
-//                         _buildDropdown(
-//                           'Baptism Status',
-//                           ['Baptized', 'Not Baptized'],
-//                           _baptismStatus,
-//                           (val) {
-//                             setState(() {
-//                               _baptismStatus = val;
-//                               // Clear dependent fields when baptism status changes
-//                               if (val == 'Not Baptized') {
-//                                 _sameReligion = null;
-//                                 _selectedBaptismCell = null;
-//                                 _otherChurchNameController.clear();
-//                                 _otherChurchAddressController.clear();
-//                               }
-//                             });
-//                           },
-//                         ),
-
-//                         // Show Same Religion only when Baptized
-//                         if (_baptismStatus == 'Baptized')
-//                           _buildDropdown(
-//                             'Same Religion',
-//                             ['Yes', 'No'],
-//                             _sameReligion,
-//                             (val) {
-//                               setState(() {
-//                                 _sameReligion = val;
-//                                 // Clear dependent fields when same religion changes
-//                                 if (val == 'Yes') {
-//                                   // Clear other church fields when switching to Yes
-//                                   _otherChurchNameController.clear();
-//                                   _otherChurchAddressController.clear();
-//                                 } else if (val == 'No') {
-//                                   // Clear baptism cell when switching to No
-//                                   _selectedBaptismCell = null;
-//                                 }
-//                               });
-//                             },
-//                           ),
-
-//                         // Show baptism cell only when baptized and same religion is Yes
-//                         if (_baptismStatus == 'Baptized' &&
-//                             _sameReligion == 'Yes')
-//                           _buildCellDropdown(
-//                             'Baptism Cell',
-//                             _selectedBaptismCell,
-//                             (cell) =>
-//                                 setState(() => _selectedBaptismCell = cell),
-//                           ),
-
-//                         // Show other church fields only when baptized and same religion is No
-//                         if (_baptismStatus == 'Baptized' &&
-//                             _sameReligion == 'No') ...[
-//                           _buildTextField(
-//                             'Other Church Name',
-//                             _otherChurchNameController,
-//                           ),
-//                           _buildTextField(
-//                             'Other Church Address',
-//                             _otherChurchAddressController,
-//                           ),
-//                         ],
-//                       ],
-//                     ),
-
-//                     const SizedBox(height: 12),
-
-//                     /// Update Button
-//                     Center(
-//                       child: _isLoading
-//                           ? const CircularProgressIndicator()
-//                           : ElevatedButton(
-//                               onPressed: _submit,
-//                               style: ElevatedButton.styleFrom(
-//                                 backgroundColor: Colors.deepPurple,
-//                                 foregroundColor: Colors.white,
-//                                 padding: const EdgeInsets.symmetric(
-//                                   horizontal: 40,
-//                                   vertical: 16,
-//                                 ),
-//                                 shape: RoundedRectangleBorder(
-//                                   borderRadius: BorderRadius.circular(12),
-//                                 ),
-//                               ),
-//                               child: Text(
-//                                 "Update",
-//                                 style: GoogleFonts.inter(
-//                                   fontWeight: FontWeight.bold,
-//                                 ),
-//                               ),
-//                             ),
-//                     ),
-//                     const SizedBox(height: 20),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-
-//   Widget _buildTextField(String label, TextEditingController controller) {
-//     return SizedBox(
-//       width: 300,
-//       child: TextFormField(
-//         controller: controller,
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//         ),
-//         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-//       ),
-//     );
-//   }
-
-//   Widget _buildMembershipdateTextField(
-//     String label,
-//     TextEditingController controller, {
-//     required bool readOnly,
-//   }) {
-//     return SizedBox(
-//       width: 300,
-//       child: TextFormField(
-//         controller: controller,
-//         readOnly: readOnly,
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//         ),
-//         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-//       ),
-//     );
-//   }
-
-//   Widget _buildCellDropdown(
-//     String label,
-//     Level? selectedCell,
-//     void Function(Level?) onChanged,
-//   ) {
-//     return SizedBox(
-//       width: 300,
-//       child: DropdownButtonFormField<Level>(
-//         value: selectedCell,
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//         ),
-//         items: _cells.map((cell) {
-//           return DropdownMenuItem<Level>(
-//             value: cell,
-//             child: Text(cell.name ?? 'Unknown'),
-//           );
-//         }).toList(),
-//         onChanged: onChanged,
-//         validator: (value) {
-//           if (_sameReligion == 'Yes' && value == null) {
-//             return 'Required';
-//           }
-//           return null;
-//         },
-//       ),
-//     );
-//   }
-
-//   Widget _buildPhoneField(TextEditingController controller) {
-//     return SizedBox(
-//       width: 300,
-//       child: TextFormField(
-//         controller: controller,
-//         keyboardType: TextInputType.phone,
-//         style: GoogleFonts.inter(fontSize: 16),
-//         decoration: InputDecoration(
-//           labelText: 'Phone Number',
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//           prefixIcon: InkWell(
-//             onTap: () {
-//               showCountryPicker(
-//                 context: context,
-//                 showPhoneCode: true,
-//                 countryListTheme: CountryListThemeData(
-//                   backgroundColor: backgroundcolor,
-//                 ),
-//                 onSelect: (Country country) {
-//                   setState(() {
-//                     _selectedCountry = country;
-//                   });
-//                 },
-//               );
-//             },
-//             child: Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 8),
-//               alignment: Alignment.centerLeft,
-//               width: 80,
-//               child: FittedBox(
-//                 fit: BoxFit.scaleDown,
-//                 child: Row(
-//                   mainAxisSize: MainAxisSize.min,
-//                   crossAxisAlignment: CrossAxisAlignment.center,
-//                   children: [
-//                     Text(
-//                       _selectedCountry?.flagEmoji ?? '🇷🇼',
-//                       style: GoogleFonts.inter(fontSize: 20),
-//                     ),
-//                     const SizedBox(width: 6),
-//                     Text(
-//                       _selectedCountry != null
-//                           ? '+${_selectedCountry!.phoneCode}'
-//                           : '+250',
-//                       style: GoogleFonts.inter(fontSize: 14),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//           ),
-//         ),
-//         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-//       ),
-//     );
-//   }
-
-//   Widget _buildDepartmentDropdown(
-//     String label,
-//     Department? selectedDepartment,
-//     void Function(Department?) onChanged,
-//   ) {
-//     return SizedBox(
-//       width: 300,
-//       child: DropdownButtonFormField<Department>(
-//         value: selectedDepartment,
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//         ),
-//         items: [
-//           ..._departments.map((department) {
-//             return DropdownMenuItem<Department>(
-//               value: department,
-//               child: Text(department.name),
-//             );
-//           }),
-//         ],
-//         onChanged: (Department? selected) {
-//           if (selected != null) {
-//             onChanged(selected);
-//           }
-//         },
-//         validator: (value) => value == null ? 'Required' : null,
-//       ),
-//     );
-//   }
-
-//   Widget _buildDatePickerField(
-//     BuildContext context,
-//     String label,
-//     TextEditingController controller,
-//     void Function(DateTime) onDateSelected,
-//     DateTime? initialDate,
-//   ) {
-//     return SizedBox(
-//       width: 300,
-//       child: TextFormField(
-//         controller: controller,
-//         readOnly: true,
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//           suffixIcon: const Icon(Icons.calendar_today),
-//         ),
-//         onTap: () {
-//           DateTime tempSelectedDate = initialDate ?? DateTime.now();
-
-//           showDialog(
-//             context: context,
-//             builder: (context) {
-//               return AlertDialog(
-//                 content: SizedBox(
-//                   height: 350,
-//                   width: 300,
-//                   child: SfDateRangePicker(
-//                     view: DateRangePickerView.month,
-//                     showNavigationArrow: true,
-//                     initialSelectedDate: tempSelectedDate,
-//                     minDate: DateTime(1900),
-//                     maxDate: DateTime.now(),
-//                     showActionButtons: true,
-//                     onSelectionChanged: (args) {
-//                       tempSelectedDate = args.value;
-//                     },
-//                     onSubmit: (value) {
-//                       final selected = value as DateTime;
-//                       controller.text = DateFormat(
-//                         'MM/dd/yyyy',
-//                       ).format(selected);
-//                       onDateSelected(selected);
-//                       Navigator.pop(context);
-//                     },
-//                     onCancel: () {
-//                       Navigator.pop(context);
-//                     },
-//                   ),
-//                 ),
-//               );
-//             },
-//           );
-//         },
-//         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-//       ),
-//     );
-//   }
-
-//   Widget _buildDropdown(
-//     String label,
-//     List<String> items,
-//     String? selectedValue,
-//     void Function(String?) onChanged,
-//   ) {
-//     return SizedBox(
-//       width: 300,
-//       child: DropdownButtonFormField<String>(
-//         value: selectedValue,
-//         decoration: InputDecoration(
-//           labelText: label,
-//           labelStyle: GoogleFonts.inter(fontSize: 13),
-//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 12,
-//             vertical: 10,
-//           ),
-//         ),
-//         items: items.map((item) {
-//           return DropdownMenuItem(value: item, child: Text(item));
-//         }).toList(),
-//         onChanged: onChanged,
-//         validator: (value) =>
-//             value == null || value.isEmpty ? 'Required' : null,
-//       ),
-//     );
-//   }
-
-//   Widget _buildFilePicker({
-//     required void Function(Uint8List bytes, String ext) onPicked,
-//     Uint8List? previewBytes,
-//   }) {
-//     return SizedBox(
-//       width: 300,
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Row(
-//             children: [
-//               ElevatedButton(
-//                 onPressed: _pickImage,
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: Colors.grey[300],
-//                   foregroundColor: Colors.black,
-//                   padding: const EdgeInsets.symmetric(
-//                     horizontal: 20,
-//                     vertical: 12,
-//                   ),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(8),
-//                   ),
-//                 ),
-//                 child: Text("Change Profile", style: GoogleFonts.inter()),
-//               ),
-//               const SizedBox(width: 16),
-//               CircleAvatar(
-//                 radius: 30,
-//                 backgroundImage: previewBytes != null
-//                     ? MemoryImage(previewBytes)
-//                     : null,
-//                 backgroundColor: Colors.grey[200],
-//                 child: previewBytes == null
-//                     ? Icon(Icons.person, color: Colors.grey[600])
-//                     : null,
-//               ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+import 'package:flutter_churchcrm_system/controller/expenseCategory_controller.dart';
+import 'package:flutter_churchcrm_system/controller/finance_Controller.dart';
+import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
+import 'package:flutter_churchcrm_system/controller/level_controller.dart';
+import 'package:flutter_churchcrm_system/model/expenseCategory_model.dart';
+
+import 'package:flutter_churchcrm_system/model/finance_model.dart';
+import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
+import 'package:flutter_churchcrm_system/model/level_model.dart';
+import 'package:flutter_churchcrm_system/screens/expenseCategoryScreen.dart';
+import 'package:flutter_churchcrm_system/screens/incomeCategoryScreen.dart';
+import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+
+import 'package:flutter/material.dart';
+
+import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+
+import 'package:flutter_churchcrm_system/model/user_model.dart';
+import 'package:flutter_churchcrm_system/utils/responsive.dart';
+
+import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
+import 'package:flutter_churchcrm_system/constants.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+class UpdateFinanceScreen extends StatefulWidget {
+  final UserModel loggedInUser;
+  final Finance finance;
+
+  const UpdateFinanceScreen({
+    super.key,
+    required this.loggedInUser,
+    required this.finance,
+  });
+
+  @override
+  State<UpdateFinanceScreen> createState() => _UpdateFinanceScreenState();
+}
+
+class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Income Controllers
+  final _incomeAmountController = TextEditingController();
+  final _incomedescriptionController = TextEditingController();
+  final _incomeTransactionDateController = TextEditingController();
+  // Expense Controllers
+  final _expenseAmountController = TextEditingController();
+  final _expensedescriptionController = TextEditingController();
+  final _expenseTransactionDateController = TextEditingController();
+
+  final LevelController _levelController = LevelController();
+  // Income Data lists
+  List<IncomeCategory> _incomeCategories = [];
+  List<ExpenseCategory> _expenseCategories = [];
+  List<Level> _cells = [];
+  List<Level> _expenseCells = [];
+  final IncomeCategoryController _incomeCatController =
+      IncomeCategoryController();
+  final ExpenseCategoryController _expenseCatController =
+      ExpenseCategoryController();
+  // State variables
+  bool _isLoading = false;
+  bool _isExpenseLoading = false;
+  DateTime? _incometransactionDate;
+  DateTime? _expensetransactionDate;
+  IncomeCategory? _selectedIncomeCategory;
+  ExpenseCategory? _selectedExpenseCategory;
+  Level? _incomeselectedSuperAdminCell;
+  Level? _expenseselectedSuperAdminCell;
+  // Message state variables
+  String? _message;
+  bool _isSuccess = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    // Load all data first
+    await Future.wait([
+      _loadIncomeCategories(),
+      _loadCells(),
+      _loadExpenseCategories(),
+      _loadExpenseCells(),
+    ]);
+
+    // Then populate the form
+    if (mounted) {
+      setState(() {
+        _populateFormFromFinance();
+      });
+    }
+  }
+
+  // Populate form based on existing finance record
+  void _populateFormFromFinance() async {
+    final finance = widget.finance;
+
+    if (finance.transactionType == 'INCOME') {
+      // Set the selected income category by finding it in the loaded list
+      if (finance.incomeCategory != null &&
+          finance.incomeCategory!.incomeCategoryId != null) {
+        final category = _incomeCategories.firstWhere(
+          (cat) =>
+              cat.incomeCategoryId == finance.incomeCategory!.incomeCategoryId,
+          orElse: () => finance.incomeCategory!,
+        );
+        setState(() {
+          _selectedIncomeCategory = category;
+        });
+      }
+
+      _incomeAmountController.text = finance.amount.toString();
+
+      try {
+        // Handle both MM/dd/yyyy and yyyy-MM-dd formats
+        DateTime? parsedDate;
+        if (finance.transactionDate.contains('/')) {
+          List<String> parts = finance.transactionDate.split('/');
+          if (parts.length == 3) {
+            int month = int.parse(parts[0]);
+            int day = int.parse(parts[1]);
+            int year = int.parse(parts[2]);
+            parsedDate = DateTime(year, month, day);
+          }
+        } else {
+          parsedDate = DateFormat('yyyy-MM-dd').parse(finance.transactionDate!);
+        }
+
+        if (parsedDate != null) {
+          setState(() {
+            _incometransactionDate = parsedDate;
+          });
+          _incomeTransactionDateController.text = DateFormat(
+            'MM/dd/yyyy',
+          ).format(parsedDate);
+        }
+      } catch (e) {
+        print('Error parsing Transaction Date');
+      }
+
+      _incomedescriptionController.text = finance.description ?? '';
+
+      // Set cell for SuperAdmin
+      if (widget.loggedInUser.role == 'SuperAdmin' && finance.level != null) {
+        setState(() {
+          _incomeselectedSuperAdminCell = finance.level;
+        });
+      }
+    } else if (finance.transactionType == 'EXPENSE') {
+      // Set the selected expense category by finding it in the loaded list
+      if (finance.expenseCategory != null &&
+          finance.expenseCategory!.expenseCategoryId != null) {
+        final category = _expenseCategories.firstWhere(
+          (cat) =>
+              cat.expenseCategoryId ==
+              finance.expenseCategory!.expenseCategoryId,
+          orElse: () => finance.expenseCategory!,
+        );
+        setState(() {
+          _selectedExpenseCategory = category;
+        });
+      }
+
+      _expenseAmountController.text = finance.amount.toString();
+
+      try {
+        // Handle both MM/dd/yyyy and yyyy-MM-dd formats
+        DateTime? parsedDate;
+        if (finance.transactionDate.contains('/')) {
+          List<String> parts = finance.transactionDate.split('/');
+          if (parts.length == 3) {
+            int month = int.parse(parts[0]);
+            int day = int.parse(parts[1]);
+            int year = int.parse(parts[2]);
+            parsedDate = DateTime(year, month, day);
+          }
+        } else {
+          parsedDate = DateFormat('yyyy-MM-dd').parse(finance.transactionDate);
+        }
+
+        if (parsedDate != null) {
+          setState(() {
+            _expensetransactionDate = parsedDate;
+          });
+          _expenseTransactionDateController.text = DateFormat(
+            'MM/dd/yyyy',
+          ).format(parsedDate);
+        }
+      } catch (e) {
+        print('Error parsing Transaction Date: $e');
+      }
+
+      _expensedescriptionController.text = finance.description ?? '';
+
+      // Set cell for SuperAdmin
+      if (widget.loggedInUser.role == 'SuperAdmin' && finance.level != null) {
+        setState(() {
+          _expenseselectedSuperAdminCell = finance.level;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _incomeAmountController.dispose();
+    _incomedescriptionController.dispose();
+    _expenseAmountController.dispose();
+    _expensedescriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCells() async {
+    final cells = await _levelController.getAllCells();
+    if (mounted) {
+      setState(() => _cells = cells);
+    }
+  }
+
+  Future<void> _loadExpenseCells() async {
+    final cells = await _levelController.getAllCells();
+    if (mounted) {
+      setState(() => _expenseCells = cells);
+    }
+  }
+
+  Future<void> _loadIncomeCategories() async {
+    final incomeCategory = await _incomeCatController.getAllIncomeCategories();
+    if (mounted) {
+      setState(() => _incomeCategories = incomeCategory);
+    }
+  }
+
+  Future<void> _loadExpenseCategories() async {
+    final expenseCategory = await _expenseCatController
+        .getAllExpenseCategories();
+    if (mounted) {
+      setState(() => _expenseCategories = expenseCategory);
+    }
+  }
+
+  void _clearIncomeForm() {
+    // Reset form validation
+    _formKey.currentState?.reset();
+    // Clear text controllers
+    _incomeAmountController.clear();
+    _incomedescriptionController.clear();
+    _incomeTransactionDateController.clear();
+
+    // Reset state variables
+    setState(() {
+      _incometransactionDate = null;
+      _selectedIncomeCategory = null;
+      _incomeselectedSuperAdminCell = null;
+    });
+  }
+
+  void _clearExpenseForm() {
+    // Reset form validation
+    _formKey.currentState?.reset();
+    // Clear text controllers
+    _expenseAmountController.clear();
+    _expensedescriptionController.clear();
+    _expenseTransactionDateController.clear();
+
+    // Reset state variables
+    setState(() {
+      _expensetransactionDate = null;
+      _selectedExpenseCategory = null;
+      _expenseselectedSuperAdminCell = null;
+    });
+  }
+
+  Future<void> _submitFinance() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _message = null;
+      _isSuccess = false;
+    });
+
+    // Validate category selection
+    if (_selectedIncomeCategory == null) {
+      setState(() {
+        _message = 'Please select Income category';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate amount
+    final amountText = _incomeAmountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() {
+        _message = 'Please enter an amount';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      setState(() {
+        _message = 'Please enter a valid amount greater than zero';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate transaction date
+    if (_incometransactionDate == null) {
+      setState(() {
+        _message = 'Please select a transaction date';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_incometransactionDate!.isAfter(DateTime.now())) {
+      setState(() {
+        _message = 'Transaction date cannot be in the future';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate user ID
+    if (widget.loggedInUser.userId == null) {
+      setState(() {
+        _message = 'User session expired. Please log in again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level/cell selection
+    final level = widget.loggedInUser.role == 'SuperAdmin'
+        ? _incomeselectedSuperAdminCell
+        : widget.loggedInUser.level;
+
+    if (level == null) {
+      setState(() {
+        _message = widget.loggedInUser.role == 'SuperAdmin'
+            ? 'Please select a cell for this transaction'
+            : 'You are not allowed to add a transaction';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level ID
+    if (level.levelId == null) {
+      setState(() {
+        _message = 'Invalid cell selection. Please try again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate income category has ID
+    if (_selectedIncomeCategory!.incomeCategoryId == null) {
+      setState(() {
+        _message = 'Invalid category selected. Please choose a valid category.';
+        _isSuccess = false;
+      });
+      return;
+    }
+    // Validate description
+    final description = _incomedescriptionController.text.trim();
+    if (description.isEmpty) {
+      setState(() {
+        _message = 'Please enter a description';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    try {
+      final finance = Finance(
+        incomeCategory: _selectedIncomeCategory, // Set income category
+        expenseCategory:
+            null, // Explicitly set expense category to null for income transactions
+        transactionDate: DateFormat(
+          'yyyy-MM-dd',
+        ).format(_incometransactionDate!),
+        amount: amount,
+        transactionType: "INCOME", // Explicitly set transaction type
+        description: description,
+        level: level,
+      );
+
+      // Submit to backend
+      final result = await FinanceController().updateFinance(
+        finance,
+        widget.finance.financeId!,
+        widget.loggedInUser.userId!,
+      );
+
+      setState(() => _isLoading = false);
+
+      // Handle backend response with more specific messages
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Income record updated successfully!';
+            _isSuccess = true;
+            _clearIncomeForm();
+          });
+
+          break;
+
+        case 'Status 3000':
+          setState(() {
+            _message = 'Invalid data.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 4000':
+          setState(() {
+            _message = 'User not found. Please log in again.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 6000':
+          setState(() {
+            _message = 'You are not authorized to create finance records.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 2000':
+          setState(() {
+            _message = 'Server error. Please try again later.';
+            _isSuccess = false;
+          });
+          break;
+
+        default:
+          setState(() {
+            _message = 'Unexpected error';
+            _isSuccess = false;
+          });
+          break;
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _message = 'Network error. Please check your connection and try again.';
+        _isSuccess = false;
+      });
+      print('Error submitting finance');
+    } finally {
+      if (mounted && _isLoading) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _submitExpenseFinance() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _message = null;
+      _isSuccess = false;
+    });
+
+    // Validate category selection
+    if (_selectedExpenseCategory == null) {
+      setState(() {
+        _message = 'Please select Expense category';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate amount
+    final amountText = _expenseAmountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() {
+        _message = 'Please enter an amount';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      setState(() {
+        _message = 'Please enter a valid amount greater than zero';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate transaction date
+    if (_expensetransactionDate == null) {
+      setState(() {
+        _message = 'Please select a transaction date';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    if (_expensetransactionDate!.isAfter(DateTime.now())) {
+      setState(() {
+        _message = 'Transaction date cannot be in the future';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate user ID
+    if (widget.loggedInUser.userId == null) {
+      setState(() {
+        _message = 'User session expired. Please log in again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level/cell selection
+    final level = widget.loggedInUser.role == 'SuperAdmin'
+        ? _expenseselectedSuperAdminCell
+        : widget.loggedInUser.level;
+
+    if (level == null) {
+      setState(() {
+        _message = widget.loggedInUser.role == 'SuperAdmin'
+            ? 'Please select a cell for this transaction'
+            : 'You are not allowed to add a transaction';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate level ID
+    if (level.levelId == null) {
+      setState(() {
+        _message = 'Invalid cell selection. Please try again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    // Validate expense category has ID
+    if (_selectedExpenseCategory!.expenseCategoryId == null) {
+      setState(() {
+        _message = 'Invalid category selected. Please choose a valid category.';
+        _isSuccess = false;
+      });
+      return;
+    }
+    // Validate description
+    final description = _expensedescriptionController.text.trim();
+    if (description.isEmpty) {
+      setState(() {
+        _message = 'Please enter a description';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    try {
+      final finance = Finance(
+        expenseCategory: _selectedExpenseCategory, // Set expense category
+        incomeCategory: null,
+        transactionDate: DateFormat(
+          'yyyy-MM-dd',
+        ).format(_expensetransactionDate!),
+        amount: amount,
+        transactionType: "EXPENSE", // Explicitly set transaction type
+        description: description,
+        level: level,
+      );
+
+      // Submit to backend
+      final result = await FinanceController().updateFinance(
+        finance,
+        widget.finance.financeId!,
+        widget.loggedInUser.userId!,
+      );
+
+      setState(() => _isExpenseLoading = false);
+
+      // Handle backend response with more specific messages
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Expense record updated successfully!';
+            _isSuccess = true;
+            _clearExpenseForm();
+          });
+
+          break;
+
+        case 'Status 3000':
+          setState(() {
+            _message = 'Invalid data.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 4000':
+          setState(() {
+            _message = 'User not found. Please log in again.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 6000':
+          setState(() {
+            _message = 'You are not authorized to create finance records.';
+            _isSuccess = false;
+          });
+          break;
+
+        case 'Status 2000':
+          setState(() {
+            _message = 'Server error. Please try again later.';
+            _isSuccess = false;
+          });
+          break;
+
+        default:
+          setState(() {
+            _message = 'Unexpected error';
+            _isSuccess = false;
+          });
+          break;
+      }
+    } catch (e) {
+      setState(() {
+        _isExpenseLoading = false;
+        _message = 'Network error. Please check your connection and try again.';
+        _isSuccess = false;
+      });
+      print('Error submitting finance');
+    } finally {
+      if (mounted && _isExpenseLoading) {
+        setState(() => _isExpenseLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = Responsive.isDesktop(context);
+
+    return Scaffold(
+      drawer: !isDesktop
+          ? Drawer(
+              child: SideMenuWidget(
+                selectedTitle: 'Finance',
+                loggedInUser: widget.loggedInUser,
+              ),
+            )
+          : null,
+      body: SafeArea(
+        child: Row(
+          children: [
+            if (isDesktop)
+              Container(
+                width: 250,
+                decoration: const BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: borderColor, width: 2),
+                  ),
+                ),
+                child: SideMenuWidget(
+                  selectedTitle: 'Finance',
+                  loggedInUser: widget.loggedInUser,
+                ),
+              ),
+            Expanded(
+              child: Container(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: _buildUpdateFinanceScreen(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpdateFinanceScreen() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const TopHeaderWidget(),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        "Update Financial Transaction",
+                        style: GoogleFonts.inter(
+                          color: titlepageColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Message Container
+                    if (_message != null)
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isSuccess ? Colors.green : Colors.red,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isSuccess ? Icons.check_circle : Icons.error,
+                                color: _isSuccess
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _message!,
+                                  style: GoogleFonts.inter(
+                                    color: _isSuccess
+                                        ? Colors.green.shade800
+                                        : Colors.red.shade800,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context, 'refresh'),
+                      icon: const Icon(Icons.arrow_back),
+                      label: Text(
+                        'Back',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    /// Income Information Section
+                    Text(
+                      "Income Transaction",
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titlepageColor,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildIncomeCategoryDropdown(
+                          'Income Category',
+                          _selectedIncomeCategory,
+                          (dept) =>
+                              setState(() => _selectedIncomeCategory = dept),
+                        ),
+                        _buildTextField(
+                          'Amount',
+                          _incomeAmountController,
+                          readOnly: false,
+                        ),
+                        _buildDatePickerField(
+                          context,
+                          'Transaction Date (MM/dd/yyyy)',
+                          _incomeTransactionDateController,
+                          (date) => setState(() {
+                            _incometransactionDate = date;
+                            _incomeTransactionDateController.text = DateFormat(
+                              'MM/dd/yyyy',
+                            ).format(date);
+                          }),
+                          _incometransactionDate,
+                        ),
+
+                        if (widget.loggedInUser.role == 'SuperAdmin') ...[
+                          _buildIncomeSuperAdminCellDropdown(
+                            'Select Cell',
+                            _incomeselectedSuperAdminCell,
+                            (cell) => setState(
+                              () => _incomeselectedSuperAdminCell = cell,
+                            ),
+                          ),
+                        ],
+                        _buildTextField(
+                          'Description',
+                          _incomedescriptionController,
+                          readOnly: false,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 11),
+
+                    /// Save Button
+                    Center(
+                      child: _isLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _submitFinance,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Save Income",
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                    ),
+
+                    /// Expense Information Section
+                    Text(
+                      "Expense Transaction",
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titlepageColor,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildExpenseCategoryDropdown(
+                          'Expense Category',
+                          _selectedExpenseCategory,
+                          (dept) =>
+                              setState(() => _selectedExpenseCategory = dept),
+                        ),
+                        _buildTextField(
+                          'Amount',
+                          _expenseAmountController,
+                          readOnly: false,
+                        ),
+                        _buildDatePickerField(
+                          context,
+                          'Transaction Date (MM/dd/yyyy)',
+                          _expenseTransactionDateController,
+                          (date) => setState(() {
+                            _expensetransactionDate = date;
+                            _expenseTransactionDateController.text = DateFormat(
+                              'MM/dd/yyyy',
+                            ).format(date);
+                          }),
+                          _expensetransactionDate,
+                        ),
+
+                        if (widget.loggedInUser.role == 'SuperAdmin') ...[
+                          _buildExpenseSuperAdminCellDropdown(
+                            'Select Cell',
+                            _expenseselectedSuperAdminCell,
+                            (cell) => setState(
+                              () => _expenseselectedSuperAdminCell = cell,
+                            ),
+                          ),
+                        ],
+                        _buildTextField(
+                          'Description',
+                          _expensedescriptionController,
+                          readOnly: false,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 11),
+
+                    /// Save Button
+                    Center(
+                      child: _isExpenseLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _submitExpenseFinance,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Save Expense",
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    required bool readOnly,
+  }) {
+    return SizedBox(
+      width: 300,
+      child: TextFormField(
+        controller: controller,
+        readOnly: readOnly,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIncomeSuperAdminCellDropdown(
+    String label,
+    Level? selectedCell,
+    void Function(Level?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<String>(
+        value:
+            selectedCell?.levelId, // Use levelId as value for proper comparison
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: [
+          const DropdownMenuItem<String>(
+            value: null,
+            child: Text('Select Cell'),
+          ),
+          ..._cells.map((cell) {
+            return DropdownMenuItem<String>(
+              value: cell.levelId,
+              child: Text(cell.name ?? 'Unknown'), // Only display name, not ID
+            );
+          }).toList(),
+        ],
+        onChanged: (String? selectedId) {
+          if (selectedId == null) {
+            onChanged(null);
+          } else {
+            final selectedLevel = _cells.firstWhere(
+              (cell) => cell.levelId == selectedId,
+            );
+            onChanged(selectedLevel);
+          }
+        },
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
+  Widget _buildExpenseSuperAdminCellDropdown(
+    String label,
+    Level? selectedCell,
+    void Function(Level?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<String>(
+        value:
+            selectedCell?.levelId, // Use levelId as value for proper comparison
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: [
+          const DropdownMenuItem<String>(
+            value: null,
+            child: Text('Select Cell'),
+          ),
+          ..._expenseCells.map((cell) {
+            return DropdownMenuItem<String>(
+              value: cell.levelId,
+              child: Text(cell.name ?? 'Unknown'), // Only display name, not ID
+            );
+          }).toList(),
+        ],
+        onChanged: (String? selectedId) {
+          if (selectedId == null) {
+            onChanged(null);
+          } else {
+            final selectedLevel = _expenseCells.firstWhere(
+              (cell) => cell.levelId == selectedId,
+            );
+            onChanged(selectedLevel);
+          }
+        },
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
+  Widget _buildIncomeCategoryDropdown(
+    String label,
+    IncomeCategory? selectedIncomeCategory,
+    void Function(IncomeCategory?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<String>(
+        value: selectedIncomeCategory?.incomeCategoryId ?? 'none',
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: [
+          const DropdownMenuItem(
+            value: 'none',
+            child: Text('Select Income Category'),
+          ),
+          ..._incomeCategories.map((incomeCategory) {
+            return DropdownMenuItem<String>(
+              value: incomeCategory.incomeCategoryId,
+              child: Text(incomeCategory.name),
+            );
+          }),
+          const DropdownMenuItem(value: 'others', child: Text('Others')),
+        ],
+        onChanged: (String? selectedId) async {
+          if (selectedId == 'others') {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    IncomeCategoryScreen(loggedInUser: widget.loggedInUser),
+              ),
+            );
+            if (result != null) {
+              await _loadIncomeCategories();
+            }
+          } else if (selectedId == 'none') {
+            setState(() {
+              _selectedIncomeCategory = null;
+            });
+          } else {
+            final dept = _incomeCategories.firstWhere(
+              (d) => d.incomeCategoryId == selectedId,
+              orElse: () => _incomeCategories.first,
+            );
+            setState(() {
+              _selectedIncomeCategory = dept;
+            });
+            onChanged(dept);
+          }
+        },
+
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
+  Widget _buildExpenseCategoryDropdown(
+    String label,
+    ExpenseCategory? selectedExpenseCategory,
+    void Function(ExpenseCategory?) onChanged,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: DropdownButtonFormField<String>(
+        value: selectedExpenseCategory?.expenseCategoryId ?? 'none',
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+        items: [
+          const DropdownMenuItem(
+            value: 'none',
+            child: Text('Select Expense Category'),
+          ),
+          ..._expenseCategories.map((expenseCategory) {
+            return DropdownMenuItem<String>(
+              value: expenseCategory.expenseCategoryId,
+              child: Text(expenseCategory.name),
+            );
+          }),
+          const DropdownMenuItem(value: 'others', child: Text('Others')),
+        ],
+        onChanged: (String? selectedId) async {
+          if (selectedId == 'others') {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    ExpenseCategoryScreen(loggedInUser: widget.loggedInUser),
+              ),
+            );
+            if (result != null) {
+              await _loadExpenseCategories();
+            }
+          } else if (selectedId == 'none') {
+            setState(() {
+              _selectedExpenseCategory = null;
+            });
+          } else {
+            final dept = _expenseCategories.firstWhere(
+              (d) => d.expenseCategoryId == selectedId,
+              orElse: () => _expenseCategories.first,
+            );
+            setState(() {
+              _selectedExpenseCategory = dept;
+            });
+            onChanged(dept);
+          }
+        },
+
+        menuMaxHeight: 250,
+      ),
+    );
+  }
+
+  Widget _buildDatePickerField(
+    BuildContext context,
+    String label,
+    TextEditingController controller,
+    void Function(DateTime) onDateSelected,
+    DateTime? initialDate,
+  ) {
+    return SizedBox(
+      width: 300,
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          suffixIcon: const Icon(Icons.calendar_today),
+        ),
+        onTap: () {
+          DateTime tempSelectedDate = initialDate ?? DateTime.now();
+
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                content: SizedBox(
+                  height: 350,
+                  width: 300,
+                  child: SfDateRangePicker(
+                    view: DateRangePickerView.month,
+                    showNavigationArrow: true,
+                    initialSelectedDate: tempSelectedDate,
+                    minDate: DateTime(1900),
+                    maxDate: DateTime.now(),
+                    showActionButtons: true,
+                    onSelectionChanged: (args) {
+                      tempSelectedDate = args.value;
+                    },
+                    onSubmit: (value) {
+                      final selected = value as DateTime;
+                      controller.text = DateFormat(
+                        'MM/dd/yyyy',
+                      ).format(selected);
+                      onDateSelected(selected);
+                      Navigator.pop(context);
+                    },
+                    onCancel: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}

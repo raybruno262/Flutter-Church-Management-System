@@ -313,7 +313,7 @@ class _ExpenseCategoryScreenState extends State<ExpenseCategoryScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(width: 460),
+                        SizedBox(width: 440),
                         Text(
                           "Expense Category List",
                           style: GoogleFonts.inter(
@@ -322,7 +322,7 @@ class _ExpenseCategoryScreenState extends State<ExpenseCategoryScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 220),
+                        SizedBox(width: 140),
 
                         ElevatedButton.icon(
                           onPressed: () async {
@@ -346,7 +346,7 @@ class _ExpenseCategoryScreenState extends State<ExpenseCategoryScreen> {
                           },
                           icon: SvgPicture.asset("assets/icons/expense.svg"),
                           label: Text(
-                            'Add Income Category',
+                            'Add Expense Category',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
                             ),
@@ -356,7 +356,7 @@ class _ExpenseCategoryScreenState extends State<ExpenseCategoryScreen> {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
-                              vertical: 15,
+                              vertical: 17,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

@@ -343,7 +343,7 @@ class _MemberScreenState extends State<MemberScreen> {
           Text(member.membershipDate ?? 'N/A', style: GoogleFonts.inter()),
         ),
         DataCell(
-          Text(member.department?.name ?? 'N/A', style: GoogleFonts.inter()),
+          Text(member.department?.name ?? 'None', style: GoogleFonts.inter()),
         ),
         DataCell(Text(member.level?.name ?? 'N/A', style: GoogleFonts.inter())),
         DataCell(

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_churchcrm_system/Widgets/financeStatBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-
+import 'package:flutter_churchcrm_system/controller/expenseCategory_controller.dart';
+import 'package:flutter_churchcrm_system/model/expenseCategory_model.dart';
+import 'package:flutter_churchcrm_system/screens/updateFinanceScreen.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_churchcrm_system/controller/finance_Controller.dart';
 import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
@@ -37,9 +41,13 @@ class _FinanceScreenState extends State<FinanceScreen> {
   final FinanceController _controller = FinanceController();
   final UserController _usercontroller = UserController();
 
+  // ignore: unused_field
   List<IncomeCategory> _incomeCategories = [];
+  List<ExpenseCategory> _expenseCategories = [];
   final IncomeCategoryController _incomeCategoriesController =
       IncomeCategoryController();
+  final ExpenseCategoryController _expenseCategoriesController =
+      ExpenseCategoryController();
   IncomeCategory? _selectedIncomeCategory;
 
   Future<void> _loadIncomeCategories() async {
@@ -47,6 +55,14 @@ class _FinanceScreenState extends State<FinanceScreen> {
         .getAllIncomeCategories();
     if (mounted) {
       setState(() => _incomeCategories = incomeCategories);
+    }
+  }
+
+  Future<void> _loadExpenseCategories() async {
+    final expenseCategories = await _expenseCategoriesController
+        .getAllExpenseCategories();
+    if (mounted) {
+      setState(() => _expenseCategories = expenseCategories);
     }
   }
 
@@ -68,6 +84,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     _fetchAllFinance();
     _fetchFinanceStats();
     _loadIncomeCategories();
+    _loadExpenseCategories();
   }
 
   Future<void> _fetchFinance() async {
@@ -233,6 +250,44 @@ class _FinanceScreenState extends State<FinanceScreen> {
     }
   }
 
+  String _formatNumberForDisplay(double value) {
+    final formatted = _formatNumberWithCommas(value);
+    return formatted;
+  }
+
+  String _formatNumberWithCommas(double value) {
+    if (value % 1 == 0) {
+      return NumberFormat('#,##0').format(value);
+    } else {
+      return NumberFormat('#,##0.00').format(value);
+    }
+  }
+
+  // For StatBox widgets
+  TextStyle _getCountTextStyle(double value) {
+    final formatted = _formatNumberWithCommas(value);
+
+    if (formatted.length > 12) {
+      return GoogleFonts.inter(
+        fontSize: 14, // Smaller font for very large numbers
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      );
+    } else if (formatted.length > 10) {
+      return GoogleFonts.inter(
+        fontSize: 15, // Medium font for large numbers
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      );
+    } else {
+      return GoogleFonts.inter(
+        fontSize: 17, // Normal font
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      );
+    }
+  }
+
   DataRow _buildDataRow(Finance finance) {
     return DataRow(
       cells: [
@@ -248,7 +303,20 @@ class _FinanceScreenState extends State<FinanceScreen> {
             style: GoogleFonts.inter(),
           ),
         ),
-        DataCell(Text(finance.amount.toString(), style: GoogleFonts.inter())),
+        DataCell(
+          Container(
+            constraints: BoxConstraints(maxWidth: 110),
+            child: Tooltip(
+              message: _formatNumberWithCommas(finance.amount),
+              child: Text(
+                _formatNumberForDisplay(finance.amount),
+                style: GoogleFonts.inter(fontSize: 14),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ),
+        ),
         DataCell(Text(finance.transactionDate, style: GoogleFonts.inter())),
         DataCell(
           Container(
@@ -312,38 +380,38 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
-                  tooltip: 'Update Member',
+                  tooltip: 'Update Transaction',
                   onPressed: () async {
-                    // final updatedMember = await Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (context) => UpdateFinanceScreen(
-                    //       loggedInUser: widget.loggedInUser,
-                    //       member: member,
-                    //     ),
-                    //   ),
-                    // );
+                    final updatedFinance = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UpdateFinanceScreen(
+                          loggedInUser: widget.loggedInUser,
+                          finance: finance,
+                        ),
+                      ),
+                    );
 
-                    // if (updatedMember != null && updatedMember is Member) {
-                    //   setState(() {
-                    //     final index = _members.indexWhere(
-                    //       (m) => m.memberId == updatedMember.memberId,
-                    //     );
-                    //     if (index != -1) {
-                    //       _members[index] = updatedMember;
-                    //     }
+                    if (updatedFinance != null && updatedFinance is Finance) {
+                      setState(() {
+                        final index = _finance.indexWhere(
+                          (m) => m.financeId == updatedFinance.financeId,
+                        );
+                        if (index != -1) {
+                          _finance[index] = updatedFinance;
+                        }
 
-                    //     final filteredIndex = _filteredMembers.indexWhere(
-                    //       (m) => m.memberId == updatedMember.memberId,
-                    //     );
-                    //     if (filteredIndex != -1) {
-                    //       _filteredMembers[filteredIndex] = updatedMember;
-                    //     }
-                    //   });
+                        final filteredIndex = _filteredFinance.indexWhere(
+                          (m) => m.financeId == updatedFinance.financeId,
+                        );
+                        if (filteredIndex != -1) {
+                          _filteredFinance[filteredIndex] = updatedFinance;
+                        }
+                      });
 
-                    //   await _fetchMemberStats();
-                    //   await _fetchMembers();
-                    // }
+                      await _fetchFinanceStats();
+                      await _fetchFinance();
+                    }
                   },
                 ),
               ],
@@ -432,23 +500,53 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         spacing: 16,
                         runSpacing: 16,
                         children: [
-                          StatBox(
-                            iconPath: 'assets/icons/income.svg',
-                            label: 'Total Incomes',
-                            count: _financeStats['totalIncome'].toString(),
-                            backgroundColor: statboxColor,
+                          Tooltip(
+                            message: _formatNumberWithCommas(
+                              _financeStats['totalIncome'],
+                            ),
+                            child: FinanceStatBoxWidget(
+                              iconPath: 'assets/icons/income.svg',
+                              label: 'Total Incomes',
+                              count: _formatNumberForDisplay(
+                                _financeStats['totalIncome'],
+                              ),
+                              backgroundColor: statboxColor,
+                              countTextStyle: _getCountTextStyle(
+                                _financeStats['totalIncome'],
+                              ),
+                            ),
                           ),
-                          StatBox(
-                            label: 'Total Expenses',
-                            count: _financeStats['totalExpenses'].toString(),
-                            iconPath: 'assets/icons/expense.svg',
-                            backgroundColor: statboxColor,
+                          Tooltip(
+                            message: _formatNumberWithCommas(
+                              _financeStats['totalExpenses'],
+                            ),
+                            child: FinanceStatBoxWidget(
+                              label: 'Total Expenses',
+                              count: _formatNumberForDisplay(
+                                _financeStats['totalExpenses'],
+                              ),
+                              iconPath: 'assets/icons/expense.svg',
+                              backgroundColor: statboxColor,
+                              countTextStyle: _getCountTextStyle(
+                                _financeStats['totalExpenses'],
+                              ),
+                            ),
                           ),
-                          StatBox(
-                            label: 'Current Balance',
-                            count: _financeStats['currentBalance'].toString(),
-                            iconPath: 'assets/icons/balance.svg',
-                            backgroundColor: statboxColor,
+                          Tooltip(
+                            message: _formatNumberWithCommas(
+                              _financeStats['currentBalance'],
+                            ),
+                            child: FinanceStatBoxWidget(
+                              label: 'Current Balance',
+                              count: _formatNumberForDisplay(
+                                _financeStats['currentBalance'],
+                              ),
+                              iconPath: 'assets/icons/balance.svg',
+                              backgroundColor: statboxColor,
+                              countTextStyle: _getCountTextStyle(
+                                _financeStats['currentBalance'],
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -486,14 +584,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
                               );
 
                               if (newFinance != null && newFinance is Finance) {
+                                await _fetchFinance();
+                                await _fetchAllFinance();
+                                await _fetchFinanceStats();
                                 setState(() {
-                                  _finance.insert(0, newFinance);
-                                  _filteredFinance = _finance;
                                   _currentPage = 0;
                                 });
-
-                                // Refresh stats
-                                await _fetchFinanceStats();
                               }
                             },
                             icon: SvgPicture.asset("assets/icons/finance.svg"),
@@ -593,7 +689,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                           minHeight: 300,
                                         ),
                                         child: SizedBox(
-                                          width: 1400,
+                                          width: 1600,
                                           child: DataTable(
                                             horizontalMargin: 12,
                                             dataRowMaxHeight: 56,
@@ -957,7 +1053,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SizedBox(
-      width: 200, // Increased width for better usability
+      width: 220, // Increased width for better usability
       height: 40,
       child: TextField(
         controller: controller,
@@ -983,7 +1079,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Widget _buildTypeDropdown() {
     return SizedBox(
-      width: 150,
+      width: 210,
       height: 40,
       child: DropdownButtonFormField<String>(
         initialValue: _typeFilter,
@@ -1032,7 +1128,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
       case 'INCOME':
         return Colors.green.shade100;
       case 'EXPENSE':
-        return Colors.red.shade100;
+        return Colors.brown.shade100;
 
       default:
         return Colors.grey.shade200;
@@ -1044,7 +1140,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
       case 'INCOME':
         return Colors.green;
       case 'EXPENSE':
-        return Colors.redAccent;
+        return Colors.brown;
 
       default:
         return Colors.grey;
@@ -1056,7 +1152,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
       case 'INCOME':
         return Colors.green.shade800;
       case 'EXPENSE':
-        return Colors.red.shade500;
+        return Colors.brown.shade500;
 
       default:
         return Colors.grey.shade600;

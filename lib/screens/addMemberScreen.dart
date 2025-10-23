@@ -176,15 +176,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       return;
     }
 
-    // Validate department
-    if (_selectedDepartment == null) {
-      setState(() {
-        _message = 'Please select a department';
-        _isSuccess = false;
-      });
-      return;
-    }
-
     // Validate baptism status
     if (_baptismStatus == null) {
       setState(() {
@@ -899,8 +890,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             onChanged(dept);
           }
         },
-        validator: (value) =>
-            value == null || value == 'none' ? 'Required' : null,
 
         menuMaxHeight: 250,
       ),

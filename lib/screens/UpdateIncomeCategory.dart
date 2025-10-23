@@ -74,19 +74,27 @@ class _UpdateIncomeCategoryScreenState
         _message = 'Please enter income category name';
         _isSuccess = false;
       });
-
       return;
     }
 
-    final IncomeCategoryName = _nameController.text.trim();
+    final incomeCategoryName = _nameController.text.trim();
 
     try {
-      final updatedIncomeCategory = IncomeCategory(name: IncomeCategoryName);
+      setState(() {
+        _isLoading = true;
+        _message = null;
+      });
+
+      final updatedIncomeCategory = IncomeCategory(name: incomeCategoryName);
 
       final result = await incomeCategoryController.updateIncomeCategory(
         widget.incomeCategory.incomeCategoryId!,
         updatedIncomeCategory,
       );
+
+      setState(() {
+        _isLoading = false;
+      });
 
       if (result == 'Status 1000') {
         setState(() {
@@ -94,31 +102,30 @@ class _UpdateIncomeCategoryScreenState
           _isSuccess = true;
         });
       } else if (result == 'Status 3000') {
-        if (result == 'Status 1000') {
-          setState(() {
-            _message = 'Income Category not found';
-            _isSuccess = false;
-          });
-        } else if (result == 'Status 5000') {
-          setState(() {
-            _message = 'Income Category name already exists';
-            _isSuccess = false;
-          });
-        } else if (result == 'Status 7000') {
-          setState(() {
-            _message = 'Network error';
-            _isSuccess = false;
-          });
-        } else {
-          setState(() {
-            _message = 'Unexpected error';
-            _isSuccess = false;
-          });
-        }
+        setState(() {
+          _message = 'Expense Category not found';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 5000') {
+        setState(() {
+          _message = 'Expense Category name already exists';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 7000') {
+        setState(() {
+          _message = 'Network error';
+          _isSuccess = false;
+        });
+      } else {
+        setState(() {
+          _message = 'Unexpected error';
+          _isSuccess = false;
+        });
       }
     } catch (e) {
       setState(() {
-        _message = 'Error updating Income Category';
+        _isLoading = false;
+        _message = 'Error updating Expense Category';
         _isSuccess = false;
       });
     }

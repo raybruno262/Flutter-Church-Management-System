@@ -70,25 +70,33 @@ class _UpdateExpenseCategoryScreenState
     _nameController.text = widget.expenseCategory.name;
   }
 
-  Future<void> _updateIncomeCategory() async {
+  Future<void> _updateExpenseCategory() async {
     if (_nameController.text.isEmpty) {
       setState(() {
         _message = 'Please enter expense category name';
         _isSuccess = false;
       });
-
       return;
     }
 
-    final ExpenseCategoryName = _nameController.text.trim();
+    final expenseCategoryName = _nameController.text.trim();
 
     try {
-      final updatedExpenseCategory = ExpenseCategory(name: ExpenseCategoryName);
+      setState(() {
+        _isLoading = true;
+        _message = null;
+      });
+
+      final updatedExpenseCategory = ExpenseCategory(name: expenseCategoryName);
 
       final result = await expenseCategoryController.updateExpenseCategory(
         widget.expenseCategory.expenseCategoryId!,
         updatedExpenseCategory,
       );
+
+      setState(() {
+        _isLoading = false;
+      });
 
       if (result == 'Status 1000') {
         setState(() {
@@ -96,31 +104,30 @@ class _UpdateExpenseCategoryScreenState
           _isSuccess = true;
         });
       } else if (result == 'Status 3000') {
-        if (result == 'Status 1000') {
-          setState(() {
-            _message = 'Expense Category not found';
-            _isSuccess = false;
-          });
-        } else if (result == 'Status 5000') {
-          setState(() {
-            _message = 'Expense Category name already exists';
-            _isSuccess = false;
-          });
-        } else if (result == 'Status 7000') {
-          setState(() {
-            _message = 'Network error';
-            _isSuccess = false;
-          });
-        } else {
-          setState(() {
-            _message = 'Unexpected error';
-            _isSuccess = false;
-          });
-        }
+        setState(() {
+          _message = 'Expense Category not found';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 5000') {
+        setState(() {
+          _message = 'Expense Category name already exists';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 7000') {
+        setState(() {
+          _message = 'Network error';
+          _isSuccess = false;
+        });
+      } else {
+        setState(() {
+          _message = 'Unexpected error: $result';
+          _isSuccess = false;
+        });
       }
     } catch (e) {
       setState(() {
-        _message = 'Error updating Expense Category';
+        _isLoading = false;
+        _message = 'Error updating Expense Category: $e';
         _isSuccess = false;
       });
     }
@@ -275,7 +282,7 @@ class _UpdateExpenseCategoryScreenState
                       child: _isLoading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
-                              onPressed: _updateIncomeCategory,
+                              onPressed: _updateExpenseCategory,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.deepPurple,
                                 foregroundColor: Colors.white,
