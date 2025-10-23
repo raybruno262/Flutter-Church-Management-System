@@ -307,7 +307,7 @@ class _IncomeCategoryScreenState extends State<IncomeCategoryScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(width: 460),
+                        SizedBox(width: 440),
                         Text(
                           "Income Category List",
                           style: GoogleFonts.inter(
@@ -316,7 +316,7 @@ class _IncomeCategoryScreenState extends State<IncomeCategoryScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 220),
+                        SizedBox(width: 140),
 
                         ElevatedButton.icon(
                           onPressed: () async {
@@ -350,7 +350,7 @@ class _IncomeCategoryScreenState extends State<IncomeCategoryScreen> {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
-                              vertical: 15,
+                              vertical: 17,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

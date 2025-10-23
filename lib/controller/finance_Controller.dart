@@ -7,7 +7,11 @@ class FinanceController {
   final String baseUrl = '$baseHost/api/finance';
 
   // Create finance record
-  Future<String> createFinance(Finance finance, String userId) async {
+  Future<String> createFinance(
+    Finance finance, {
+
+    required String userId,
+  }) async {
     try {
       final url = Uri.parse('$baseUrl/createFinance/$userId');
 
@@ -64,7 +68,7 @@ class FinanceController {
   // Get paginated finance records
   Future<List<Finance>> getPaginatedFinance({
     int page = 0,
-    int size = 10,
+    int size = 5,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/paginatedFinance?page=$page&size=$size');
@@ -86,7 +90,7 @@ class FinanceController {
   Future<List<Finance>> getScopedPaginatedFinance({
     required String userId,
     int page = 0,
-    int size = 10,
+    int size = 5,
   }) async {
     try {
       final url = Uri.parse(

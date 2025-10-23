@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/controller/finance_controller.dart';
+
+import 'package:flutter_churchcrm_system/controller/finance_Controller.dart';
+import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+
 import 'package:flutter_churchcrm_system/model/finance_model.dart';
+import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addFinanceScreen.dart';
-import 'package:flutter_churchcrm_system/screens/updateFinanceScreen.dart';
+
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 
@@ -22,22 +27,36 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
-  String _transactionTypeFilter =
-      'All Types'; // Options: All Types, INCOME, EXPENSE
-  final _descriptionFilterController = TextEditingController();
+  final _categoryFilterController = TextEditingController();
+  final _transactionDateFilterController = TextEditingController();
   final _amountFilterController = TextEditingController();
-  String _categoryFilter = 'All Categories';
-
+  String _typeFilter = 'All Types'; // Options: All, Income, Expense
+  final _descriptionFilterController = TextEditingController();
+  final _levelFilterController = TextEditingController();
   final ScrollController _horizontalScrollController = ScrollController();
-
   final FinanceController _controller = FinanceController();
   final UserController _usercontroller = UserController();
+
+  List<IncomeCategory> _incomeCategories = [];
+  final IncomeCategoryController _incomeCategoriesController =
+      IncomeCategoryController();
+  IncomeCategory? _selectedIncomeCategory;
+
+  Future<void> _loadIncomeCategories() async {
+    final incomeCategories = await _incomeCategoriesController
+        .getAllIncomeCategories();
+    if (mounted) {
+      setState(() => _incomeCategories = incomeCategories);
+    }
+  }
+
   int _currentPage = 0;
   int _pageSize = 5;
   final List<int> _pageSizeOptions = [5, 10, 15, 20];
-  List<Finance> _financeRecords = [];
-  List<Finance> _allFinanceRecords = [];
-  List<Finance> _filteredFinanceRecords = [];
+  List<Finance> _finance = [];
+  List<Finance> _allFinance = [];
+  List<Finance> _filteredFinance = [];
+
   bool _isLoading = true;
 
   bool _isFiltering = false;
@@ -45,21 +64,23 @@ class _FinanceScreenState extends State<FinanceScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchFinanceRecords();
-    _fetchAllFinanceRecords();
+    _fetchFinance();
+    _fetchAllFinance();
     _fetchFinanceStats();
+    _loadIncomeCategories();
   }
 
-  Future<void> _fetchFinanceRecords() async {
+  Future<void> _fetchFinance() async {
     setState(() => _isLoading = true);
     try {
-      final financeRecords = await _controller.getPaginatedFinance(
+      final finance = await _controller.getScopedPaginatedFinance(
+        userId: widget.loggedInUser.userId!,
         page: _currentPage,
         size: _pageSize,
       );
       setState(() {
-        _financeRecords = financeRecords;
-        _filteredFinanceRecords = _financeRecords;
+        _finance = finance;
+        _filteredFinance = _finance;
         _isLoading = false;
       });
     } catch (e) {
@@ -67,11 +88,11 @@ class _FinanceScreenState extends State<FinanceScreen> {
     }
   }
 
-  Future<void> _fetchAllFinanceRecords() async {
+  Future<void> _fetchAllFinance() async {
     try {
-      final allFinanceRecords = await _controller.getAllFinance();
+      final allFinance = await _controller.getAllFinance();
       setState(() {
-        _allFinanceRecords = allFinanceRecords;
+        _allFinance = allFinance;
       });
     } catch (e) {
       // Handle error
@@ -79,64 +100,68 @@ class _FinanceScreenState extends State<FinanceScreen> {
   }
 
   void _applySearchFilter() {
-    final descriptionQuery = _descriptionFilterController.text.toLowerCase();
+    final categoryQuery = _categoryFilterController.text.toLowerCase();
+    final transactionDateQuery = _transactionDateFilterController.text;
     final amountQuery = _amountFilterController.text;
+    final descriptionQuery = _descriptionFilterController.text.toLowerCase();
+    final levelQuery = _levelFilterController.text.toLowerCase();
 
-    final filtered = _allFinanceRecords.where((finance) {
-      final matchesDescription =
-          finance.description?.toLowerCase().contains(descriptionQuery) ??
-          false;
-      final matchesAmount =
-          amountQuery.isEmpty ||
-          finance.amount.toString().contains(amountQuery);
+    final filtered = _allFinance.where((finance) {
+      final matchesTransactionDate =
+          transactionDateQuery.isEmpty ||
+          (finance.transactionDate.contains(transactionDateQuery));
 
-      final matchesTransactionType =
-          _transactionTypeFilter == 'All Types' ||
-          finance.transactionType == _transactionTypeFilter;
+      final matchesAmount = finance.amount == amountQuery;
+      final matchesDescription = finance.description!.toLowerCase().contains(
+        descriptionQuery,
+      );
+      final matchesType =
+          _typeFilter == 'All Types' || finance.transactionType == _typeFilter;
 
-      final categoryName = finance.category;
-      final matchesCategory =
-          _categoryFilter == 'All Categories' ||
-          categoryName.contains(_categoryFilter);
+      final matchesLevel =
+          levelQuery.isEmpty ||
+          (finance.level?.name?.toLowerCase().contains(levelQuery) ?? false);
 
-      return matchesDescription &&
+      return matchesTransactionDate &&
           matchesAmount &&
-          matchesTransactionType &&
-          matchesCategory;
+          matchesDescription &&
+          matchesType &&
+          matchesLevel;
     }).toList();
-
     setState(() {
-      _filteredFinanceRecords = filtered;
-      _currentPage = 0; // Reset to first page when filtering
+      _filteredFinance = filtered;
+      _currentPage = 0;
     });
   }
 
   void _onFilterChanged() async {
     final isDefaultFilter =
-        _descriptionFilterController.text.isEmpty &&
+        _categoryFilterController.text.isEmpty &&
+        _transactionDateFilterController.text.isEmpty &&
         _amountFilterController.text.isEmpty &&
-        _transactionTypeFilter == 'All Types' &&
-        _categoryFilter == 'All Categories';
+        _typeFilter == 'All Types' &&
+        _descriptionFilterController.text.isEmpty &&
+        _levelFilterController.text.isEmpty;
 
     if (isDefaultFilter) {
       _isFiltering = false;
       _currentPage = 0;
-      await _fetchFinanceRecords();
+      await _fetchFinance();
     } else {
       _isFiltering = true;
-      await _fetchAllFinanceRecords();
+      await _fetchAllFinance();
       _applySearchFilter();
     }
   }
 
   Future<void> _nextPage() async {
     if (_isFiltering) {
-      if ((_currentPage + 1) * _pageSize < _filteredFinanceRecords.length) {
+      if ((_currentPage + 1) * _pageSize < _filteredFinance.length) {
         setState(() => _currentPage++);
       }
     } else {
       setState(() => _currentPage++);
-      await _fetchFinanceRecords();
+      await _fetchFinance();
     }
   }
 
@@ -144,31 +169,28 @@ class _FinanceScreenState extends State<FinanceScreen> {
     if (_currentPage > 0) {
       setState(() => _currentPage--);
       if (_isFiltering) {
-        // No need to fetch for filtered data, just update UI
         setState(() {});
       } else {
-        await _fetchFinanceRecords();
+        await _fetchFinance();
       }
     }
   }
 
-  List<Finance> get displayedFinanceRecords {
+  List<Finance> get displayedFinance {
     if (_isFiltering) {
-      if (_filteredFinanceRecords.isEmpty) return [];
+      if (_filteredFinance.isEmpty) return [];
       final start = _currentPage * _pageSize;
       final end = start + _pageSize;
-      return _filteredFinanceRecords.sublist(
+      return _filteredFinance.sublist(
         start,
-        end > _filteredFinanceRecords.length
-            ? _filteredFinanceRecords.length
-            : end,
+        end > _filteredFinance.length ? _filteredFinance.length : end,
       );
     } else {
-      return _financeRecords;
+      return _finance;
     }
   }
 
-  Map<String, double> _financeStats = {
+  Map<String, dynamic> _financeStats = {
     'totalIncome': 0.0,
     'totalExpenses': 0.0,
     'currentBalance': 0.0,
@@ -215,11 +237,25 @@ class _FinanceScreenState extends State<FinanceScreen> {
     return DataRow(
       cells: [
         DataCell(
+          Text(
+            finance.incomeCategory?.name ?? 'N/A',
+            style: GoogleFonts.inter(),
+          ),
+        ),
+        DataCell(
+          Text(
+            finance.expenseCategory?.name ?? 'N/A',
+            style: GoogleFonts.inter(),
+          ),
+        ),
+        DataCell(Text(finance.amount.toString(), style: GoogleFonts.inter())),
+        DataCell(Text(finance.transactionDate, style: GoogleFonts.inter())),
+        DataCell(
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _getTransactionTypeBackgroundColor(
-                finance.transactionType,
+              color: _getStatusBackgroundColor(
+                finance.transactionType ?? 'UNKNOWN',
               ),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -231,17 +267,19 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _getTransactionTypeDotColor(finance.transactionType),
+                    color: _getStatusDotColor(
+                      finance.transactionType ?? 'UNKNOWN',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  finance.transactionType,
+                  finance.transactionType ?? 'UNKNOWN',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _getTransactionTypeTextColor(
-                      finance.transactionType,
+                    color: _getStatusTextColor(
+                      finance.transactionType ?? 'UNKNOWN',
                     ),
                   ),
                 ),
@@ -249,80 +287,62 @@ class _FinanceScreenState extends State<FinanceScreen> {
             ),
           ),
         ),
+
         DataCell(
-          Text(
-            finance.transactionDate ?? 'N/A',
-            style: GoogleFonts.inter(fontSize: 13),
-          ),
-        ),
-        DataCell(
-          Text(
-            '\$${finance.amount.toStringAsFixed(2)}',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: finance.transactionType == 'INCOME'
-                  ? Colors.green
-                  : Colors.red,
+          Container(
+            constraints: const BoxConstraints(maxWidth: 300, minWidth: 150),
+            child: Tooltip(
+              message: finance.description ?? 'No description',
+              child: Text(
+                finance.description ?? 'No description',
+                style: GoogleFonts.inter(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),
         DataCell(
-          Text(finance.category, style: GoogleFonts.inter(fontSize: 13)),
-        ),
-        DataCell(
-          Text(
-            finance.description ?? 'No description',
-            style: GoogleFonts.inter(fontSize: 13),
-          ),
+          Text(finance.level?.name ?? 'N/A', style: GoogleFonts.inter()),
         ),
         DataCell(
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.visibility, color: Colors.green),
-                tooltip: 'View Finance Record',
-                onPressed: () {
-                  _showFinanceDetailsDialog(finance);
-                },
-              ),
               if (widget.loggedInUser.role == 'CellAdmin' ||
                   widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
-                  tooltip: 'Update Finance Record',
+                  tooltip: 'Update Member',
                   onPressed: () async {
-                    // final updatedFinance = await Navigator.push(
+                    // final updatedMember = await Navigator.push(
                     //   context,
                     //   MaterialPageRoute(
                     //     builder: (context) => UpdateFinanceScreen(
                     //       loggedInUser: widget.loggedInUser,
-                    //       finance: finance,
+                    //       member: member,
                     //     ),
                     //   ),
                     // );
 
-                    // if (updatedFinance != null && updatedFinance is Finance) {
+                    // if (updatedMember != null && updatedMember is Member) {
                     //   setState(() {
-                    //     final index = _financeRecords.indexWhere(
-                    //       (f) => f.financeId == updatedFinance.financeId,
+                    //     final index = _members.indexWhere(
+                    //       (m) => m.memberId == updatedMember.memberId,
                     //     );
                     //     if (index != -1) {
-                    //       _financeRecords[index] = updatedFinance;
+                    //       _members[index] = updatedMember;
                     //     }
 
-                    //     final filteredIndex = _filteredFinanceRecords
-                    //         .indexWhere(
-                    //           (f) => f.financeId == updatedFinance.financeId,
-                    //         );
+                    //     final filteredIndex = _filteredMembers.indexWhere(
+                    //       (m) => m.memberId == updatedMember.memberId,
+                    //     );
                     //     if (filteredIndex != -1) {
-                    //       _filteredFinanceRecords[filteredIndex] =
-                    //           updatedFinance;
+                    //       _filteredMembers[filteredIndex] = updatedMember;
                     //     }
                     //   });
 
-                    //   await _fetchFinanceStats();
-                    //   await _fetchFinanceRecords();
+                    //   await _fetchMemberStats();
+                    //   await _fetchMembers();
                     // }
                   },
                 ),
@@ -331,337 +351,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showFinanceDetailsDialog(Finance finance) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        elevation: 10,
-        child: SingleChildScrollView(
-          child: Container(
-            width: 600,
-            decoration: BoxDecoration(
-              color: backgroundcolor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: finance.transactionType == 'INCOME'
-                          ? [Colors.green.shade700, Colors.green.shade500]
-                          : [Colors.red.shade700, Colors.red.shade500],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Transaction Type Icon
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.2),
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        child: Icon(
-                          finance.transactionType == 'INCOME'
-                              ? Icons.arrow_upward
-                              : Icons.arrow_downward,
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Amount
-                      Text(
-                        '\$${finance.amount.toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Transaction Type
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          finance.transactionType,
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Content section
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      // Transaction Details Section
-                      _buildSectionHeader('Transaction Details'),
-                      const SizedBox(height: 16),
-
-                      // Details in cards
-                      _buildEnhancedDetailCard(
-                        'Category',
-                        finance.category,
-                        Icons.category_outlined,
-                        Colors.blue,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildEnhancedDetailCard(
-                        'Transaction Date',
-                        finance.transactionDate ?? 'N/A',
-                        Icons.date_range_outlined,
-                        Colors.purple,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildEnhancedDetailCard(
-                        'Description',
-                        finance.description ?? 'No description',
-                        Icons.description_outlined,
-                        Colors.orange,
-                      ),
-
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-
-                // Actions section
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (widget.loggedInUser.role == 'CellAdmin' ||
-                          widget.loggedInUser.role == 'SuperAdmin')
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: finance.transactionType == 'INCOME'
-                                  ? [
-                                      Colors.green.shade600,
-                                      Colors.green.shade800,
-                                    ]
-                                  : [Colors.red.shade600, Colors.red.shade800],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: TextButton.icon(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                            label: Text(
-                              'Update Record',
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            onPressed: () async {
-                              // final updatedFinance = await Navigator.push(
-                              //   context,
-                              //   MaterialPageRoute(
-                              //     builder: (context) => UpdateFinanceScreen(
-                              //       loggedInUser: widget.loggedInUser,
-                              //       finance: finance,
-                              //     ),
-                              //   ),
-                              // );
-                              // if (updatedFinance != null &&
-                              //     updatedFinance is Finance) {
-                              //   setState(() {
-                              //     final index = _financeRecords.indexWhere(
-                              //       (f) =>
-                              //           f.financeId == updatedFinance.financeId,
-                              //     );
-                              //     if (index != -1) {
-                              //       _financeRecords[index] = updatedFinance;
-                              //     }
-
-                              //     final filteredIndex = _filteredFinanceRecords
-                              //         .indexWhere(
-                              //           (f) =>
-                              //               f.financeId ==
-                              //               updatedFinance.financeId,
-                              //         );
-                              //     if (filteredIndex != -1) {
-                              //       _filteredFinanceRecords[filteredIndex] =
-                              //           updatedFinance;
-                              //     }
-                              //   });
-
-                              //   await _fetchFinanceStats();
-                              //   await _fetchFinanceRecords();
-                              // }
-                            },
-                          ),
-                        ),
-                      const SizedBox(width: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            'Close',
-                            style: GoogleFonts.inter(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper method for section headers
-  Widget _buildSectionHeader(String title) {
-    return Row(
-      children: [
-        Container(
-          height: 2,
-          width: 20,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade600, Colors.purple.shade600],
-            ),
-            borderRadius: BorderRadius.circular(1),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.orange.shade800,
-          ),
-        ),
-        Expanded(
-          child: Container(
-            height: 2,
-            margin: const EdgeInsets.only(left: 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.transparent, Colors.grey.shade300],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Enhanced detail card widget
-  Widget _buildEnhancedDetailCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade800,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -721,7 +410,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 children: [
                   Center(
                     child: Text(
-                      "Manage Finances",
+                      "Manage Finance",
                       style: GoogleFonts.inter(
                         color: titlepageColor,
                         fontSize: 20,
@@ -731,7 +420,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Finance Statistics
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Container(
@@ -746,27 +434,21 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         children: [
                           StatBox(
                             iconPath: 'assets/icons/income.svg',
-                            label: 'Total Income',
-                            count:
-                                '\$${_financeStats['totalIncome']!.toStringAsFixed(2)}',
-                            backgroundColor: Colors.green.shade100,
+                            label: 'Total Incomes',
+                            count: _financeStats['totalIncome'].toString(),
+                            backgroundColor: statboxColor,
                           ),
                           StatBox(
                             label: 'Total Expenses',
-                            count:
-                                '\$${_financeStats['totalExpenses']!.toStringAsFixed(2)}',
+                            count: _financeStats['totalExpenses'].toString(),
                             iconPath: 'assets/icons/expense.svg',
-                            backgroundColor: Colors.red.shade100,
+                            backgroundColor: statboxColor,
                           ),
                           StatBox(
                             label: 'Current Balance',
-                            count:
-                                '\$${_financeStats['currentBalance']!.toStringAsFixed(2)}',
+                            count: _financeStats['currentBalance'].toString(),
                             iconPath: 'assets/icons/balance.svg',
-                            backgroundColor:
-                                _financeStats['currentBalance']! >= 0
-                                ? Colors.blue.shade100
-                                : Colors.orange.shade100,
+                            backgroundColor: statboxColor,
                           ),
                         ],
                       ),
@@ -775,7 +457,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Finance Records List Header
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -783,41 +464,41 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       children: [
                         const SizedBox(width: 460),
                         Text(
-                          "Finance Records",
+                          "Finance List",
                           style: GoogleFonts.inter(
                             color: titlepageColor,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 280),
+                        const SizedBox(width: 240),
                         if (widget.loggedInUser.role == 'CellAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin') ...[
                           ElevatedButton.icon(
                             onPressed: () async {
-                              // final newFinance = await Navigator.push(
-                              //   context,
-                              //   MaterialPageRoute(
-                              //     builder: (context) => AddFinanceScreen(
-                              //       loggedInUser: widget.loggedInUser,
-                              //     ),
-                              //   ),
-                              // );
+                              final newFinance = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddFinanceScreen(
+                                    loggedInUser: widget.loggedInUser,
+                                  ),
+                                ),
+                              );
 
-                              // if (newFinance != null && newFinance is Finance) {
-                              //   setState(() {
-                              //     _financeRecords.insert(0, newFinance);
-                              //     _filteredFinanceRecords = _financeRecords;
-                              //     _currentPage = 0;
-                              //   });
+                              if (newFinance != null && newFinance is Finance) {
+                                setState(() {
+                                  _finance.insert(0, newFinance);
+                                  _filteredFinance = _finance;
+                                  _currentPage = 0;
+                                });
 
-                              //   // Refresh stats
-                              //   await _fetchFinanceStats();
-                              // }
+                                // Refresh stats
+                                await _fetchFinanceStats();
+                              }
                             },
                             icon: SvgPicture.asset("assets/icons/finance.svg"),
                             label: Text(
-                              'Add Finance Record',
+                              'Add Transaction',
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -841,7 +522,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
                   const SizedBox(height: 10),
 
-                  // Finance Records Table
                   _isLoading
                       ? Container(
                           height: 300,
@@ -863,18 +543,20 @@ class _FinanceScreenState extends State<FinanceScreen> {
                               controller: _horizontalScrollController,
                               child: Column(
                                 children: [
-                                  // Filter Row
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
                                     ),
                                     child: Row(
                                       children: [
-                                        _buildTransactionTypeDropdown(),
+                                        _buildFilterField(
+                                          _categoryFilterController,
+                                          'Search Category',
+                                        ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
-                                          _descriptionFilterController,
-                                          'Search Description',
+                                          _categoryFilterController,
+                                          'Search Category',
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
@@ -882,12 +564,28 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                           'Search Amount',
                                         ),
                                         const SizedBox(width: 8),
-                                        _buildCategoryFilterField(),
+                                        _buildFilterField(
+                                          _transactionDateFilterController,
+                                          'Search Date(MM/dd/yyyy)',
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildTypeDropdown(),
+
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _descriptionFilterController,
+                                          'Search Description',
+                                        ),
+
+                                        const SizedBox(width: 8),
+                                        _buildFilterField(
+                                          _levelFilterController,
+                                          'Search Level',
+                                        ),
                                       ],
                                     ),
                                   ),
 
-                                  // Data Table
                                   Stack(
                                     children: [
                                       ConstrainedBox(
@@ -895,7 +593,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                           minHeight: 300,
                                         ),
                                         child: SizedBox(
-                                          width: 1200,
+                                          width: 1400,
                                           child: DataTable(
                                             horizontalMargin: 12,
                                             dataRowMaxHeight: 56,
@@ -933,29 +631,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                             ),
                                             columns: [
                                               DataColumn(
-                                                label: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.swap_vert,
-                                                      size: 16,
-                                                      color: Colors.white,
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    Text(
-                                                      'Type',
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                label: Text(
+                                                  'Income Category',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
                                                 ),
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Date',
+                                                  'Expense Category',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -975,7 +662,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Category',
+                                                  'Transaction Date',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -985,7 +672,31 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                               ),
                                               DataColumn(
                                                 label: Text(
-                                                  'Description',
+                                                  'Transaction Type',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Container(
+                                                  width: 300,
+                                                  child: Text(
+                                                    'Description',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              DataColumn(
+                                                label: Text(
+                                                  'Level Name',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w600,
@@ -1004,27 +715,26 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                                 ),
                                               ),
                                             ],
-                                            rows:
-                                                displayedFinanceRecords.isEmpty
+                                            rows: displayedFinance.isEmpty
                                                 ? [
                                                     DataRow(
                                                       cells: List.generate(
-                                                        6,
+                                                        8,
                                                         (_) => const DataCell(
                                                           SizedBox(),
                                                         ),
                                                       ),
                                                     ),
                                                   ]
-                                                : displayedFinanceRecords
+                                                : displayedFinance
                                                       .map(_buildDataRow)
                                                       .toList(),
                                           ),
                                         ),
                                       ),
-                                      if (displayedFinanceRecords.isEmpty)
+                                      if (displayedFinance.isEmpty)
                                         Positioned(
-                                          left: 300,
+                                          left: 426,
                                           top: 120,
                                           child: Row(
                                             children: [
@@ -1034,7 +744,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                               ),
                                               const SizedBox(width: 8),
                                               Text(
-                                                'No Finance Records found',
+                                                'No Finance found',
                                                 style: GoogleFonts.inter(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
@@ -1046,8 +756,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                         ),
                                     ],
                                   ),
-
-                                  // Pagination
                                   const SizedBox(height: 10),
                                   Align(
                                     alignment: Alignment.bottomLeft,
@@ -1203,7 +911,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                                 if (_isFiltering) {
                                                   _applySearchFilter();
                                                 } else {
-                                                  _fetchFinanceRecords();
+                                                  _fetchFinance();
                                                 }
                                               }
                                             },
@@ -1219,7 +927,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         ),
                   const SizedBox(height: 20),
 
-                  // Footer
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -1250,7 +957,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SizedBox(
-      width: 180,
+      width: 200, // Increased width for better usability
       height: 40,
       child: TextField(
         controller: controller,
@@ -1274,31 +981,31 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
-  Widget _buildTransactionTypeDropdown() {
+  Widget _buildTypeDropdown() {
     return SizedBox(
       width: 150,
       height: 40,
       child: DropdownButtonFormField<String>(
-        initialValue: _transactionTypeFilter,
+        initialValue: _typeFilter,
         onChanged: (value) {
           setState(() {
-            _transactionTypeFilter = value!;
+            _typeFilter = value!;
             _onFilterChanged();
           });
         },
-        items: ['All Types', 'INCOME', 'EXPENSE'].map((type) {
+        items: ['All Types', 'INCOME', 'EXPENSE'].map((gender) {
           return DropdownMenuItem(
-            value: type,
+            value: gender,
             child: Text(
-              type,
+              gender,
               style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
             ),
           );
         }).toList(),
         selectedItemBuilder: (context) {
-          return ['All Types', 'INCOME', 'EXPENSE'].map((type) {
+          return ['All Types', 'INCOME', 'EXPENSE'].map((role) {
             return Text(
-              type,
+              role,
               style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[800]),
             );
           }).toList();
@@ -1320,68 +1027,37 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
-  Widget _buildCategoryFilterField() {
-    return SizedBox(
-      width: 180,
-      height: 40,
-      child: TextField(
-        controller: TextEditingController(
-          text: _categoryFilter == 'All Categories' ? '' : _categoryFilter,
-        ),
-        onChanged: (value) {
-          setState(() {
-            _categoryFilter = value.isEmpty ? 'All Categories' : value;
-            _onFilterChanged();
-          });
-        },
-        style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
-        decoration: InputDecoration(
-          hintText: 'Search Category',
-          hintStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: 12),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper methods for transaction type styling
-  Color _getTransactionTypeBackgroundColor(String transactionType) {
+  Color _getStatusBackgroundColor(String transactionType) {
     switch (transactionType) {
       case 'INCOME':
         return Colors.green.shade100;
       case 'EXPENSE':
         return Colors.red.shade100;
+
       default:
         return Colors.grey.shade200;
     }
   }
 
-  Color _getTransactionTypeDotColor(String transactionType) {
+  Color _getStatusDotColor(String transactionType) {
     switch (transactionType) {
       case 'INCOME':
         return Colors.green;
       case 'EXPENSE':
         return Colors.redAccent;
+
       default:
         return Colors.grey;
     }
   }
 
-  Color _getTransactionTypeTextColor(String transactionType) {
+  Color _getStatusTextColor(String transactionType) {
     switch (transactionType) {
       case 'INCOME':
         return Colors.green.shade800;
       case 'EXPENSE':
-        return Colors.red.shade800;
+        return Colors.red.shade500;
+
       default:
         return Colors.grey.shade600;
     }

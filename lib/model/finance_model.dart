@@ -6,19 +6,22 @@ import 'expenseCategory_model.dart';
 
 class Finance {
   final String? financeId;
-  final dynamic category; // Can be IncomeCategory or ExpenseCategory
+  final IncomeCategory? incomeCategory;
+  final ExpenseCategory? expenseCategory;
   final String transactionDate;
   final double amount;
-  final String transactionType; // "income" or "expense"
+  final String? transactionType; // "income" or "expense"
   final String? description;
   final Level? level;
 
   Finance({
     this.financeId,
-    required this.category,
+
     required this.transactionDate,
     required this.amount,
-    required this.transactionType,
+    this.incomeCategory,
+    this.expenseCategory,
+    this.transactionType,
     this.description,
     this.level,
   });
@@ -29,12 +32,16 @@ class Finance {
 
     return Finance(
       financeId: json['financeId'],
-      category: type == 'income'
-          ? IncomeCategory.fromJson(categoryJson)
-          : ExpenseCategory.fromJson(categoryJson),
+
       transactionDate: json['transactionDate'] ?? '',
       amount: (json['amount'] ?? 0).toDouble(),
       transactionType: type,
+      incomeCategory: json['incomeCategory'] != null
+          ? IncomeCategory.fromJson(json['incomeCategory'])
+          : null,
+      expenseCategory: json['expenseCategory'] != null
+          ? ExpenseCategory.fromJson(json['expenseCategory'])
+          : null,
       description: json['description'] ?? '',
       level: json['level'] != null ? Level.fromJson(json['level']) : null,
     );
@@ -43,11 +50,13 @@ class Finance {
   Map<String, dynamic> toJson() {
     return {
       'financeId': financeId,
-      'category': category?.toJson(),
+
       'transactionDate': transactionDate,
       'amount': amount,
       'transactionType': transactionType,
       'description': description,
+      'incomeCategory': incomeCategory?.toJson(),
+      'expenseCategory': expenseCategory?.toJson(),
       'level': level?.toJson(),
     };
   }

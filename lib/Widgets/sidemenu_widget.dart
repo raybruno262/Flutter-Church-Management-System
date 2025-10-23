@@ -39,7 +39,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 30),
+      padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -62,7 +62,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
     final isLogout = item.title == 'Logout';
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 3),
       height: 31,
       width: 133,
       decoration: BoxDecoration(

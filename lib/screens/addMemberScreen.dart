@@ -361,7 +361,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         });
       } else {
         setState(() {
-          _message = 'Unexpected error: $result';
+          _message = 'Unexpected error';
           _isSuccess = false;
         });
       }
@@ -370,7 +370,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _message = 'Error submitting member: $e';
+          _message = 'Error submitting member';
           _isSuccess = false;
         });
       }

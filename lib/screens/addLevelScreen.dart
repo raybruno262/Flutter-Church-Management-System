@@ -207,12 +207,12 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
           _message = 'Server error.';
           break;
         default:
-          _message = 'Unexpected error: $result';
+          _message = 'Unexpected error';
       }
     } catch (e) {
       setState(() {
         _issaveOneLoading = false;
-        _message = 'Error submitting level: $e';
+        _message = 'Error submitting level';
         _isSuccess = false;
       });
     }
@@ -340,13 +340,13 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
           _isSuccess = false;
           break;
         default:
-          _message = 'Unexpected error: $result';
+          _message = 'Unexpected error';
           _isSuccess = false;
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _message = 'Error submitting levels: $e';
+        _message = 'Error submitting levels';
         _isSuccess = false;
       });
     } finally {
