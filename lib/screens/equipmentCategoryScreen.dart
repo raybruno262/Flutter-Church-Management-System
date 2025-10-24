@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
-import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
+
 import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
 
 import 'package:flutter_churchcrm_system/model/user_model.dart';
-import 'package:flutter_churchcrm_system/screens/UpdateEquipmentScreen.dart';
+
 import 'package:flutter_churchcrm_system/screens/addEquipmentCategory.dart';
+import 'package:flutter_churchcrm_system/screens/updateEquipmentCategoryScreen.dart';
 
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
@@ -310,9 +311,8 @@ class _EquipmentCategoryScreenState extends State<EquipmentCategoryScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        SizedBox(width: 460),
+                        const SizedBox(width: 400),
                         Text(
                           "Equipment Category List",
                           style: GoogleFonts.inter(
@@ -321,8 +321,7 @@ class _EquipmentCategoryScreenState extends State<EquipmentCategoryScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 220),
-
+                        const Spacer(), // This will create flexible space
                         ElevatedButton.icon(
                           onPressed: () async {
                             final result = await Navigator.push(
@@ -355,8 +354,8 @@ class _EquipmentCategoryScreenState extends State<EquipmentCategoryScreen> {
                             backgroundColor: Colors.deepPurple,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 15,
+                              horizontal: 16, // Reduced padding
+                              vertical: 12, // Reduced padding
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

@@ -22,20 +22,16 @@ import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class UpdateEquipmentScreen extends StatefulWidget {
+class AddEquipmentScreen extends StatefulWidget {
   final UserModel loggedInUser;
-  final Equipment equipment;
-  const UpdateEquipmentScreen({
-    super.key,
-    required this.loggedInUser,
-    required this.equipment,
-  });
+
+  const AddEquipmentScreen({super.key, required this.loggedInUser});
 
   @override
-  State<UpdateEquipmentScreen> createState() => _UpdateEquipmentScreenState();
+  State<AddEquipmentScreen> createState() => _AddEquipmentScreenState();
 }
 
-class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
+class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   List<EquipmentCategory> _equipmentCategories = [];
@@ -62,60 +58,8 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
-  }
-
-  Future<void> _loadInitialData() async {
-    // Load all data first
-    await Future.wait([_loadEquipmentCategories(), _loadCells()]);
-
-    // Then populate the form
-    if (mounted) {
-      setState(() {
-        _populateFormFromEquipment();
-      });
-    }
-  }
-
-  void _populateFormFromEquipment() {
-    _nameController.text = widget.equipment.name;
-
-    if (widget.equipment.equipmentCategory.equipmentCategoryId != null) {
-      final category = _equipmentCategories.firstWhere(
-        (cat) =>
-            cat.equipmentCategoryId ==
-            widget.equipment.equipmentCategory.equipmentCategoryId,
-        orElse: () => widget.equipment.equipmentCategory,
-      );
-      setState(() {
-        _selectedEquipmentCategory = category;
-      });
-    }
-
-    try {
-      List<String> parts = widget.equipment.purchaseDate.split('/');
-      if (parts.length == 3) {
-        int month = int.parse(parts[0]);
-        int day = int.parse(parts[1]);
-        int year = int.parse(parts[2]);
-        _purchaseDate = DateTime(year, month, day);
-        _purchaseDateController.text = widget.equipment.purchaseDate;
-      }
-    } catch (e) {
-      print('Error parsing Date');
-    }
-
-    _priceController.text = widget.equipment.purchasePrice.toString();
-    _condition = widget.equipment.condition;
-    _locationController.text = widget.equipment.location!;
-    _descriptionController.text = widget.equipment.description!;
-
-    if (widget.loggedInUser.role == 'SuperAdmin' &&
-        widget.equipment.level != null) {
-      setState(() {
-        _equipmentselectedSuperAdminCell = widget.equipment.level;
-      });
-    }
+    _loadEquipmentCategories();
+    _loadCells();
   }
 
   @override
@@ -370,7 +314,7 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildUpdateEquipmentScreen(),
+                child: _buildAddEquipmentScreen(),
               ),
             ),
           ],
@@ -379,7 +323,7 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
     );
   }
 
-  Widget _buildUpdateEquipmentScreen() {
+  Widget _buildAddEquipmentScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -603,14 +547,13 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
 
   Widget _buildEquipmentSuperAdminCellDropdown(
     String label,
-    Level? selectedCell,
+    Level? _selectedSuperAdminCell,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
-      child: DropdownButtonFormField<String>(
-        value:
-            selectedCell?.levelId, // Use levelId as value for proper comparison
+      child: DropdownButtonFormField<Level>(
+        value: _selectedSuperAdminCell,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -620,28 +563,14 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
             vertical: 10,
           ),
         ),
-        items: [
-          const DropdownMenuItem<String>(
-            value: null,
-            child: Text('Select Cell'),
-          ),
-          ..._cells.map((cell) {
-            return DropdownMenuItem<String>(
-              value: cell.levelId,
-              child: Text(cell.name ?? 'Unknown'),
-            );
-          }).toList(),
-        ],
-        onChanged: (String? selectedId) {
-          if (selectedId == null) {
-            onChanged(null);
-          } else {
-            final selectedLevel = _cells.firstWhere(
-              (cell) => cell.levelId == selectedId,
-            );
-            onChanged(selectedLevel);
-          }
-        },
+        items: _cells.map((cell) {
+          return DropdownMenuItem<Level>(
+            value: cell,
+            child: Text(cell.name ?? 'Unknown'),
+          );
+        }).toList(),
+        onChanged: onChanged,
+
         menuMaxHeight: 250,
       ),
     );

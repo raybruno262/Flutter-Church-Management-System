@@ -1,16 +1,11 @@
-
-import 'package:flutter_churchcrm_system/controller/expenseCategory_controller.dart';
-
+import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
 
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
-
-
 
 import 'package:flutter/material.dart';
 
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/model/expenseCategory_model.dart';
-
+import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
 
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
@@ -19,36 +14,38 @@ import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class AddExpenseCategoryScreen extends StatefulWidget {
+class UpdateEquipmentCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
+  final EquipmentCategory equipmentCategory;
 
-  const AddExpenseCategoryScreen({super.key, required this.loggedInUser});
+  const UpdateEquipmentCategoryScreen({
+    super.key,
+    required this.loggedInUser,
+    required this.equipmentCategory,
+  });
 
   @override
-  State<AddExpenseCategoryScreen> createState() =>
-      _AddExpenseCategoryScreenState();
+  State<UpdateEquipmentCategoryScreen> createState() =>
+      _UpdateEquipmentCategoryScreenState();
 }
 
-class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
+class _UpdateEquipmentCategoryScreenState
+    extends State<UpdateEquipmentCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
   final UserController userController = UserController();
-  final ExpenseCategoryController expenseCategoryController =
-      ExpenseCategoryController();
-
+  final EquipmentCategoryController equipmentCategoryController =
+      EquipmentCategoryController();
   // Controllers
   final _nameController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _populateExistingData();
+  }
+
   // ignore: unused_field
   bool _isClearing = false;
-  void _clearoneForm() {
-    _isClearing = true;
-    setState(() {
-      // Reset form validation
-      _formKey.currentState?.reset();
-    });
-
-    _isClearing = false;
-  }
 
   // State variables
   bool _isLoading = false;
@@ -64,35 +61,53 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
     super.dispose();
   }
 
-  Future<void> _addExpenseCategory() async {
+  void _populateExistingData() async {
+    _nameController.text = widget.equipmentCategory.name;
+  }
+
+  Future<void> _updateEquipmentCategory() async {
     if (_nameController.text.isEmpty) {
       setState(() {
-        _message = 'Please enter expense category name';
+        _message = 'Please enter equipment category name';
         _isSuccess = false;
       });
-
       return;
     }
 
-    final expenseCategoryName = _nameController.text.trim();
+    final equipmentCategoryName = _nameController.text.trim();
 
     try {
-      final newExpenseCategory = ExpenseCategory(name: expenseCategoryName);
+      setState(() {
+        _isLoading = true;
+        _message = null;
+      });
 
-      final result = await expenseCategoryController.createExpenseCategory(
-        newExpenseCategory,
+      final updatedEquipmentCategory = EquipmentCategory(
+        name: equipmentCategoryName,
       );
+
+      final result = await equipmentCategoryController.updateEquipmentCategory(
+        widget.equipmentCategory.equipmentCategoryId!,
+        updatedEquipmentCategory,
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
 
       if (result == 'Status 1000') {
         setState(() {
-          _message = 'Expense Category created successfully!';
+          _message = 'Equipment Category updated successfully!';
           _isSuccess = true;
         });
-
-        _clearoneForm();
+      } else if (result == 'Status 3000') {
+        setState(() {
+          _message = 'Equipment Category not found';
+          _isSuccess = false;
+        });
       } else if (result == 'Status 5000') {
         setState(() {
-          _message = 'Expense Category name already exists';
+          _message = 'Equipment Category name already exists';
           _isSuccess = false;
         });
       } else if (result == 'Status 7000') {
@@ -102,13 +117,14 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
         });
       } else {
         setState(() {
-          _message = 'Unexpected error';
+          _message = 'Unexpected error: $result';
           _isSuccess = false;
         });
       }
     } catch (e) {
       setState(() {
-        _message = 'Error creating Expense Category';
+        _isLoading = false;
+        _message = 'Error updating Expense Category: $e';
         _isSuccess = false;
       });
     }
@@ -122,7 +138,7 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
       drawer: !isDesktop
           ? Drawer(
               child: SideMenuWidget(
-                selectedTitle: 'Finance',
+                selectedTitle: 'Equipment',
                 loggedInUser: widget.loggedInUser,
               ),
             )
@@ -139,14 +155,14 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
                   ),
                 ),
                 child: SideMenuWidget(
-                  selectedTitle: 'Finance',
+                  selectedTitle: 'Equipment',
                   loggedInUser: widget.loggedInUser,
                 ),
               ),
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildAddExpenseCategoryScreen(),
+                child: _buildUpdateEquipmentCategoryScreen(),
               ),
             ),
           ],
@@ -155,7 +171,7 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
     );
   }
 
-  Widget _buildAddExpenseCategoryScreen() {
+  Widget _buildUpdateEquipmentCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -172,7 +188,7 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add Expense Category",
+                        "Update Equipment Category",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -263,7 +279,7 @@ class _AddExpenseCategoryScreenState extends State<AddExpenseCategoryScreen> {
                       child: _isLoading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
-                              onPressed: _addExpenseCategory,
+                              onPressed: _updateEquipmentCategory,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.deepPurple,
                                 foregroundColor: Colors.white,

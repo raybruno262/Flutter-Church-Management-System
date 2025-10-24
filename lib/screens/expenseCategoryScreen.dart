@@ -84,10 +84,10 @@ class _ExpenseCategoryScreenState extends State<ExpenseCategoryScreen> {
   }
 
   Future<void> _fetchAllExpenseCategories() async {
-    final allIncomeCategories = await _expenseCategoryController
+    final allExpenseCategories = await _expenseCategoryController
         .getAllExpenseCategories();
     setState(() {
-      _allExpenseCategories = allIncomeCategories;
+      _allExpenseCategories = allExpenseCategories;
       _isLoading = false;
     });
   }
