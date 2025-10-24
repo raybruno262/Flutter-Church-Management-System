@@ -1,120 +1,86 @@
-
-
-import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
-import 'package:flutter_churchcrm_system/controller/user_controller.dart';
-
-
+// screens/add_equipment_category_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_churchcrm_system/provider/addEquipmentCategory_provider.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
-
-
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class AddEquipmentCategoryScreen extends StatefulWidget {
+class AddEquipmentCategoryScreen extends ConsumerStatefulWidget {
   final UserModel loggedInUser;
 
   const AddEquipmentCategoryScreen({super.key, required this.loggedInUser});
 
   @override
-  State<AddEquipmentCategoryScreen> createState() =>
+  ConsumerState<AddEquipmentCategoryScreen> createState() =>
       _AddEquipmentCategoryScreenState();
 }
 
-class _AddEquipmentCategoryScreenState extends State<AddEquipmentCategoryScreen> {
+class _AddEquipmentCategoryScreenState
+    extends ConsumerState<AddEquipmentCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
-  final UserController userController = UserController();
-  final EquipmentCategoryController equipmentCategoryController =
-      EquipmentCategoryController();
-
-  // Controllers
   final _nameController = TextEditingController();
 
-  // ignore: unused_field
-  bool _isClearing = false;
-  void _clearoneForm() {
-    _isClearing = true;
-    setState(() {
-      // Reset form validation
-      _formKey.currentState?.reset();
+  @override
+  void initState() {
+    super.initState();
+    // Reset provider state when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(addEquipmentCategoryProvider.notifier).resetState();
     });
-
-    _isClearing = false;
   }
-
-  // State variables
-  bool _isLoading = false;
-
-  // Message state variables
-  String? _message;
-  bool _isSuccess = false;
 
   @override
   void dispose() {
     _nameController.dispose();
-
     super.dispose();
   }
 
   Future<void> _addEquipmentCategory() async {
-    if (_nameController.text.isEmpty) {
-      setState(() {
-        _message = 'Please enter equipment category name';
-        _isSuccess = false;
-      });
-
-      return;
-    }
-
-    final equipmentCategoryName = _nameController.text.trim();
-
-    try {
-      final newEquipmentCategory = EquipmentCategory(name: equipmentCategoryName);
-
-      final result = await equipmentCategoryController.createEquipmentCategory(
-        newEquipmentCategory,
-      );
+    if (_formKey.currentState!.validate()) {
+      final result = await ref
+          .read(addEquipmentCategoryProvider.notifier)
+          .addEquipmentCategory(_nameController.text);
 
       if (result == 'Status 1000') {
-        setState(() {
-          _message = 'Equipment Category created successfully!';
-          _isSuccess = true;
-        });
+        // Success - clear form
+        _formKey.currentState!.reset();
+        _nameController.clear();
 
-        _clearoneForm();
-      } else if (result == 'Status 5000') {
-        setState(() {
-          _message = 'Equipment Category name already exists';
-          _isSuccess = false;
-        });
-      } else if (result == 'Status 7000') {
-        setState(() {
-          _message = 'Network error';
-          _isSuccess = false;
-        });
-      } else {
-        setState(() {
-          _message = 'Unexpected error';
-          _isSuccess = false;
+        // Auto-navigate back after success with refresh signal
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            Navigator.pop(context, 'refresh');
+          }
         });
       }
-    } catch (e) {
-      setState(() {
-        _message = 'Error creating Equipment Category';
-        _isSuccess = false;
-      });
+      // If not success, the error message will show automatically via state
     }
+  }
+
+  void _clearForm() {
+    _formKey.currentState!.reset();
+    _nameController.clear();
+    ref.read(addEquipmentCategoryProvider.notifier).clearForm();
+    ref.read(addEquipmentCategoryProvider.notifier).clearMessage();
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(addEquipmentCategoryProvider);
     final isDesktop = Responsive.isDesktop(context);
+
+    // Listen for form cleared state
+    if (state.isFormCleared) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _formKey.currentState?.reset();
+        _nameController.clear();
+      });
+    }
 
     return Scaffold(
       drawer: !isDesktop
@@ -144,7 +110,7 @@ class _AddEquipmentCategoryScreenState extends State<AddEquipmentCategoryScreen>
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildAddEquipmentCategoryScreen(),
+                child: _buildAddEquipmentCategoryScreen(state),
               ),
             ),
           ],
@@ -153,7 +119,7 @@ class _AddEquipmentCategoryScreenState extends State<AddEquipmentCategoryScreen>
     );
   }
 
-  Widget _buildAddEquipmentCategoryScreen() {
+  Widget _buildAddEquipmentCategoryScreen(AddEquipmentCategoryState state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -181,54 +147,83 @@ class _AddEquipmentCategoryScreenState extends State<AddEquipmentCategoryScreen>
                     const SizedBox(height: 16),
 
                     // Message Container
-                    if (_message != null)
+                    if (state.message != null)
                       Center(
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                           constraints: const BoxConstraints(maxWidth: 600),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(10),
+                            color: state.isSuccess
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: _isSuccess ? Colors.green : Colors.red,
-                              width: 1.2,
+                              color: state.isSuccess
+                                  ? Colors.green.shade300
+                                  : Colors.red.shade300,
+                              width: 1.5,
                             ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                _isSuccess ? Icons.check_circle : Icons.error,
-                                color: _isSuccess
-                                    ? Colors.green.shade800
-                                    : Colors.red.shade800,
-                                size: 18,
+                                state.isSuccess
+                                    ? Icons.check_circle
+                                    : Icons.error_outline,
+                                color: state.isSuccess
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                                size: 20,
                               ),
-                              const SizedBox(width: 6),
-                              Flexible(
+                              const SizedBox(width: 8),
+                              Expanded(
                                 child: Text(
-                                  _message!,
+                                  state.message!,
                                   style: GoogleFonts.inter(
-                                    color: _isSuccess
+                                    color: state.isSuccess
                                         ? Colors.green.shade800
                                         : Colors.red.shade800,
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
+                              if (!state.isSuccess)
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 16),
+                                  onPressed: () {
+                                    ref
+                                        .read(
+                                          addEquipmentCategoryProvider.notifier,
+                                        )
+                                        .clearMessage();
+                                  },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 24,
+                                    minHeight: 24,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
                       ),
 
+                    // Back Button - ALWAYS WORKING
                     ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(context, 'refresh'),
+                      onPressed: () {
+                        // Clear any state before going back
+                        ref
+                            .read(addEquipmentCategoryProvider.notifier)
+                            .resetState();
+                        Navigator.pop(context);
+                      },
                       icon: const Icon(Icons.arrow_back),
                       label: Text(
                         'Back',
@@ -248,38 +243,70 @@ class _AddEquipmentCategoryScreenState extends State<AddEquipmentCategoryScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [_buildTextField('Name', _nameController)],
+                    // Form Fields
+                    Center(
+                      child: Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [_buildNameField()],
+                      ),
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 20),
 
-                    /// Save Button
+                    // Action Buttons
                     Center(
-                      child: _isLoading
-                          ? const CircularProgressIndicator()
-                          : ElevatedButton(
-                              onPressed: _addEquipmentCategory,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40,
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Clear Button - ALWAYS WORKING
+                          ElevatedButton(
+                            onPressed: state.isLoading ? null : _clearForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 30,
+                                vertical: 16,
                               ),
-                              child: Text(
-                                "Save",
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
+                            child: Text(
+                              "Clear",
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+
+                          // Save Button
+                          state.isLoading
+                              ? const CircularProgressIndicator()
+                              : ElevatedButton(
+                                  onPressed: _addEquipmentCategory,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 40,
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Save",
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -292,20 +319,51 @@ class _AddEquipmentCategoryScreenState extends State<AddEquipmentCategoryScreen>
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildNameField() {
     return SizedBox(
-      width: 300,
+      width: 400,
       child: TextFormField(
-        controller: controller,
+        controller: _nameController,
         decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.inter(fontSize: 13),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
+          labelText: 'Equipment Category Name',
+          labelStyle: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
+          hintText: 'Enter equipment category name',
+          hintStyle: GoogleFonts.inter(color: Colors.grey.shade600),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          suffixIcon: _nameController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  onPressed: () {
+                    _nameController.clear();
+                    setState(() {});
+                  },
+                )
+              : null,
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter equipment category name';
+          }
+          if (value.trim().length < 2) {
+            return 'Name must be at least 2 characters long';
+          }
+          return null;
+        },
+        onChanged: (value) => setState(() {}),
       ),
     );
   }
