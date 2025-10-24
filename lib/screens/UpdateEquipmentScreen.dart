@@ -91,15 +91,29 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
         _selectedEquipmentCategory = category;
       });
     }
-
     try {
-      List<String> parts = widget.equipment.purchaseDate.split('/');
-      if (parts.length == 3) {
-        int month = int.parse(parts[0]);
-        int day = int.parse(parts[1]);
-        int year = int.parse(parts[2]);
-        _purchaseDate = DateTime(year, month, day);
-        _purchaseDateController.text = widget.equipment.purchaseDate;
+      DateTime? parsedDate;
+      if (widget.equipment.purchaseDate.contains('/')) {
+        List<String> parts = widget.equipment.purchaseDate.split('/');
+        if (parts.length == 3) {
+          int month = int.parse(parts[0]);
+          int day = int.parse(parts[1]);
+          int year = int.parse(parts[2]);
+          parsedDate = DateTime(year, month, day);
+        }
+      } else {
+        parsedDate = DateFormat(
+          'yyyy-MM-dd',
+        ).parse(widget.equipment.purchaseDate);
+      }
+
+      if (parsedDate != null) {
+        setState(() {
+          _purchaseDate = parsedDate;
+        });
+        _purchaseDateController.text = DateFormat(
+          'MM/dd/yyyy',
+        ).format(parsedDate);
       }
     } catch (e) {
       print('Error parsing Date');
@@ -142,25 +156,6 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
     if (mounted) {
       setState(() => _equipmentCategories = equipmentCategory);
     }
-  }
-
-  void _clearEquipmentForm() {
-    // Reset form validation
-    _formKey.currentState?.reset();
-    // Clear text controllers
-    _nameController.clear();
-    _purchaseDateController.clear();
-    _locationController.clear();
-    _descriptionController.clear();
-    _priceController.clear();
-
-    // Reset state variables
-    setState(() {
-      _purchaseDate = null;
-      _condition = null;
-      _selectedEquipmentCategory = null;
-      _equipmentselectedSuperAdminCell = null;
-    });
   }
 
   Future<void> _submitEquipment() async {
@@ -278,7 +273,8 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
         level: level,
       );
 
-      final result = await _equipmentController.createEquipment(
+      final result = await _equipmentController.updateEquipment(
+        widget.equipment.equipmentId!,
         equipment,
         widget.loggedInUser.userId!,
       );
@@ -288,9 +284,8 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
       switch (result) {
         case 'Status 1000':
           setState(() {
-            _message = 'Equipment saved successfully!';
+            _message = 'Equipment updated successfully!';
             _isSuccess = true;
-            _clearEquipmentForm();
           });
           break;
         case 'Status 3000':
