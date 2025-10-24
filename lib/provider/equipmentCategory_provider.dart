@@ -21,7 +21,7 @@ class EquipmentCategoryState {
   final bool isFiltering;
   final String searchQuery;
   final String? error;
-  final int refreshTrigger; // Add this to force refresh
+  final int refreshTrigger;
 
   EquipmentCategoryState({
     this.equipmentCategories = const [],
@@ -34,7 +34,7 @@ class EquipmentCategoryState {
     this.isFiltering = false,
     this.searchQuery = '',
     this.error,
-    this.refreshTrigger = 0, // Initialize refresh trigger
+    this.refreshTrigger = 0,
   });
 
   EquipmentCategoryState copyWith({
@@ -64,8 +64,7 @@ class EquipmentCategoryState {
       isFiltering: isFiltering ?? this.isFiltering,
       searchQuery: searchQuery ?? this.searchQuery,
       error: error ?? this.error,
-      refreshTrigger:
-          refreshTrigger ?? this.refreshTrigger, // Include refresh trigger
+      refreshTrigger: refreshTrigger ?? this.refreshTrigger,
     );
   }
 }

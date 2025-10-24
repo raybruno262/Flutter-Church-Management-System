@@ -55,18 +55,9 @@ class _UpdateEquipmentCategoryScreenState
 
   Future<void> _updateEquipmentCategory() async {
     if (_formKey.currentState!.validate()) {
-      final result = await ref
+      await ref
           .read(updateEquipmentCategoryProvider.notifier)
           .updateEquipmentCategory(_nameController.text);
-
-      if (result == 'Status 1000') {
-        // Success - auto-navigate back after a delay
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            Navigator.pop(context, 'refresh');
-          }
-        });
-      }
     }
   }
 

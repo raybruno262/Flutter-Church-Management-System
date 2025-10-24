@@ -83,7 +83,7 @@ class _EquipmentCategoryScreenState
                       .read(updateEquipmentCategoryProvider.notifier)
                       .resetState();
 
-                  // Navigate to update screen - THIS WILL NOW WORK
+                  // Navigate to update screen 
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -242,7 +242,7 @@ class _EquipmentCategoryScreenState
                           ),
                         ),
                         const Spacer(),
-                        // ADD BUTTON - NOW ALWAYS WORKING
+                        // ADD BUTTON 
                         ElevatedButton.icon(
                           onPressed: () async {
                             // Reset the add provider state before navigating

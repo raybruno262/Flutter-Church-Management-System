@@ -50,13 +50,6 @@ class _AddEquipmentCategoryScreenState
         // Success - clear form
         _formKey.currentState!.reset();
         _nameController.clear();
-
-        // Auto-navigate back after success with refresh signal
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            Navigator.pop(context, 'refresh');
-          }
-        });
       }
       // If not success, the error message will show automatically via state
     }

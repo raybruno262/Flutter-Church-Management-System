@@ -1,316 +1,106 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_churchcrm_system/Widgets/equipmentStatBoxWidget.dart';
-import 'package:flutter_churchcrm_system/Widgets/financeStatBoxWidget.dart';
-import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
-import 'package:flutter_churchcrm_system/controller/equipment_controller.dart';
-import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
 import 'package:flutter_churchcrm_system/model/equipment_model.dart';
-
+import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/screens/addEquipmentScreen.dart';
 import 'package:flutter_churchcrm_system/screens/updateEquipmentScreen.dart';
-
 import 'package:intl/intl.dart';
-import 'package:flutter_churchcrm_system/controller/finance_Controller.dart';
-import 'package:flutter_churchcrm_system/controller/incomeCategory_controller.dart';
-import 'package:flutter_churchcrm_system/controller/user_controller.dart';
-
-import 'package:flutter_churchcrm_system/model/finance_model.dart';
-import 'package:flutter_churchcrm_system/model/incomeCategory_model.dart';
-import 'package:flutter_churchcrm_system/model/user_model.dart';
-
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_churchcrm_system/provider/equipment_provider.dart';
 
-class EquipmentScreen extends StatefulWidget {
+class EquipmentScreen extends ConsumerStatefulWidget {
   final UserModel loggedInUser;
   const EquipmentScreen({super.key, required this.loggedInUser});
 
   @override
-  State<EquipmentScreen> createState() => _EquipmentScreenState();
+  ConsumerState<EquipmentScreen> createState() => _EquipmentScreenState();
 }
 
-class _EquipmentScreenState extends State<EquipmentScreen> {
+class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
   final _nameFilterController = TextEditingController();
   final _categoryFilterController = TextEditingController();
   final _purchaseDateFilterController = TextEditingController();
   final _purchasePriceFilterController = TextEditingController();
-  String _conditionFilter =
-      'All Conditions'; // Excellent, good, needs repair, Out of Service
+  String _conditionFilter = 'All Conditions';
   final _locationFilterController = TextEditingController();
   final _descriptionFilterController = TextEditingController();
   final _levelFilterController = TextEditingController();
   final ScrollController _horizontalScrollController = ScrollController();
-  final EquipmentController _controller = EquipmentController();
-  final UserController _usercontroller = UserController();
-
-  // ignore: unused_field
-  List<EquipmentCategory> _equipmentCategories = [];
-  final EquipmentCategoryController _equipmentCategoriesController =
-      EquipmentCategoryController();
-
-  EquipmentCategory? _selectedEquipmentCategory;
-
-  Future<void> _loadEquipmentCategories() async {
-    final equipmentCategories = await _equipmentCategoriesController
-        .getAllEquipmentCategories();
-    if (mounted) {
-      setState(() => _equipmentCategories = equipmentCategories);
-    }
-  }
-
-  int _currentPage = 0;
-  int _pageSize = 5;
   final List<int> _pageSizeOptions = [5, 10, 15, 20];
-  List<Equipment> _equipment = [];
-  List<Equipment> _allEquipment = [];
-  List<Equipment> _filteredEquipment = [];
-
-  bool _isLoading = true;
-
-  bool _isFiltering = false;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    _fetchEquipment();
-    _fetchAllEquipment();
-    _fetchEquipmentStats();
-    _loadEquipmentCategories();
+    _nameFilterController.addListener(_onFilterChanged);
+    _categoryFilterController.addListener(_onFilterChanged);
+    _purchaseDateFilterController.addListener(_onFilterChanged);
+    _purchasePriceFilterController.addListener(_onFilterChanged);
+    _locationFilterController.addListener(_onFilterChanged);
+    _descriptionFilterController.addListener(_onFilterChanged);
+    _levelFilterController.addListener(_onFilterChanged);
   }
 
-  Future<void> _fetchEquipment() async {
-    setState(() => _isLoading = true);
-    try {
-      final equipment = await _controller.getScopedPaginatedEquipment(
-        userId: widget.loggedInUser.userId!,
-        page: _currentPage,
-        size: _pageSize,
-      );
-      setState(() {
-        _equipment = equipment;
-        _filteredEquipment = _equipment;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
+  void _onFilterChanged() {
+    final filters = _getCurrentFilters();
 
-  Future<void> _fetchAllEquipment() async {
-    try {
-      final allFinance = await _controller.getAllEquipment();
-      setState(() {
-        _allEquipment = allFinance;
-      });
-    } catch (e) {
-      // Handle error
-    }
-  }
+    // INSTANT response - no loading state
+    ref
+        .read(equipmentProvider(widget.loggedInUser.userId!).notifier)
+        .updateSearchQuery(filters);
 
-  void _applySearchFilter() {
-    final nameQuery = _nameFilterController.text.toLowerCase();
-    final categoryQuery = _categoryFilterController.text.toLowerCase();
-    final purchaseDateQuery = _purchaseDateFilterController.text;
-    final purchasePriceQuery = _purchasePriceFilterController.text;
-    final locationQuery = _locationFilterController.text.toLowerCase();
-    final descriptionQuery = _descriptionFilterController.text.toLowerCase();
-
-    final levelQuery = _levelFilterController.text.toLowerCase();
-
-    final filtered = _allEquipment.where((finance) {
-      final matchesName = finance.name.toLowerCase().contains(nameQuery);
-      final matchesCategory =
-          categoryQuery.isEmpty ||
-          (finance.equipmentCategory.name.toLowerCase().contains(
-            categoryQuery,
-          ));
-      final matchespurchaseDate =
-          purchaseDateQuery.isEmpty ||
-          (finance.purchaseDate.contains(purchaseDateQuery));
-      final matchesLocation = finance.location?.toLowerCase().contains(
-        locationQuery,
-      );
-      final matchesLevel =
-          levelQuery.isEmpty ||
-          (finance.level?.name?.toLowerCase().contains(levelQuery) ?? false);
-      final matchesDescription = finance.description?.toLowerCase().contains(
-        nameQuery,
-      );
-      final matchesPrice = finance.purchasePrice == purchasePriceQuery;
-
-      final matchesCondition =
-          _conditionFilter == 'All Conditions' ||
-          finance.condition == _conditionFilter;
-
-      return matchesName &&
-          matchesCategory &&
-          matchespurchaseDate &&
-          matchesLocation! &&
-          matchesLevel &&
-          matchesPrice &&
-          matchesDescription! &&
-          matchesCondition;
-    }).toList();
-    setState(() {
-      _filteredEquipment = filtered;
-      _currentPage = 0;
+    // Only fetch from API after user stops typing (debounce)
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (filters.values.any((value) => value.isNotEmpty) ||
+          _conditionFilter != 'All Conditions') {
+        ref
+            .read(equipmentProvider(widget.loggedInUser.userId!).notifier)
+            .handleFilterChange(filters);
+      }
     });
   }
 
-  void _onFilterChanged() async {
-    final isDefaultFilter =
-        _nameFilterController.text.isEmpty &&
-        _categoryFilterController.text.isEmpty &&
-        _purchaseDateFilterController.text.isEmpty &&
-        _purchasePriceFilterController.text.isEmpty &&
-        _locationFilterController.text.isEmpty &&
-        _conditionFilter == 'All Conditions' &&
-        _descriptionFilterController.text.isEmpty &&
-        _levelFilterController.text.isEmpty;
-
-    if (isDefaultFilter) {
-      _isFiltering = false;
-      _currentPage = 0;
-      await _fetchEquipment();
-    } else {
-      _isFiltering = true;
-      await _fetchAllEquipment();
-      _applySearchFilter();
-    }
+  Map<String, String> _getCurrentFilters() {
+    return {
+      'name': _nameFilterController.text,
+      'category': _categoryFilterController.text,
+      'purchaseDate': _purchaseDateFilterController.text,
+      'purchasePrice': _purchasePriceFilterController.text,
+      'location': _locationFilterController.text,
+      'description': _descriptionFilterController.text,
+      'level': _levelFilterController.text,
+      'condition': _conditionFilter,
+    };
   }
 
-  Future<void> _nextPage() async {
-    if (_isFiltering) {
-      if ((_currentPage + 1) * _pageSize < _filteredEquipment.length) {
-        setState(() => _currentPage++);
-      }
-    } else {
-      setState(() => _currentPage++);
-      await _fetchEquipment();
-    }
-  }
-
-  Future<void> _previousPage() async {
-    if (_currentPage > 0) {
-      setState(() => _currentPage--);
-      if (_isFiltering) {
-        setState(() {});
-      } else {
-        await _fetchEquipment();
-      }
-    }
-  }
-
-  List<Equipment> get displayedEquipment {
-    if (_isFiltering) {
-      if (_filteredEquipment.isEmpty) return [];
-      final start = _currentPage * _pageSize;
-      final end = start + _pageSize;
-      return _filteredEquipment.sublist(
-        start,
-        end > _filteredEquipment.length ? _filteredEquipment.length : end,
-      );
-    } else {
-      return _equipment;
-    }
-  }
-
-  Map<String, dynamic> _equipmentStats = {
-    'totalEquipment': 0,
-    'excellentCount': 0,
-    'goodCount': 0,
-    'needsRepairCount': 0,
-    'outOfServiceCount': 0,
-  };
-
-  Future<void> _fetchEquipmentStats() async {
-    try {
-      final loggedInUser = await _usercontroller.loadUserFromStorage();
-
-      if (loggedInUser == null || loggedInUser.userId == null) {
-        setState(() {
-          _equipmentStats = {
-            'totalEquipment': 0,
-            'excellentCount': 0,
-            'goodCount': 0,
-            'needsRepairCount': 0,
-            'outOfServiceCount': 0,
-          };
-        });
-        return;
-      }
-
-      final stats = await _controller.getEquipmentStats(loggedInUser.userId!);
-
-      final updatedStats = {
-        'totalEquipment': stats['totalEquipment'] ?? 0,
-        'excellentCount': stats['excellentCount'] ?? 0,
-        'goodCount': stats['goodCount'] ?? 0,
-        'needsRepairCount': stats['needsRepairCount'] ?? 0,
-        'outOfServiceCount': stats['outOfServiceCount'] ?? 0,
-      };
-
-      setState(() {
-        _equipmentStats = updatedStats;
-      });
-    } catch (e) {
-      setState(() {
-        _equipmentStats = {
-          'totalEquipment': 0,
-          'excellentCount': 0,
-          'goodCount': 0,
-          'needsRepairCount': 0,
-          'outOfServiceCount': 0,
-        };
-      });
-    }
-  }
-
-  String _formatNumberForDisplay(double value) {
-    final formatted = _formatNumberWithCommas(value);
-    return formatted;
-  }
-
-  String _formatNumberWithCommas(double value) {
-    if (value % 1 == 0) {
-      return NumberFormat('#,##0').format(value);
-    } else {
-      return NumberFormat('#,##0.00').format(value);
-    }
-  }
-
-  // For StatBox widgets
-  TextStyle _getCountTextStyle(double value) {
-    final formatted = _formatNumberWithCommas(value);
-
-    if (formatted.length > 12) {
-      return GoogleFonts.inter(
-        fontSize: 14, // Smaller font for very large numbers
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-      );
-    } else if (formatted.length > 10) {
-      return GoogleFonts.inter(
-        fontSize: 15, // Medium font for large numbers
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-      );
-    } else {
-      return GoogleFonts.inter(
-        fontSize: 17, // Normal font
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-      );
-    }
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _nameFilterController.dispose();
+    _categoryFilterController.dispose();
+    _purchaseDateFilterController.dispose();
+    _purchasePriceFilterController.dispose();
+    _locationFilterController.dispose();
+    _descriptionFilterController.dispose();
+    _levelFilterController.dispose();
+    _horizontalScrollController.dispose();
+    super.dispose();
   }
 
   DataRow _buildDataRow(Equipment equipment) {
+    final notifier = ref.read(
+      equipmentProvider(widget.loggedInUser.userId!).notifier,
+    );
+
     return DataRow(
       cells: [
         DataCell(Text(equipment.name, style: GoogleFonts.inter())),
@@ -319,7 +109,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         ),
         DataCell(
           Container(
-            constraints: BoxConstraints(maxWidth: 110),
+            constraints: const BoxConstraints(maxWidth: 110),
             child: Tooltip(
               message: _formatNumberWithCommas(equipment.purchasePrice),
               child: Text(
@@ -332,12 +122,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           ),
         ),
         DataCell(Text(equipment.purchaseDate, style: GoogleFonts.inter())),
-
         DataCell(
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _getConditionBackgroundColor(equipment.condition),
+              color: notifier.getConditionBackgroundColor(equipment.condition),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -348,7 +137,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _getConditionDotColor(equipment.condition),
+                    color: notifier.getConditionDotColor(equipment.condition),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -357,7 +146,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: _getConditionTextColor(equipment.condition),
+                    color: notifier.getConditionTextColor(equipment.condition),
                   ),
                 ),
               ],
@@ -379,11 +168,9 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             ),
           ),
         ),
-
         DataCell(
           Text(equipment.level?.name ?? 'N/A', style: GoogleFonts.inter()),
         ),
-
         DataCell(
           Row(
             children: [
@@ -393,7 +180,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   icon: const Icon(Icons.edit, color: Colors.blue),
                   tooltip: 'Update Equipment',
                   onPressed: () async {
-                    final updatedEquipment = await Navigator.push(
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => UpdateEquipmentScreen(
@@ -403,26 +190,15 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                       ),
                     );
 
-                    if (updatedEquipment != null &&
-                        updatedEquipment is Equipment) {
-                      setState(() {
-                        final index = _equipment.indexWhere(
-                          (m) => m.equipmentId == updatedEquipment.equipmentId,
-                        );
-                        if (index != -1) {
-                          _equipment[index] = updatedEquipment;
-                        }
-
-                        final filteredIndex = _filteredEquipment.indexWhere(
-                          (m) => m.equipmentId == updatedEquipment.equipmentId,
-                        );
-                        if (filteredIndex != -1) {
-                          _filteredEquipment[filteredIndex] = updatedEquipment;
-                        }
-                      });
-
-                      await _fetchEquipmentStats();
-                      await _fetchEquipment();
+                    if (result == 'refresh') {
+                      // Force refresh the main data
+                      ref
+                          .read(
+                            equipmentProvider(
+                              widget.loggedInUser.userId!,
+                            ).notifier,
+                          )
+                          .forceRefresh();
                     }
                   },
                 ),
@@ -436,7 +212,15 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(equipmentProvider(widget.loggedInUser.userId!));
+    final notifier = ref.read(
+      equipmentProvider(widget.loggedInUser.userId!).notifier,
+    );
     final isDesktop = Responsive.isDesktop(context);
+
+    // This will force the UI to rebuild when refreshTrigger changes
+    // ignore: unused_local_variable
+    final refreshTrigger = state.refreshTrigger;
 
     return Scaffold(
       drawer: !isDesktop
@@ -466,7 +250,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildEquipmentScreen(),
+                child: _buildEquipmentScreen(state, notifier),
               ),
             ),
           ],
@@ -475,7 +259,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  Widget _buildEquipmentScreen() {
+  Widget _buildEquipmentScreen(
+    EquipmentState state,
+    EquipmentNotifier notifier,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -500,6 +287,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Stats Section
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Container(
@@ -515,31 +303,33 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                           EquipmentStatBox(
                             iconPath: 'assets/icons/equipment.svg',
                             label: 'Total Equipment',
-                            count: _equipmentStats['totalEquipment'].toString(),
+                            count: state.equipmentStats['totalEquipment']
+                                .toString(),
                             backgroundColor: statboxColor,
                           ),
                           EquipmentStatBox(
                             label: 'Excellent Condition',
-                            count: _equipmentStats['excellentCount'].toString(),
+                            count: state.equipmentStats['excellentCount']
+                                .toString(),
                             iconPath: 'assets/icons/excellent.svg',
                             backgroundColor: statboxColor,
                           ),
                           EquipmentStatBox(
-                            label: 'Good    Condition',
-                            count: _equipmentStats['goodCount'].toString(),
+                            label: 'Good   Condition',
+                            count: state.equipmentStats['goodCount'].toString(),
                             iconPath: 'assets/icons/good.svg',
                             backgroundColor: statboxColor,
                           ),
                           EquipmentStatBox(
                             label: 'Needs Attention',
-                            count: _equipmentStats['needsRepairCount']
+                            count: state.equipmentStats['needsRepairCount']
                                 .toString(),
                             iconPath: 'assets/icons/attention.svg',
                             backgroundColor: statboxColor,
                           ),
                           EquipmentStatBox(
                             label: 'Recent Maintenance',
-                            count: _equipmentStats['outOfServiceCount']
+                            count: state.equipmentStats['outOfServiceCount']
                                 .toString(),
                             iconPath: 'assets/icons/maintenance.svg',
                             backgroundColor: statboxColor,
@@ -551,6 +341,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
                   const SizedBox(height: 24),
 
+                  // Header with Add Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -570,7 +361,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                             widget.loggedInUser.role == 'SuperAdmin') ...[
                           ElevatedButton.icon(
                             onPressed: () async {
-                              final newEquipment = await Navigator.push(
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => AddEquipmentScreen(
@@ -579,14 +370,9 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                 ),
                               );
 
-                              if (newEquipment != null &&
-                                  newEquipment is Equipment) {
-                                await _fetchEquipment();
-                                await _fetchAllEquipment();
-                                await _fetchEquipmentStats();
-                                setState(() {
-                                  _currentPage = 0;
-                                });
+                              if (result == 'refresh') {
+                                // Force refresh the main data
+                                notifier.forceRefresh();
                               }
                             },
                             icon: SvgPicture.asset(
@@ -617,7 +403,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
                   const SizedBox(height: 10),
 
-                  _isLoading
+                  // Data Table Section
+                  state.isLoading
                       ? Container(
                           height: 300,
                           alignment: Alignment.center,
@@ -638,6 +425,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                               controller: _horizontalScrollController,
                               child: Column(
                                 children: [
+                                  // Filter Row
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
@@ -648,7 +436,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                           _nameFilterController,
                                           'Search Name',
                                         ),
-
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _categoryFilterController,
@@ -659,16 +446,13 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                           _purchasePriceFilterController,
                                           'Search Price',
                                         ),
-
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _purchaseDateFilterController,
                                           'Search Date(MM/dd/yyyy)',
                                         ),
-
                                         const SizedBox(width: 8),
-                                        _buildConditionDropdown(),
-
+                                        _buildConditionDropdown(notifier),
                                         const SizedBox(width: 8),
                                         _buildFilterField(
                                           _locationFilterController,
@@ -684,10 +468,40 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                           _levelFilterController,
                                           'Search Level Name',
                                         ),
+                                        const SizedBox(width: 8),
+                                        // Clear Filter Button
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            _nameFilterController.clear();
+                                            _categoryFilterController.clear();
+                                            _purchaseDateFilterController
+                                                .clear();
+                                            _purchasePriceFilterController
+                                                .clear();
+                                            _locationFilterController.clear();
+                                            _descriptionFilterController
+                                                .clear();
+                                            _levelFilterController.clear();
+                                            setState(() {
+                                              _conditionFilter =
+                                                  'All Conditions';
+                                            });
+                                            notifier.clearFilters();
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.grey,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                          ),
+                                          child: const Text('Clear Filter'),
+                                        ),
                                       ],
                                     ),
                                   ),
 
+                                  // Data Table
                                   Stack(
                                     children: [
                                       ConstrainedBox(
@@ -827,7 +641,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                                 ),
                                               ),
                                             ],
-                                            rows: displayedEquipment.isEmpty
+                                            rows:
+                                                notifier
+                                                    .displayedEquipment
+                                                    .isEmpty
                                                 ? [
                                                     DataRow(
                                                       cells: List.generate(
@@ -838,13 +655,13 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                                       ),
                                                     ),
                                                   ]
-                                                : displayedEquipment
+                                                : notifier.displayedEquipment
                                                       .map(_buildDataRow)
                                                       .toList(),
                                           ),
                                         ),
                                       ),
-                                      if (displayedEquipment.isEmpty)
+                                      if (notifier.displayedEquipment.isEmpty)
                                         Positioned(
                                           left: 426,
                                           top: 120,
@@ -869,6 +686,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 10),
+
+                                  // Pagination Controls
                                   Align(
                                     alignment: Alignment.bottomLeft,
                                     child: Row(
@@ -876,7 +695,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                           MainAxisAlignment.start,
                                       children: [
                                         ElevatedButton.icon(
-                                          onPressed: _previousPage,
+                                          onPressed: () =>
+                                              notifier.previousPage(),
                                           icon: const Icon(Icons.arrow_back),
                                           label: const Text('Previous'),
                                           style: ElevatedButton.styleFrom(
@@ -894,7 +714,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                         ),
                                         const SizedBox(width: 16),
                                         Text(
-                                          'Page ${_currentPage + 1}',
+                                          'Page ${state.currentPage + 1}',
                                           style: GoogleFonts.inter(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
@@ -902,7 +722,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                         ),
                                         const SizedBox(width: 16),
                                         ElevatedButton.icon(
-                                          onPressed: _nextPage,
+                                          onPressed: () => notifier.nextPage(),
                                           icon: const Icon(Icons.arrow_forward),
                                           label: const Text('Next'),
                                           style: ElevatedButton.styleFrom(
@@ -948,11 +768,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                             ],
                                           ),
                                           child: DropdownButton<int>(
-                                            value: _pageSize,
+                                            value: state.pageSize,
                                             underline: const SizedBox(),
                                             dropdownColor:
                                                 Colors.deepPurple.shade600,
-                                            icon: Icon(
+                                            icon: const Icon(
                                               Icons.arrow_drop_down,
                                               color: Colors.white,
                                             ),
@@ -968,7 +788,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                                   mainAxisSize:
                                                       MainAxisSize.min,
                                                   children: [
-                                                    Icon(
+                                                    const Icon(
                                                       Icons.table_rows,
                                                       size: 16,
                                                       color: Colors.white,
@@ -995,7 +815,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                                   mainAxisSize:
                                                       MainAxisSize.min,
                                                   children: [
-                                                    Icon(
+                                                    const Icon(
                                                       Icons.view_list,
                                                       size: 16,
                                                       color: Colors.white,
@@ -1016,15 +836,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                             },
                                             onChanged: (value) {
                                               if (value != null) {
-                                                setState(() {
-                                                  _pageSize = value;
-                                                  _currentPage = 0;
-                                                });
-                                                if (_isFiltering) {
-                                                  _applySearchFilter();
-                                                } else {
-                                                  _fetchEquipment();
-                                                }
+                                                notifier.changePageSize(value);
                                               }
                                             },
                                           ),
@@ -1039,20 +851,16 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                         ),
                   const SizedBox(height: 20),
 
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      color: Colors.transparent,
-                      child: Center(
-                        child: Text(
-                          '© 2025 All rights reserved. Church CRM System',
-                          style: GoogleFonts.inter(
-                            color: Colors.grey[600],
-                            fontSize: 13,
-                          ),
+                  // Footer
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    color: Colors.transparent,
+                    child: Center(
+                      child: Text(
+                        '© 2025 All rights reserved. Church CRM System',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey[600],
+                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -1067,12 +875,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  Widget _buildConditionDropdown() {
+  Widget _buildConditionDropdown(EquipmentNotifier notifier) {
     return SizedBox(
       width: 210,
       height: 40,
       child: DropdownButtonFormField<String>(
-        initialValue: _conditionFilter,
+        value: _conditionFilter,
         onChanged: (value) {
           setState(() {
             _conditionFilter = value!;
@@ -1095,7 +903,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: _getConditionDotColor(condition),
+                        color: notifier.getConditionDotColor(condition),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -1125,7 +933,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _getConditionDotColor(condition),
+                    color: notifier.getConditionDotColor(condition),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1134,7 +942,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   condition,
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: _getConditionTextColor(condition),
+                    color: notifier.getConditionTextColor(condition),
                   ),
                 ),
               ],
@@ -1144,7 +952,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         dropdownColor: backgroundcolor,
         decoration: InputDecoration(
           filled: true,
-          fillColor: _getConditionBackgroundColor(_conditionFilter),
+          fillColor: notifier.getConditionBackgroundColor(_conditionFilter),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 8,
@@ -1160,11 +968,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
   Widget _buildFilterField(TextEditingController controller, String hint) {
     return SizedBox(
-      width: 220, // Increased width for better usability
+      width: 220,
       height: 40,
       child: TextField(
         controller: controller,
-        onChanged: (_) => _onFilterChanged(),
         style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
         decoration: InputDecoration(
           hintText: hint,
@@ -1184,52 +991,16 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // Color methods for conditions
-  Color _getConditionBackgroundColor(String condition) {
-    switch (condition) {
-      case 'Excellent':
-        return Colors.green.shade50;
-      case 'Good':
-        return Colors.blue.shade50;
-      case 'Needs Repair':
-        return Colors.orange.shade50;
-      case 'Out of Service':
-        return Colors.red.shade50;
-      case 'All Conditions':
-      default:
-        return Colors.white;
-    }
+  String _formatNumberForDisplay(double value) {
+    final formatted = _formatNumberWithCommas(value);
+    return formatted;
   }
 
-  Color _getConditionDotColor(String condition) {
-    switch (condition) {
-      case 'Excellent':
-        return Colors.green;
-      case 'Good':
-        return Colors.blue;
-      case 'Needs Repair':
-        return Colors.orange;
-      case 'Out of Service':
-        return Colors.red;
-      case 'All Conditions':
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _getConditionTextColor(String condition) {
-    switch (condition) {
-      case 'Excellent':
-        return Colors.green.shade800;
-      case 'Good':
-        return Colors.blue.shade800;
-      case 'Needs Repair':
-        return Colors.orange.shade800;
-      case 'Out of Service':
-        return Colors.red.shade800;
-      case 'All Conditions':
-      default:
-        return Colors.grey.shade800;
+  String _formatNumberWithCommas(double value) {
+    if (value % 1 == 0) {
+      return NumberFormat('#,##0').format(value);
+    } else {
+      return NumberFormat('#,##0.00').format(value);
     }
   }
 }
