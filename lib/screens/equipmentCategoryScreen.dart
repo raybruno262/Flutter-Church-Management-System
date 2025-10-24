@@ -114,6 +114,7 @@ class _EquipmentCategoryScreenState
     final isDesktop = Responsive.isDesktop(context);
 
     // This will force the UI to rebuild when refreshTrigger changes
+    // ignore: unused_local_variable
     final refreshTrigger = state.refreshTrigger;
 
     return Scaffold(

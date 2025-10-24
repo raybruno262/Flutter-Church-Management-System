@@ -102,12 +102,14 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
       state = state.copyWith(
         equipmentCategories: equipmentCategories,
         error: null,
+        refreshTrigger: state.refreshTrigger + 1, // Force UI update
       );
-
-      // AUTO-SYNC STATS: Update stats count based on actual data length
-      _syncStatsWithTableData();
     } catch (e) {
-      state = state.copyWith(error: 'Failed to load equipment categories');
+      state = state.copyWith(
+        error: 'Failed to load equipment categories',
+        refreshTrigger:
+            state.refreshTrigger + 1, // Force UI update even on error
+      );
     }
   }
 
@@ -119,12 +121,17 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
       state = state.copyWith(
         allEquipmentCategories: allEquipmentCategories,
         error: null,
+        refreshTrigger: state.refreshTrigger + 1, // Force UI update
       );
 
       // AUTO-SYNC STATS: Update stats when all data is loaded
       _syncStatsWithTableData();
     } catch (e) {
-      state = state.copyWith(error: 'Failed to load all equipment categories');
+      state = state.copyWith(
+        error: 'Failed to load all equipment categories',
+        refreshTrigger:
+            state.refreshTrigger + 1, // Force UI update even on error
+      );
     }
   }
 
@@ -133,26 +140,34 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
     try {
       final count = await _controller.getEquipmentCategoryCount();
       // Force immediate update of stats count
-      state = state.copyWith(equipmentCategoryCount: count);
+      state = state.copyWith(
+        equipmentCategoryCount: count,
+        refreshTrigger: state.refreshTrigger + 1, // Force UI update
+      );
     } catch (e) {
       // Ensure stats show 0 on error
-      state = state.copyWith(equipmentCategoryCount: 0);
+      state = state.copyWith(
+        equipmentCategoryCount: 0,
+        refreshTrigger:
+            state.refreshTrigger + 1, // Force UI update even on error
+      );
     }
   }
 
-  // NEW METHOD: Auto-sync stats with table data
+  // FIXED METHOD: Auto-sync stats with table data
   void _syncStatsWithTableData() {
-    // Calculate actual count from the data we have
-    final actualCount = state.isFiltering
-        ? state.filteredEquipmentCategories.length
-        : state.allEquipmentCategories.isNotEmpty
-        ? state.allEquipmentCategories.length
-        : state.equipmentCategories.length;
-
-    // Update stats if different from current count
-    if (actualCount != state.equipmentCategoryCount) {
-      state = state.copyWith(equipmentCategoryCount: actualCount);
+    // Only sync stats with table data when filtering or when we have all data
+    // Don't override the actual count from API during initial load
+    if (state.isFiltering) {
+      final filteredCount = state.filteredEquipmentCategories.length;
+      if (filteredCount != state.equipmentCategoryCount) {
+        state = state.copyWith(
+          equipmentCategoryCount: filteredCount,
+          refreshTrigger: state.refreshTrigger + 1, // Force UI update
+        );
+      }
     }
+    // Don't sync with paginated data - keep the actual count from _fetchEquipmentCategoryCount()
   }
 
   // Handle filter changes - OPTIMIZED
@@ -164,10 +179,18 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
         isFiltering: false,
         currentPage: 0,
         searchQuery: '',
+        refreshTrigger: state.refreshTrigger + 1, // Force UI update
       );
       await _fetchEquipmentCategories();
+
+      // RESTORE ACTUAL COUNT when clearing filter
+      await _fetchEquipmentCategoryCount();
     } else {
-      state = state.copyWith(isFiltering: true, searchQuery: nameQuery);
+      state = state.copyWith(
+        isFiltering: true,
+        searchQuery: nameQuery,
+        refreshTrigger: state.refreshTrigger + 1, // Force UI update
+      );
 
       // Only fetch all data if we don't have it yet
       if (state.allEquipmentCategories.isEmpty) {
@@ -195,6 +218,7 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
       filteredEquipmentCategories: filtered,
       currentPage: 0,
       searchQuery: nameQuery,
+      refreshTrigger: state.refreshTrigger + 1, // Force UI update
     );
 
     // AUTO-SYNC STATS after applying filter
@@ -203,7 +227,10 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
 
   // Update search query for instant filtering
   void updateSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query);
+    state = state.copyWith(
+      searchQuery: query,
+      refreshTrigger: state.refreshTrigger + 1, // Force UI update
+    );
 
     // Apply filter immediately without API call
     if (state.isFiltering && state.allEquipmentCategories.isNotEmpty) {
@@ -255,6 +282,7 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
         equipmentCategoryCount: 0, // Reset stats to 0 immediately
         isLoading: false,
         error: null,
+        refreshTrigger: state.refreshTrigger + 1, // Force UI update
       );
 
       // Now fetch ALL fresh data from the database
@@ -268,11 +296,12 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
       if (state.isFiltering && state.searchQuery.isNotEmpty) {
         _applySearchFilter(state.searchQuery);
       }
-
-      // Force UI refresh by updating refresh trigger
-      state = state.copyWith(refreshTrigger: state.refreshTrigger + 1);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to refresh data');
+      state = state.copyWith(
+        error: 'Failed to refresh data',
+        refreshTrigger:
+            state.refreshTrigger + 1, // Force UI update even on error
+      );
     }
   }
 
@@ -287,7 +316,10 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
         await _refreshAllData();
       } else {
         // Even if count is same, ensure stats are synced
-        state = state.copyWith(equipmentCategoryCount: currentCount);
+        state = state.copyWith(
+          equipmentCategoryCount: currentCount,
+          refreshTrigger: state.refreshTrigger + 1, // Force UI update
+        );
       }
     } catch (e) {
       // Silently fail - this is just a background check
@@ -300,17 +332,24 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
     await _refreshAllData();
   }
 
-  // Change page
+  // Change page - UPDATED FOR SMOOTH PAGINATION
   Future<void> changePage(int newPage) async {
-    state = state.copyWith(currentPage: newPage);
+    state = state.copyWith(
+      currentPage: newPage,
+      refreshTrigger: state.refreshTrigger + 1, // Force immediate UI update
+    );
     if (!state.isFiltering) {
       await _fetchEquipmentCategories();
     }
   }
 
-  // Change page size
+  // Change page size - UPDATED FOR SMOOTH PAGINATION
   Future<void> changePageSize(int newSize) async {
-    state = state.copyWith(pageSize: newSize, currentPage: 0);
+    state = state.copyWith(
+      pageSize: newSize,
+      currentPage: 0,
+      refreshTrigger: state.refreshTrigger + 1, // Force immediate UI update
+    );
     if (state.isFiltering) {
       _applySearchFilter(state.searchQuery);
     } else {
@@ -318,10 +357,18 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
     }
   }
 
-  // Clear filters
+  // Clear filters - UPDATED FOR SMOOTH PAGINATION
   Future<void> clearFilters() async {
-    state = state.copyWith(isFiltering: false, searchQuery: '', currentPage: 0);
+    state = state.copyWith(
+      isFiltering: false,
+      searchQuery: '',
+      currentPage: 0,
+      refreshTrigger: state.refreshTrigger + 1, // Force immediate UI update
+    );
     await _fetchEquipmentCategories();
+
+    // RESTORE ACTUAL COUNT when clearing filters
+    await _fetchEquipmentCategoryCount();
   }
 
   // Refresh data - PUBLIC METHOD
@@ -346,7 +393,7 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
     }
   }
 
-  // Next page
+  // Next page - UPDATED FOR SMOOTH PAGINATION
   Future<void> nextPage() async {
     if (state.isFiltering) {
       if ((state.currentPage + 1) * state.pageSize <
@@ -354,15 +401,44 @@ class EquipmentCategoryNotifier extends StateNotifier<EquipmentCategoryState> {
         await changePage(state.currentPage + 1);
       }
     } else {
-      await changePage(state.currentPage + 1);
+      // Check if there are more pages available
+      if ((state.currentPage + 1) * state.pageSize <
+          state.equipmentCategoryCount) {
+        await changePage(state.currentPage + 1);
+      }
     }
   }
 
-  // Previous page
+  // Previous page - UPDATED FOR SMOOTH PAGINATION
   Future<void> previousPage() async {
     if (state.currentPage > 0) {
       await changePage(state.currentPage - 1);
     }
+  }
+
+  // NEW: Get total pages for pagination info
+  int get totalPages {
+    if (state.isFiltering) {
+      return (state.filteredEquipmentCategories.length / state.pageSize).ceil();
+    } else {
+      return (state.equipmentCategoryCount / state.pageSize).ceil();
+    }
+  }
+
+  // NEW: Check if next page is available
+  bool get hasNextPage {
+    if (state.isFiltering) {
+      return (state.currentPage + 1) * state.pageSize <
+          state.filteredEquipmentCategories.length;
+    } else {
+      return (state.currentPage + 1) * state.pageSize <
+          state.equipmentCategoryCount;
+    }
+  }
+
+  // NEW: Check if previous page is available
+  bool get hasPreviousPage {
+    return state.currentPage > 0;
   }
 }
 
