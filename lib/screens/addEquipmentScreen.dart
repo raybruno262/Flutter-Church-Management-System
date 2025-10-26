@@ -1,31 +1,40 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
+import 'package:flutter_churchcrm_system/controller/equipment_controller.dart';
+
+import 'package:flutter_churchcrm_system/controller/level_controller.dart';
 import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
 import 'package:flutter_churchcrm_system/model/equipment_model.dart';
+
 import 'package:flutter_churchcrm_system/model/level_model.dart';
-import 'package:flutter_churchcrm_system/model/user_model.dart';
-import 'package:flutter_churchcrm_system/provider/addEquipment_provider.dart';
 import 'package:flutter_churchcrm_system/screens/equipmentCategoryScreen.dart';
+
+import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+
+import 'package:flutter/material.dart';
+
+import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+
+import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
+
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_datepicker/datepicker.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AddEquipmentScreen extends ConsumerStatefulWidget {
+class AddEquipmentScreen extends StatefulWidget {
   final UserModel loggedInUser;
 
   const AddEquipmentScreen({super.key, required this.loggedInUser});
 
   @override
-  ConsumerState<AddEquipmentScreen> createState() => _AddEquipmentScreenState();
+  State<AddEquipmentScreen> createState() => _AddEquipmentScreenState();
 }
 
-class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
+class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  List<EquipmentCategory> _equipmentCategories = [];
   EquipmentCategory? _selectedEquipmentCategory;
   final _purchaseDateController = TextEditingController();
   DateTime? _purchaseDate;
@@ -33,12 +42,24 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
   String? _condition;
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final LevelController _levelController = LevelController();
+  List<Level> _cells = [];
   Level? _equipmentselectedSuperAdminCell;
+  final EquipmentCategoryController _equipmentCatController =
+      EquipmentCategoryController();
+  final EquipmentController _equipmentController = EquipmentController();
+
+  bool _isLoading = false;
+
+  // Message state variables
+  String? _message;
+  bool _isSuccess = false;
 
   @override
   void initState() {
     super.initState();
-    // Data is now loaded by the provider automatically
+    _loadEquipmentCategories();
+    _loadCells();
   }
 
   @override
@@ -48,7 +69,23 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
     _priceController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
+
     super.dispose();
+  }
+
+  Future<void> _loadCells() async {
+    final cells = await _levelController.getAllCells();
+    if (mounted) {
+      setState(() => _cells = cells);
+    }
+  }
+
+  Future<void> _loadEquipmentCategories() async {
+    final equipmentCategory = await _equipmentCatController
+        .getAllEquipmentCategories();
+    if (mounted) {
+      setState(() => _equipmentCategories = equipmentCategory);
+    }
   }
 
   void _clearEquipmentForm() {
@@ -68,26 +105,33 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
       _selectedEquipmentCategory = null;
       _equipmentselectedSuperAdminCell = null;
     });
-
-    // Clear form in provider
-    ref.read(addEquipmentProvider.notifier).clearForm();
   }
 
   Future<void> _submitEquipment() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final state = ref.read(addEquipmentProvider);
-    final notifier = ref.read(addEquipmentProvider.notifier);
+    setState(() {
+      _message = null;
+      _isSuccess = false;
+    });
 
     // Validate name
     final name = _nameController.text.trim();
     if (name.isEmpty) {
+      setState(() {
+        _message = 'Please enter equipment name';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate category
     if (_selectedEquipmentCategory == null ||
         _selectedEquipmentCategory!.equipmentCategoryId == null) {
+      setState(() {
+        _message = 'Please select a valid equipment category';
+        _isSuccess = false;
+      });
       return;
     }
 
@@ -95,33 +139,57 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
     final priceText = _priceController.text.trim();
     final price = double.tryParse(priceText);
     if (price == null || price < 0) {
+      setState(() {
+        _message = 'Please enter a valid purchase price';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate purchase date
     if (_purchaseDate != null && _purchaseDate!.isAfter(DateTime.now())) {
+      setState(() {
+        _message = 'Purchase date cannot be in the future';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate condition
     if (_condition == null) {
+      setState(() {
+        _message = 'Please select equipment condition';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate location
     final location = _locationController.text.trim();
     if (location.isEmpty) {
+      setState(() {
+        _message = 'Please enter equipment location';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate description
     final description = _descriptionController.text.trim();
     if (description.isEmpty) {
+      setState(() {
+        _message = 'Please enter equipment description';
+        _isSuccess = false;
+      });
       return;
     }
 
     // Validate user ID
     if (widget.loggedInUser.userId == null) {
+      setState(() {
+        _message = 'User session expired. Please log in again.';
+        _isSuccess = false;
+      });
       return;
     }
 
@@ -131,43 +199,92 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
         : widget.loggedInUser.level;
 
     if (level == null || level.levelId == null) {
+      setState(() {
+        _message = widget.loggedInUser.role == 'SuperAdmin'
+            ? 'Please select a cell for this equipment'
+            : 'You are not allowed to add equipment';
+        _isSuccess = false;
+      });
       return;
     }
 
-    // Use provider to add equipment
-    final result = await notifier.addEquipment(
-      name: name,
-      equipmentCategory: _selectedEquipmentCategory!,
-      purchaseDate: _purchaseDate != null
-          ? DateFormat('yyyy-MM-dd').format(_purchaseDate!)
-          : DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    try {
+      final equipment = Equipment(
+        name: name,
+        equipmentCategory: _selectedEquipmentCategory!,
+        purchaseDate: _purchaseDate != null
+            ? DateFormat('yyyy-MM-dd').format(_purchaseDate!)
+            : DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        purchasePrice: price,
+        condition: _condition!,
+        location: location,
+        description: description,
+        level: level,
+      );
 
-      purchasePrice: price,
-      condition: _condition!,
-      location: location,
-      description: description,
-      level: level,
-      userId: widget.loggedInUser.userId!,
-    );
+      final result = await _equipmentController.createEquipment(
+        equipment,
+        widget.loggedInUser.userId!,
+      );
 
-    // If successful, clear the form
-    if (result == 'Status 1000') {
-      _clearEquipmentForm();
+      setState(() => _isLoading = false);
+
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Equipment saved successfully!';
+            _isSuccess = true;
+            _clearEquipmentForm();
+          });
+          break;
+        case 'Status 3000':
+          setState(() {
+            _message = 'Invalid equipment data';
+            _isSuccess = false;
+          });
+          break;
+        case 'Status 4000':
+          setState(() {
+            _message = 'User not found. Please log in again.';
+            _isSuccess = false;
+          });
+          break;
+        case 'Status 6000':
+          setState(() {
+            _message = 'You are not authorized to create equipment records.';
+            _isSuccess = false;
+          });
+          break;
+        case 'Status 2000':
+          setState(() {
+            _message = 'Server error. Please try again later.';
+            _isSuccess = false;
+          });
+          break;
+        default:
+          setState(() {
+            _message = 'Unexpected error';
+            _isSuccess = false;
+          });
+          break;
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _message = 'Network error. Please check your connection and try again.';
+        _isSuccess = false;
+      });
+      print('Error submitting equipment');
+    } finally {
+      if (mounted && _isLoading) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(addEquipmentProvider);
-    final notifier = ref.read(addEquipmentProvider.notifier);
     final isDesktop = Responsive.isDesktop(context);
-
-    // Auto-clear form when provider indicates it should be cleared
-    if (state.isFormCleared) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _clearEquipmentForm();
-      });
-    }
 
     return Scaffold(
       drawer: !isDesktop
@@ -197,7 +314,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildAddEquipmentScreen(state, notifier),
+                child: _buildAddEquipmentScreen(),
               ),
             ),
           ],
@@ -206,10 +323,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildAddEquipmentScreen(
-    AddEquipmentState state,
-    AddEquipmentNotifier notifier,
-  ) {
+  Widget _buildAddEquipmentScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -226,7 +340,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                   children: [
                     Center(
                       child: Text(
-                        "Add Equipment",
+                        "Add Equipment ",
                         style: GoogleFonts.inter(
                           color: titlepageColor,
                           fontSize: 20,
@@ -237,7 +351,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                     const SizedBox(height: 16),
 
                     // Message Container
-                    if (state.message != null)
+                    if (_message != null)
                       Center(
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -250,9 +364,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: state.isSuccess
-                                  ? Colors.green
-                                  : Colors.red,
+                              color: _isSuccess ? Colors.green : Colors.red,
                               width: 1.2,
                             ),
                           ),
@@ -260,10 +372,8 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                state.isSuccess
-                                    ? Icons.check_circle
-                                    : Icons.error,
-                                color: state.isSuccess
+                                _isSuccess ? Icons.check_circle : Icons.error,
+                                color: _isSuccess
                                     ? Colors.green.shade800
                                     : Colors.red.shade800,
                                 size: 18,
@@ -271,9 +381,9 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  state.message!,
+                                  _message!,
                                   style: GoogleFonts.inter(
-                                    color: state.isSuccess
+                                    color: _isSuccess
                                         ? Colors.green.shade800
                                         : Colors.red.shade800,
                                     fontSize: 13,
@@ -316,20 +426,12 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                           'Name',
                           _nameController,
                           readOnly: false,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter equipment name';
-                            }
-                            return null;
-                          },
                         ),
                         _buildEquipmentCategoryDropdown(
                           'Equipment Category',
                           _selectedEquipmentCategory,
                           (dept) =>
                               setState(() => _selectedEquipmentCategory = dept),
-                          equipmentCategories: state.equipmentCategories,
-                          notifier: notifier,
                         ),
                         _buildDatePickerField(
                           context,
@@ -343,20 +445,11 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                           }),
                           _purchaseDate,
                         ),
+
                         _buildTextField(
                           'Price',
                           _priceController,
                           readOnly: false,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter purchase price';
-                            }
-                            final price = double.tryParse(value);
-                            if (price == null || price < 0) {
-                              return 'Please enter a valid price';
-                            }
-                            return null;
-                          },
                         ),
                         _buildDropdown(
                           'Condition',
@@ -368,35 +461,18 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                           ],
                           _condition,
                           (val) => setState(() => _condition = val),
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Please select condition';
-                            }
-                            return null;
-                          },
                         ),
                         _buildTextField(
                           'Location',
                           _locationController,
                           readOnly: false,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter location';
-                            }
-                            return null;
-                          },
                         ),
                         _buildTextField(
                           'Description',
                           _descriptionController,
                           readOnly: false,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter description';
-                            }
-                            return null;
-                          },
                         ),
+
                         if (widget.loggedInUser.role == 'SuperAdmin') ...[
                           _buildEquipmentSuperAdminCellDropdown(
                             'Select Cell',
@@ -404,13 +480,6 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                             (cell) => setState(
                               () => _equipmentselectedSuperAdminCell = cell,
                             ),
-                            cells: state.cells,
-                            validator: (value) {
-                              if (value == null) {
-                                return 'Please select a cell';
-                              }
-                              return null;
-                            },
                           ),
                         ],
                       ],
@@ -420,7 +489,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
 
                     /// Save Button
                     Center(
-                      child: state.isLoading
+                      child: _isLoading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
                               onPressed: _submitEquipment,
@@ -436,7 +505,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
                                 ),
                               ),
                               child: Text(
-                                "Save",
+                                "Save ",
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -457,14 +526,12 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
     String label,
     TextEditingController controller, {
     required bool readOnly,
-    String? Function(String?)? validator,
   }) {
     return SizedBox(
       width: 300,
       child: TextFormField(
         controller: controller,
         readOnly: readOnly,
-        validator: validator,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -480,16 +547,13 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
 
   Widget _buildEquipmentSuperAdminCellDropdown(
     String label,
-    Level? selectedSuperAdminCell,
-    void Function(Level?) onChanged, {
-    required List<Level> cells,
-    String? Function(Level?)? validator,
-  }) {
+    Level? _selectedSuperAdminCell,
+    void Function(Level?) onChanged,
+  ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: selectedSuperAdminCell,
-        validator: validator,
+        value: _selectedSuperAdminCell,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -499,13 +563,14 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
             vertical: 10,
           ),
         ),
-        items: cells.map((cell) {
+        items: _cells.map((cell) {
           return DropdownMenuItem<Level>(
             value: cell,
             child: Text(cell.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,
+
         menuMaxHeight: 250,
       ),
     );
@@ -515,14 +580,12 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
     String label,
     List<String> items,
     String? selectedValue,
-    void Function(String?) onChanged, {
-    String? Function(String?)? validator,
-  }) {
+    void Function(String?) onChanged,
+  ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
         value: selectedValue,
-        validator: validator,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -543,10 +606,8 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
   Widget _buildEquipmentCategoryDropdown(
     String label,
     EquipmentCategory? selectedEquipmentCategory,
-    void Function(EquipmentCategory?) onChanged, {
-    required List<EquipmentCategory> equipmentCategories,
-    required AddEquipmentNotifier notifier,
-  }) {
+    void Function(EquipmentCategory?) onChanged,
+  ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
@@ -565,7 +626,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
             value: 'none',
             child: Text('Select Equipment Category'),
           ),
-          ...equipmentCategories.map((equipmentCategory) {
+          ..._equipmentCategories.map((equipmentCategory) {
             return DropdownMenuItem<String>(
               value: equipmentCategory.equipmentCategoryId,
               child: Text(equipmentCategory.name),
@@ -583,17 +644,16 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
               ),
             );
             if (result != null) {
-              // Refresh categories after adding new one
-              notifier.refreshEquipmentCategories();
+              await _loadEquipmentCategories();
             }
           } else if (selectedId == 'none') {
             setState(() {
               _selectedEquipmentCategory = null;
             });
           } else {
-            final dept = equipmentCategories.firstWhere(
+            final dept = _equipmentCategories.firstWhere(
               (d) => d.equipmentCategoryId == selectedId,
-              orElse: () => equipmentCategories.first,
+              orElse: () => _equipmentCategories.first,
             );
             setState(() {
               _selectedEquipmentCategory = dept;
@@ -601,6 +661,7 @@ class _AddEquipmentScreenState extends ConsumerState<AddEquipmentScreen> {
             onChanged(dept);
           }
         },
+
         menuMaxHeight: 250,
       ),
     );

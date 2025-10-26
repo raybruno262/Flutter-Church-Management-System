@@ -1,89 +1,176 @@
-// screens/equipment_category_screen.dart
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_churchcrm_system/provider/addEquipmentCategory_provider.dart';
-
-import 'package:flutter_churchcrm_system/provider/equipmentCategory_provider.dart';
-import 'package:flutter_churchcrm_system/provider/updateEquipmentCategory_provider.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_churchcrm_system/Widgets/statBoxWidget.dart';
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
+import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
+
 import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
+
 import 'package:flutter_churchcrm_system/model/user_model.dart';
+
 import 'package:flutter_churchcrm_system/screens/addEquipmentCategory.dart';
 import 'package:flutter_churchcrm_system/screens/updateEquipmentCategoryScreen.dart';
+
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class EquipmentCategoryScreen extends ConsumerStatefulWidget {
+class EquipmentCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
 
   const EquipmentCategoryScreen({super.key, required this.loggedInUser});
 
   @override
-  ConsumerState<EquipmentCategoryScreen> createState() =>
+  State<EquipmentCategoryScreen> createState() =>
       _EquipmentCategoryScreenState();
 }
 
-class _EquipmentCategoryScreenState
-    extends ConsumerState<EquipmentCategoryScreen> {
+class _EquipmentCategoryScreenState extends State<EquipmentCategoryScreen> {
+  final EquipmentCategoryController _equipmentCategoryController =
+      EquipmentCategoryController();
+
+  int _equipmentCategoryCount = 0;
   final _nameFilterController = TextEditingController();
   final ScrollController _horizontalScrollController = ScrollController();
-  final List<int> _pageSizeOptions = [5, 10, 15, 20];
-  Timer? _debounceTimer;
+  int _currentPage = 0;
 
+  int _pageSize = 5;
+  List<EquipmentCategory> _equipmentCategories = [];
+  List<EquipmentCategory> _allEquipmentCategories = [];
+  // ignore: unused_field
+  List<EquipmentCategory> _filteredEquipmentCategories = [];
   @override
   void initState() {
     super.initState();
-    _nameFilterController.addListener(_onFilterChanged);
+    _fetchEquipmentCategoryCount();
+    _fetchEquipmentCategories();
   }
 
-  void _onFilterChanged() {
-    final nameQuery = _nameFilterController.text;
+  final List<int> _pageSizeOptions = [5, 10, 15, 20];
+  // ignore: unused_field
+  bool _isFiltering = false;
+  bool _isLoading = true;
 
-    // INSTANT response - no loading state
-    ref.read(equipmentCategoryProvider.notifier).updateSearchQuery(nameQuery);
+  Future<void> _fetchEquipmentCategories() async {
+    setState(() => _isLoading = true);
+    final equipmentCategories = await _equipmentCategoryController
+        .getPaginatedEquipmentCategories(page: _currentPage, size: _pageSize);
+    setState(() {
+      _equipmentCategories = equipmentCategories;
+      _filteredEquipmentCategories = _equipmentCategories;
 
-    // Only fetch from API after user stops typing (debounce)
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      if (nameQuery.isNotEmpty) {
-        ref
-            .read(equipmentCategoryProvider.notifier)
-            .handleFilterChange(nameQuery);
-      }
+      _isLoading = false;
     });
   }
 
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    _nameFilterController.dispose();
-    _horizontalScrollController.dispose();
-    super.dispose();
+  void _applySearchFilter() {
+    final nameQuery = _nameFilterController.text.toLowerCase();
+
+    final filtered = _allEquipmentCategories.where((equipmentCategory) {
+      final matchesName = equipmentCategory.name.toLowerCase().contains(
+        nameQuery,
+      );
+
+      return matchesName;
+    }).toList();
+
+    setState(() {
+      _filteredEquipmentCategories = filtered;
+      _currentPage = 0;
+    });
+  }
+
+  Future<void> _fetchAllEquipmentCategories() async {
+    final allEquipmentCategories = await _equipmentCategoryController
+        .getAllEquipmentCategories();
+    setState(() {
+      _allEquipmentCategories = allEquipmentCategories;
+      _isLoading = false;
+    });
+  }
+
+  void _onFilterChanged() async {
+    final isDefaultFilter = _nameFilterController.text.isEmpty;
+
+    if (isDefaultFilter) {
+      _isFiltering = false;
+      _currentPage = 0;
+      await _fetchEquipmentCategories();
+    } else {
+      _isFiltering = true;
+      await _fetchAllEquipmentCategories();
+      _applySearchFilter();
+    }
+  }
+
+  Future<void> _nextPage() async {
+    if (_isFiltering) {
+      if ((_currentPage + 1) * _pageSize <
+          _filteredEquipmentCategories.length) {
+        setState(() => _currentPage++);
+      }
+    } else {
+      setState(() => _currentPage++);
+      await _fetchEquipmentCategories();
+    }
+  }
+
+  Future<void> _previousPage() async {
+    if (_currentPage > 0) {
+      if (_isFiltering) {
+        setState(() => _currentPage--);
+      } else {
+        setState(() => _currentPage--);
+        await _fetchEquipmentCategories();
+      }
+    }
+  }
+
+  List<EquipmentCategory> get displayedDepartments {
+    if (_isFiltering) {
+      if (_filteredEquipmentCategories.isEmpty) return [];
+      final start = _currentPage * _pageSize;
+      final end = start + _pageSize;
+      return _filteredEquipmentCategories.sublist(
+        start,
+        end > _filteredEquipmentCategories.length
+            ? _filteredEquipmentCategories.length
+            : end,
+      );
+    } else {
+      return _equipmentCategories;
+    }
+  }
+
+  // ignore: unused_field
+  bool _isClearing = false;
+
+  Future<void> _fetchEquipmentCategoryCount() async {
+    try {
+      final count = await _equipmentCategoryController
+          .getEquipmentCategoryCount();
+      setState(() {
+        _equipmentCategoryCount = count;
+      });
+    } catch (e) {
+      setState(() {
+        _equipmentCategoryCount = 0;
+      });
+    }
   }
 
   DataRow _buildDataRow(EquipmentCategory equipmentCategory) {
     return DataRow(
       cells: [
         DataCell(Text(equipmentCategory.name, style: GoogleFonts.inter())),
+
         DataCell(
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.edit, color: Colors.blue),
+                icon: Icon(Icons.edit, color: Colors.blue),
                 onPressed: () async {
-                  // Reset the update provider state before navigating
-                  ref
-                      .read(updateEquipmentCategoryProvider.notifier)
-                      .resetState();
-
-                  // Navigate to update screen 
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -94,9 +181,14 @@ class _EquipmentCategoryScreenState
                     ),
                   );
 
-                  if (result == 'refresh') {
-                    // Force refresh the main data
-                    ref.read(equipmentCategoryProvider.notifier).forceRefresh();
+                  if (result != null) {
+                    setState(() {
+                      _currentPage = 0;
+                    });
+
+                    _fetchEquipmentCategories();
+
+                    _fetchEquipmentCategoryCount();
                   }
                 },
               ),
@@ -109,13 +201,7 @@ class _EquipmentCategoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(equipmentCategoryProvider);
-    final notifier = ref.read(equipmentCategoryProvider.notifier);
     final isDesktop = Responsive.isDesktop(context);
-
-    // This will force the UI to rebuild when refreshTrigger changes
-    // ignore: unused_local_variable
-    final refreshTrigger = state.refreshTrigger;
 
     return Scaffold(
       drawer: !isDesktop
@@ -145,7 +231,7 @@ class _EquipmentCategoryScreenState
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildEquipmentCategoryScreen(state, notifier),
+                child: _buildEquipmentCategoryScreen(),
               ),
             ),
           ],
@@ -154,10 +240,7 @@ class _EquipmentCategoryScreenState
     );
   }
 
-  Widget _buildEquipmentCategoryScreen(
-    EquipmentCategoryState state,
-    EquipmentCategoryNotifier notifier,
-  ) {
+  Widget _buildEquipmentCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -181,7 +264,6 @@ class _EquipmentCategoryScreenState
                     ),
                   ),
 
-                  // Back Button - ALWAYS WORKING
                   ElevatedButton.icon(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.arrow_back),
@@ -203,7 +285,6 @@ class _EquipmentCategoryScreenState
                   ),
                   const SizedBox(height: 16),
 
-                  // Stats Section
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Container(
@@ -219,7 +300,7 @@ class _EquipmentCategoryScreenState
                           StatBox(
                             iconPath: 'assets/icons/equipstat.svg',
                             label: 'Total Equipment Categories',
-                            count: state.equipmentCategoryCount.toString(),
+                            count: _equipmentCategoryCount.toString(),
                             backgroundColor: statboxColor,
                           ),
                         ],
@@ -227,7 +308,6 @@ class _EquipmentCategoryScreenState
                     ),
                   ),
 
-                  // Header with Add Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
@@ -241,16 +321,9 @@ class _EquipmentCategoryScreenState
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Spacer(),
-                        // ADD BUTTON 
+                        const Spacer(), // This will create flexible space
                         ElevatedButton.icon(
                           onPressed: () async {
-                            // Reset the add provider state before navigating
-                            ref
-                                .read(addEquipmentCategoryProvider.notifier)
-                                .resetState();
-
-                            // Navigate to add screen - THIS WILL NOW WORK
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -261,11 +334,13 @@ class _EquipmentCategoryScreenState
                               ),
                             );
 
-                            if (result == 'refresh') {
-                              // Force refresh the main data
-                              ref
-                                  .read(equipmentCategoryProvider.notifier)
-                                  .forceRefresh();
+                            if (result != null) {
+                              setState(() {
+                                _currentPage = 0;
+                              });
+
+                              await _fetchEquipmentCategories();
+                              await _fetchEquipmentCategoryCount();
                             }
                           },
                           icon: SvgPicture.asset("assets/icons/equipment.svg"),
@@ -279,8 +354,8 @@ class _EquipmentCategoryScreenState
                             backgroundColor: Colors.deepPurple,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                              horizontal: 16, // Reduced padding
+                              vertical: 12, // Reduced padding
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -293,330 +368,363 @@ class _EquipmentCategoryScreenState
 
                   const SizedBox(height: 10),
 
-                  // Data Table Section
-                  Center(
-                    child: Container(
-                      width: 520,
-                      margin: const EdgeInsets.symmetric(horizontal: 18),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: containerColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Scrollbar(
-                        controller: _horizontalScrollController,
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          controller: _horizontalScrollController,
-                          child: Column(
-                            children: [
-                              // Filter Row
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
+                  _isLoading
+                      ? Center(
+                          child: Container(
+                            height: 300,
+
+                            alignment: Alignment.center,
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : Center(
+                          child: Container(
+                            width: 520,
+                            margin: const EdgeInsets.symmetric(horizontal: 18),
+                            padding: const EdgeInsets.all(12),
+
+                            decoration: BoxDecoration(
+                              color: containerColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+
+                            child: Scrollbar(
+                              controller: _horizontalScrollController,
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                controller: _horizontalScrollController,
+                                child: Column(
                                   children: [
-                                    _buildFilterField(
-                                      _nameFilterController,
-                                      'Search Name',
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // Clear Filter Button
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        _nameFilterController.clear();
-                                        notifier.clearFilters();
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.grey,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                        ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
                                       ),
-                                      child: const Text('Clear Filter'),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+
+                                        children: [
+                                          _buildFilterField(
+                                            _nameFilterController,
+                                            'Search Name',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    Stack(
+                                      children: [
+                                        ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            minHeight: 300,
+                                          ),
+                                          child: SizedBox(
+                                            width: 495,
+
+                                            child: DataTable(
+                                              horizontalMargin: 12,
+                                              dataRowMaxHeight: 56,
+                                              headingRowHeight: 48,
+                                              dividerThickness: 1,
+                                              headingRowColor:
+                                                  WidgetStateProperty.all(
+                                                    Colors.deepPurple,
+                                                  ),
+
+                                              dataRowColor:
+                                                  WidgetStateProperty.all(
+                                                    backgroundcolor,
+                                                  ),
+
+                                              border: TableBorder(
+                                                horizontalInside: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                  width: 1,
+                                                ),
+                                                verticalInside: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                  width: 1,
+                                                ),
+                                                top: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                                bottom: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                                left: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                                right: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                              ),
+                                              columns: [
+                                                DataColumn(
+                                                  label: Text(
+                                                    'Name',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+
+                                                DataColumn(
+                                                  label: Text(
+                                                    'Actions',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+
+                                              rows: displayedDepartments.isEmpty
+                                                  ? [
+                                                      DataRow(
+                                                        cells: List.generate(
+                                                          2,
+                                                          (_) => const DataCell(
+                                                            SizedBox(),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ]
+                                                  : displayedDepartments
+                                                        .map(_buildDataRow)
+                                                        .toList(),
+                                            ),
+                                          ),
+                                        ),
+                                        if (displayedDepartments.isEmpty)
+                                          Positioned(
+                                            left: 126,
+                                            top: 120,
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.search_off,
+                                                  color: Colors.red,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'No Equipment Categories found',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    Positioned(
+                                      left: 426,
+                                      top: 10,
+                                      child: Row(
+                                        children: [
+                                          ElevatedButton.icon(
+                                            onPressed: _previousPage,
+                                            icon: Icon(Icons.arrow_back),
+                                            label: Text('Previous'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.deepPurple,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 20,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Text(
+                                            'Page ${_currentPage + 1}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          ElevatedButton.icon(
+                                            onPressed: _nextPage,
+                                            icon: Icon(Icons.arrow_forward),
+                                            label: Text('Next'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.deepPurple,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 20,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 36),
+                                          // Page size selector
+                                          Container(
+                                            height: 43,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.deepPurple.shade700,
+                                                  Colors.deepPurple.shade500,
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.deepPurple
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: DropdownButton<int>(
+                                              value: _pageSize,
+                                              underline: const SizedBox(),
+                                              dropdownColor:
+                                                  Colors.deepPurple.shade600,
+                                              icon: Icon(
+                                                Icons.arrow_drop_down,
+                                                color: Colors.white,
+                                              ),
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                              items: _pageSizeOptions.map((
+                                                size,
+                                              ) {
+                                                return DropdownMenuItem(
+                                                  value: size,
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.table_rows,
+                                                        size: 16,
+                                                        color: Colors.white,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '$size rows',
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 13,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                              selectedItemBuilder: (context) {
+                                                return _pageSizeOptions.map((
+                                                  size,
+                                                ) {
+                                                  return Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.view_list,
+                                                        size: 16,
+                                                        color: Colors.white,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '$size rows',
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }).toList();
+                                              },
+                                              onChanged: (value) {
+                                                if (value != null) {
+                                                  setState(() {
+                                                    _pageSize = value;
+                                                    _currentPage = 0;
+                                                  });
+                                                  if (_isFiltering) {
+                                                    _applySearchFilter();
+                                                  } else {
+                                                    _fetchEquipmentCategories();
+                                                  }
+                                                }
+                                              },
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 20),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-
-                              // Data Table - This will rebuild when refreshTrigger changes
-                              Stack(
-                                children: [
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      minHeight: 300,
-                                    ),
-                                    child: SizedBox(
-                                      width: 495,
-                                      child: DataTable(
-                                        horizontalMargin: 12,
-                                        dataRowMaxHeight: 56,
-                                        headingRowHeight: 48,
-                                        dividerThickness: 1,
-                                        headingRowColor:
-                                            WidgetStateProperty.all(
-                                              Colors.deepPurple,
-                                            ),
-                                        dataRowColor: WidgetStateProperty.all(
-                                          backgroundcolor,
-                                        ),
-                                        border: TableBorder(
-                                          horizontalInside: BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1,
-                                          ),
-                                          verticalInside: BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1,
-                                          ),
-                                          top: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          bottom: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          left: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          right: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                        columns: [
-                                          DataColumn(
-                                            label: Text(
-                                              'Name',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          DataColumn(
-                                            label: Text(
-                                              'Actions',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        rows:
-                                            notifier
-                                                .displayedEquipmentCategories
-                                                .isEmpty
-                                            ? [
-                                                DataRow(
-                                                  cells: List.generate(
-                                                    2,
-                                                    (_) => const DataCell(
-                                                      SizedBox(),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ]
-                                            : notifier
-                                                  .displayedEquipmentCategories
-                                                  .map(_buildDataRow)
-                                                  .toList(),
-                                      ),
-                                    ),
-                                  ),
-                                  if (notifier
-                                      .displayedEquipmentCategories
-                                      .isEmpty)
-                                    Positioned(
-                                      left: 126,
-                                      top: 120,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.search_off,
-                                            color: Colors.red,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'No Equipment Categories found',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Pagination Controls
-                              Row(
-                                children: [
-                                  ElevatedButton.icon(
-                                    onPressed: () => notifier.previousPage(),
-                                    icon: const Icon(Icons.arrow_back),
-                                    label: const Text('Previous'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.deepPurple,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Text(
-                                    'Page ${state.currentPage + 1}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  ElevatedButton.icon(
-                                    onPressed: () => notifier.nextPage(),
-                                    icon: const Icon(Icons.arrow_forward),
-                                    label: const Text('Next'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.deepPurple,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 36),
-                                  // Page size selector
-                                  Container(
-                                    height: 43,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.deepPurple.shade700,
-                                          Colors.deepPurple.shade500,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.deepPurple.withOpacity(
-                                            0.3,
-                                          ),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: DropdownButton<int>(
-                                      value: state.pageSize,
-                                      underline: const SizedBox(),
-                                      dropdownColor: Colors.deepPurple.shade600,
-                                      icon: const Icon(
-                                        Icons.arrow_drop_down,
-                                        color: Colors.white,
-                                      ),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                      items: _pageSizeOptions.map((size) {
-                                        return DropdownMenuItem(
-                                          value: size,
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.table_rows,
-                                                size: 16,
-                                                color: Colors.white,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                '$size rows',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                      selectedItemBuilder: (context) {
-                                        return _pageSizeOptions.map((size) {
-                                          return Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.view_list,
-                                                size: 16,
-                                                color: Colors.white,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                '$size rows',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList();
-                                      },
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          notifier.changePageSize(value);
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 20),
 
-                  // Footer
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    color: Colors.transparent,
-                    child: Center(
-                      child: Text(
-                        '© 2025 All rights reserved. Church CRM System',
-                        style: GoogleFonts.inter(
-                          color: Colors.grey[600],
-                          fontSize: 13,
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Text(
+                          '© 2025 All rights reserved. Church CRM System',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
@@ -637,6 +745,7 @@ class _EquipmentCategoryScreenState
       height: 40,
       child: TextField(
         controller: controller,
+        onChanged: (_) => _onFilterChanged(),
         style: GoogleFonts.inter(fontSize: 13, color: Colors.black),
         decoration: InputDecoration(
           hintText: hint,

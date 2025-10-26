@@ -1,17 +1,20 @@
-// screens/update_equipment_category_screen.dart
-import 'package:flutter/material.dart';
-import 'package:flutter_churchcrm_system/provider/updateEquipmentCategory_provider.dart';
+import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_churchcrm_system/controller/user_controller.dart';
+
+import 'package:flutter/material.dart';
+
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
+
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
+
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class UpdateEquipmentCategoryScreen extends ConsumerStatefulWidget {
+class UpdateEquipmentCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
   final EquipmentCategory equipmentCategory;
 
@@ -22,53 +25,113 @@ class UpdateEquipmentCategoryScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<UpdateEquipmentCategoryScreen> createState() =>
+  State<UpdateEquipmentCategoryScreen> createState() =>
       _UpdateEquipmentCategoryScreenState();
 }
 
 class _UpdateEquipmentCategoryScreenState
-    extends ConsumerState<UpdateEquipmentCategoryScreen> {
+    extends State<UpdateEquipmentCategoryScreen> {
   final _formKey = GlobalKey<FormState>();
+  final UserController userController = UserController();
+  final EquipmentCategoryController equipmentCategoryController =
+      EquipmentCategoryController();
+  // Controllers
   final _nameController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Set the equipment category in the provider
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(updateEquipmentCategoryProvider.notifier)
-          .setEquipmentCategory(widget.equipmentCategory);
-      _populateExistingData();
-    });
+    _populateExistingData();
   }
+
+  // ignore: unused_field
+  bool _isClearing = false;
+
+  // State variables
+  bool _isLoading = false;
+
+  // Message state variables
+  String? _message;
+  bool _isSuccess = false;
 
   @override
   void dispose() {
     _nameController.dispose();
+
     super.dispose();
   }
 
-  void _populateExistingData() {
+  void _populateExistingData() async {
     _nameController.text = widget.equipmentCategory.name;
   }
 
   Future<void> _updateEquipmentCategory() async {
-    if (_formKey.currentState!.validate()) {
-      await ref
-          .read(updateEquipmentCategoryProvider.notifier)
-          .updateEquipmentCategory(_nameController.text);
+    if (_nameController.text.isEmpty) {
+      setState(() {
+        _message = 'Please enter equipment category name';
+        _isSuccess = false;
+      });
+      return;
     }
-  }
 
-  void _resetForm() {
-    _populateExistingData();
-    ref.read(updateEquipmentCategoryProvider.notifier).clearMessage();
+    final equipmentCategoryName = _nameController.text.trim();
+
+    try {
+      setState(() {
+        _isLoading = true;
+        _message = null;
+      });
+
+      final updatedEquipmentCategory = EquipmentCategory(
+        name: equipmentCategoryName,
+      );
+
+      final result = await equipmentCategoryController.updateEquipmentCategory(
+        widget.equipmentCategory.equipmentCategoryId!,
+        updatedEquipmentCategory,
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (result == 'Status 1000') {
+        setState(() {
+          _message = 'Equipment Category updated successfully!';
+          _isSuccess = true;
+        });
+      } else if (result == 'Status 3000') {
+        setState(() {
+          _message = 'Equipment Category not found';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 5000') {
+        setState(() {
+          _message = 'Equipment Category name already exists';
+          _isSuccess = false;
+        });
+      } else if (result == 'Status 7000') {
+        setState(() {
+          _message = 'Network error';
+          _isSuccess = false;
+        });
+      } else {
+        setState(() {
+          _message = 'Unexpected error: $result';
+          _isSuccess = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _message = 'Error updating Expense Category: $e';
+        _isSuccess = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(updateEquipmentCategoryProvider);
     final isDesktop = Responsive.isDesktop(context);
 
     return Scaffold(
@@ -99,7 +162,7 @@ class _UpdateEquipmentCategoryScreenState
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                child: _buildUpdateEquipmentCategoryScreen(state),
+                child: _buildUpdateEquipmentCategoryScreen(),
               ),
             ),
           ],
@@ -108,9 +171,7 @@ class _UpdateEquipmentCategoryScreenState
     );
   }
 
-  Widget _buildUpdateEquipmentCategoryScreen(
-    UpdateEquipmentCategoryState state,
-  ) {
+  Widget _buildUpdateEquipmentCategoryScreen() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -138,111 +199,54 @@ class _UpdateEquipmentCategoryScreenState
                     const SizedBox(height: 16),
 
                     // Message Container
-                    if (state.message != null)
+                    if (_message != null)
                       Center(
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                            horizontal: 10,
+                            vertical: 6,
                           ),
                           constraints: const BoxConstraints(maxWidth: 600),
                           decoration: BoxDecoration(
-                            color: state.isSuccess
-                                ? Colors.green.shade50
-                                : Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: state.isSuccess
-                                  ? Colors.green.shade300
-                                  : Colors.red.shade300,
-                              width: 1.5,
+                              color: _isSuccess ? Colors.green : Colors.red,
+                              width: 1.2,
                             ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                state.isSuccess
-                                    ? Icons.check_circle
-                                    : Icons.error_outline,
-                                color: state.isSuccess
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700,
-                                size: 20,
+                                _isSuccess ? Icons.check_circle : Icons.error,
+                                color: _isSuccess
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                                size: 18,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
+                              const SizedBox(width: 6),
+                              Flexible(
                                 child: Text(
-                                  state.message!,
+                                  _message!,
                                   style: GoogleFonts.inter(
-                                    color: state.isSuccess
+                                    color: _isSuccess
                                         ? Colors.green.shade800
                                         : Colors.red.shade800,
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
-                              if (!state.isSuccess)
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 16),
-                                  onPressed: () {
-                                    ref
-                                        .read(
-                                          updateEquipmentCategoryProvider
-                                              .notifier,
-                                        )
-                                        .clearMessage();
-                                  },
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 24,
-                                    minHeight: 24,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
                       ),
 
-                    // Current Equipment Category Info
-                    if (state.equipmentCategory != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.info,
-                              color: Colors.blue.shade700,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Editing: ${state.equipmentCategory!.name}',
-                              style: GoogleFonts.inter(
-                                color: Colors.blue.shade800,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Back Button
                     ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context, 'refresh'),
                       icon: const Icon(Icons.arrow_back),
                       label: Text(
                         'Back',
@@ -262,70 +266,38 @@ class _UpdateEquipmentCategoryScreenState
                     ),
                     const SizedBox(height: 24),
 
-                    // Form Fields
-                    Center(
-                      child: Wrap(
-                        spacing: 16,
-                        runSpacing: 16,
-                        children: [_buildNameField()],
-                      ),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [_buildTextField('Name', _nameController)],
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
-                    // Action Buttons
+                    /// Save Button
                     Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Reset Button
-                          ElevatedButton(
-                            onPressed: state.isLoading ? null : _resetForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 30,
-                                vertical: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              "Reset",
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-
-                          // Update Button
-                          state.isLoading
-                              ? const CircularProgressIndicator()
-                              : ElevatedButton(
-                                  onPressed: _updateEquipmentCategory,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.deepPurple,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 40,
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    "Update",
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                      child: _isLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _updateEquipmentCategory,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 16,
                                 ),
-                        ],
-                      ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Save",
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -338,51 +310,20 @@ class _UpdateEquipmentCategoryScreenState
     );
   }
 
-  Widget _buildNameField() {
+  Widget _buildTextField(String label, TextEditingController controller) {
     return SizedBox(
-      width: 400,
+      width: 300,
       child: TextFormField(
-        controller: _nameController,
+        controller: controller,
         decoration: InputDecoration(
-          labelText: 'Equipment Category Name',
-          labelStyle: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          hintText: 'Enter equipment category name',
-          hintStyle: GoogleFonts.inter(color: Colors.grey.shade600),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
-          ),
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
+            horizontal: 12,
+            vertical: 10,
           ),
-          suffixIcon: _nameController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, size: 20),
-                  onPressed: () {
-                    _nameController.clear();
-                    setState(() {});
-                  },
-                )
-              : null,
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter equipment category name';
-          }
-          if (value.trim().length < 2) {
-            return 'Name must be at least 2 characters long';
-          }
-          return null;
-        },
-        onChanged: (value) => setState(() {}),
       ),
     );
   }

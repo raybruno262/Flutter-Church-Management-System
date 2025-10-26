@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-const String baseHost = 'http://localhost:8080';
-// const String baseHost = 'https://infrequent-brawly-arya.ngrok-free.dev';
+// const String baseHost = 'http://localhost:8080';
+const String baseHost = 'https://infrequent-brawly-arya.ngrok-free.dev';
 
 const backgroundcolor = Color(0xFF171821);
 
