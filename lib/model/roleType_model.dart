@@ -6,7 +6,7 @@ extension RoleTypeExtension on RoleType {
   static RoleType fromString(String value) {
     return RoleType.values.firstWhere(
       (type) => type.name.toUpperCase() == value.toUpperCase(),
-      orElse: () => RoleType.CellAdmin,
+      orElse: () => RoleType.ChapelAdmin,
     );
   }
 }

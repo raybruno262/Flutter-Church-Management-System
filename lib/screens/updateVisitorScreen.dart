@@ -41,7 +41,7 @@ class _UpdateVisitorScreenState extends State<UpdateVisitorScreen> {
 
   // Data lists
   List<Level> _levels = [];
-  List<Level> _cells = [];
+  List<Level> _chapels = [];
 
   // Controllers
   final LevelController _levelController = LevelController();
@@ -67,7 +67,7 @@ class _UpdateVisitorScreenState extends State<UpdateVisitorScreen> {
   void initState() {
     super.initState();
     _loadLevels();
-    _loadCells();
+    _loadChapels();
     _populateExistingData();
   }
 
@@ -127,10 +127,10 @@ class _UpdateVisitorScreenState extends State<UpdateVisitorScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
-      setState(() => _cells = cells);
+      setState(() => _chapels = chapels);
     }
   }
 
@@ -206,8 +206,8 @@ class _UpdateVisitorScreenState extends State<UpdateVisitorScreen> {
       return;
     }
 
-    // Validate level for CellAdmin
-    if (widget.loggedInUser.role == 'CellAdmin' && _selectedLevel == null) {
+    // Validate level for ChapelAdmin
+    if (widget.loggedInUser.role == 'ChapelAdmin' && _selectedLevel == null) {
       setState(() {
         _message = 'Please select a level for this visitor';
         _isSuccess = false;

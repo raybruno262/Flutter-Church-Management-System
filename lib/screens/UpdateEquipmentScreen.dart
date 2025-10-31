@@ -47,8 +47,8 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final LevelController _levelController = LevelController();
-  List<Level> _cells = [];
-  Level? _equipmentselectedSuperAdminCell;
+  List<Level> _chapels = [];
+  Level? _equipmentselectedSuperAdminChapel;
   final EquipmentCategoryController _equipmentCatController =
       EquipmentCategoryController();
   final EquipmentController _equipmentController = EquipmentController();
@@ -67,7 +67,7 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
 
   Future<void> _loadInitialData() async {
     // Load all data first
-    await Future.wait([_loadEquipmentCategories(), _loadCells()]);
+    await Future.wait([_loadEquipmentCategories(), _loadChapels()]);
 
     // Then populate the form
     if (mounted) {
@@ -127,7 +127,7 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
     if (widget.loggedInUser.role == 'SuperAdmin' &&
         widget.equipment.level != null) {
       setState(() {
-        _equipmentselectedSuperAdminCell = widget.equipment.level;
+        _equipmentselectedSuperAdminChapel = widget.equipment.level;
       });
     }
   }
@@ -143,10 +143,10 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
-      setState(() => _cells = cells);
+      setState(() => _chapels = chapels);
     }
   }
 
@@ -246,13 +246,13 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
 
     // Validate level
     final level = widget.loggedInUser.role == 'SuperAdmin'
-        ? _equipmentselectedSuperAdminCell
+        ? _equipmentselectedSuperAdminChapel
         : widget.loggedInUser.level;
 
     if (level == null || level.levelId == null) {
       setState(() {
         _message = widget.loggedInUser.role == 'SuperAdmin'
-            ? 'Please select a cell for this equipment'
+            ? 'Please select a chapel for this equipment'
             : 'You are not allowed to add equipment';
         _isSuccess = false;
       });
@@ -525,11 +525,11 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
                         ),
 
                         if (widget.loggedInUser.role == 'SuperAdmin') ...[
-                          _buildEquipmentSuperAdminCellDropdown(
-                            'Select Cell',
-                            _equipmentselectedSuperAdminCell,
-                            (cell) => setState(
-                              () => _equipmentselectedSuperAdminCell = cell,
+                          _buildEquipmentSuperAdminChapelDropdown(
+                            'Select Chapel',
+                            _equipmentselectedSuperAdminChapel,
+                            (chapel) => setState(
+                              () => _equipmentselectedSuperAdminChapel = chapel,
                             ),
                           ),
                         ],
@@ -596,16 +596,16 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
     );
   }
 
-  Widget _buildEquipmentSuperAdminCellDropdown(
+  Widget _buildEquipmentSuperAdminChapelDropdown(
     String label,
-    Level? selectedCell,
+    Level? selectedChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
         value:
-            selectedCell?.levelId, // Use levelId as value for proper comparison
+            selectedChapel?.levelId, // Use levelId as value for proper comparison
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -618,12 +618,12 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
         items: [
           const DropdownMenuItem<String>(
             value: null,
-            child: Text('Select Cell'),
+            child: Text('Select Chapel'),
           ),
-          ..._cells.map((cell) {
+          ..._chapels.map((chapel) {
             return DropdownMenuItem<String>(
-              value: cell.levelId,
-              child: Text(cell.name ?? 'Unknown'),
+              value: chapel.levelId,
+              child: Text(chapel.name ?? 'Unknown'),
             );
           }).toList(),
         ],
@@ -631,8 +631,8 @@ class _UpdateEquipmentScreenState extends State<UpdateEquipmentScreen> {
           if (selectedId == null) {
             onChanged(null);
           } else {
-            final selectedLevel = _cells.firstWhere(
-              (cell) => cell.levelId == selectedId,
+            final selectedLevel = _chapels.firstWhere(
+              (chapel) => chapel.levelId == selectedId,
             );
             onChanged(selectedLevel);
           }

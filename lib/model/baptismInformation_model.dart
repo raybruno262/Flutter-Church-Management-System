@@ -5,14 +5,14 @@ import 'level_model.dart';
 class BaptismInformation {
   final bool baptized;
   final bool sameReligion;
-  final Level? baptismCell;
+  final Level? baptismChapel;
   final String? otherChurchName;
   final String? otherChurchAddress;
 
   BaptismInformation({
     required this.baptized,
     required this.sameReligion,
-    this.baptismCell,
+    this.baptismChapel,
     this.otherChurchName,
     this.otherChurchAddress,
   });
@@ -21,8 +21,8 @@ class BaptismInformation {
     return BaptismInformation(
       baptized: json['baptized'] ?? false,
       sameReligion: json['sameReligion'] ?? false,
-      baptismCell: json['baptismCell'] != null
-          ? Level.fromJson(json['baptismCell'])
+      baptismChapel: json['baptismChapel'] != null
+          ? Level.fromJson(json['baptismChapel'])
           : null,
       otherChurchName: json['otherChurchName'],
       otherChurchAddress: json['otherChurchAddress'],
@@ -33,7 +33,7 @@ class BaptismInformation {
     return {
       'baptized': baptized,
       'sameReligion': sameReligion,
-      'baptismCell': baptismCell?.toJson(),
+      'baptismChapel': baptismChapel?.toJson(),
       'otherChurchName': otherChurchName,
       'otherChurchAddress': otherChurchAddress,
     };

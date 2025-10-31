@@ -43,8 +43,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final LevelController _levelController = LevelController();
-  List<Level> _cells = [];
-  Level? _equipmentselectedSuperAdminCell;
+  List<Level> _chapels = [];
+  Level? _equipmentselectedSuperAdminChapel;
   final EquipmentCategoryController _equipmentCatController =
       EquipmentCategoryController();
   final EquipmentController _equipmentController = EquipmentController();
@@ -59,7 +59,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   void initState() {
     super.initState();
     _loadEquipmentCategories();
-    _loadCells();
+    _loadChapels();
   }
 
   @override
@@ -73,10 +73,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
-      setState(() => _cells = cells);
+      setState(() => _chapels = chapels);
     }
   }
 
@@ -103,7 +103,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       _purchaseDate = null;
       _condition = null;
       _selectedEquipmentCategory = null;
-      _equipmentselectedSuperAdminCell = null;
+      _equipmentselectedSuperAdminChapel = null;
     });
   }
 
@@ -195,13 +195,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     // Validate level
     final level = widget.loggedInUser.role == 'SuperAdmin'
-        ? _equipmentselectedSuperAdminCell
+        ? _equipmentselectedSuperAdminChapel
         : widget.loggedInUser.level;
 
     if (level == null || level.levelId == null) {
       setState(() {
         _message = widget.loggedInUser.role == 'SuperAdmin'
-            ? 'Please select a cell for this equipment'
+            ? 'Please select a chapel for this equipment'
             : 'You are not allowed to add equipment';
         _isSuccess = false;
       });
@@ -474,11 +474,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                         ),
 
                         if (widget.loggedInUser.role == 'SuperAdmin') ...[
-                          _buildEquipmentSuperAdminCellDropdown(
-                            'Select Cell',
-                            _equipmentselectedSuperAdminCell,
-                            (cell) => setState(
-                              () => _equipmentselectedSuperAdminCell = cell,
+                          _buildEquipmentSuperAdminChapelDropdown(
+                            'Select Chapel',
+                            _equipmentselectedSuperAdminChapel,
+                            (chapel) => setState(
+                              () => _equipmentselectedSuperAdminChapel = chapel,
                             ),
                           ),
                         ],
@@ -545,15 +545,15 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildEquipmentSuperAdminCellDropdown(
+  Widget _buildEquipmentSuperAdminChapelDropdown(
     String label,
-    Level? _selectedSuperAdminCell,
+    Level? _selectedSuperAdminChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: _selectedSuperAdminCell,
+        value: _selectedSuperAdminChapel,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -563,10 +563,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             vertical: 10,
           ),
         ),
-        items: _cells.map((cell) {
+        items: _chapels.map((chapel) {
           return DropdownMenuItem<Level>(
-            value: cell,
-            child: Text(cell.name ?? 'Unknown'),
+            value: chapel,
+            child: Text(chapel.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,

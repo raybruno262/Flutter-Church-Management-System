@@ -54,7 +54,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
     RoleType.ChapelAdmin,
     RoleType.CellAdmin,
   ];
-
+  bool _obscurePassword = true;
   Level? _selectedLevel;
   // ignore: unused_field
   String? _selectedLevelId;
@@ -155,6 +155,26 @@ class _AddUserScreenState extends State<AddUserScreen> {
   Future<void> _submitUser() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() {
+        _message = 'Please Enter Name';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) {
+      setState(() {
+        _message = 'Please Enter Username';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
     final email = _emailController.text.trim();
     final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
     if (!emailRegex.hasMatch(email)) {
@@ -182,6 +202,16 @@ class _AddUserScreenState extends State<AddUserScreen> {
       });
     }
     final password = _passwordController.text.trim();
+
+    if (password.isEmpty) {
+      setState(() {
+        _message = 'Please Enter Password';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
     final passwordRegex = RegExp(
       r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
     );
@@ -200,6 +230,17 @@ class _AddUserScreenState extends State<AddUserScreen> {
       });
       return;
     }
+    final phone = _phoneController.text.trim();
+
+    if (phone.isEmpty) {
+      setState(() {
+        _message = 'Please Enter Phone Number';
+        _isSuccess = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
     final phoneCode = _selectedCountry != null
         ? '+${_selectedCountry!.phoneCode}'
         : '+250';
@@ -472,7 +513,8 @@ class _AddUserScreenState extends State<AddUserScreen> {
                         _buildTextField('Name', _nameController),
                         _buildTextField('Username', _usernameController),
                         _buildTextField('Email', _emailController),
-                        _buildTextField('Password', _passwordController),
+
+                        _buildPasswordField('Password', _passwordController),
                         _buildPhoneField(_phoneController),
                         _buildTextField('NationalID', _nationalIdController),
                         _buildRoleTypeDropdown(
@@ -604,6 +646,38 @@ class _AddUserScreenState extends State<AddUserScreen> {
     );
   }
 
+  Widget _buildPasswordField(String label, TextEditingController controller) {
+    return SizedBox(
+      width: 300,
+      child: TextFormField(
+        controller: controller,
+        obscureText: _obscurePassword,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.inter(fontSize: 13),
+
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+              color: Colors.grey,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
+          ),
+
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTextField(String label, TextEditingController controller) {
     return SizedBox(
       width: 300,
@@ -618,7 +692,6 @@ class _AddUserScreenState extends State<AddUserScreen> {
             vertical: 10,
           ),
         ),
-        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
       ),
     );
   }
@@ -754,7 +827,6 @@ class _AddUserScreenState extends State<AddUserScreen> {
             ),
           ),
         ),
-        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
       ),
     );
   }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_churchcrm_system/constants.dart';
+
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
 import 'package:flutter_churchcrm_system/model/sidemenu_model.dart';
 import 'package:flutter_churchcrm_system/model/user_model.dart';
-import 'package:flutter_churchcrm_system/screens/baptismScreen.dart';
+
 import 'package:flutter_churchcrm_system/screens/equipmentScreen.dart';
 import 'package:flutter_churchcrm_system/screens/financeScreen.dart';
 import 'package:flutter_churchcrm_system/screens/attendanceScreen.dart';
@@ -65,11 +65,7 @@ class SidemenuData {
         title: 'Attendance',
         page: AttendanceScreen(loggedInUser: loggedInUser),
       ),
-      SideMenuModel(
-        icon: SvgPicture.asset('assets/icons/baptism.svg', fit: BoxFit.cover),
-        title: 'Baptism',
-        page: BaptismScreen(loggedInUser: loggedInUser),
-      ),
+
       SideMenuModel(
         icon: SvgPicture.asset('assets/icons/finance.svg', fit: BoxFit.cover),
         title: 'Finance',
@@ -109,14 +105,21 @@ class SidemenuData {
       ),
     ];
 
-    // Restrict "Levels" and "Users" for non-SuperAdmins
-    if (loggedInUser.role != 'SuperAdmin') {
+   
+    // Filter menu items based on user role
+    if (loggedInUser.role == 'SuperAdmin' || loggedInUser.role == 'ChapelAdmin') {
+      // SuperAdmin can see everything
+      return allItems;
+    } else if (loggedInUser.role == 'RegionAdmin' || loggedInUser.role == 'ParishAdmin' ) {
+     return allItems
+          .where((item) => item.title != 'Users')
+          .toList();
+    } else {
+      // For CellAdmin
       return allItems
           .where((item) => item.title != 'Levels' && item.title != 'Users')
           .toList();
     }
-
-    return allItems;
   }
 
   Future<void> _showLogoutConfirmationDialog(BuildContext context) async {

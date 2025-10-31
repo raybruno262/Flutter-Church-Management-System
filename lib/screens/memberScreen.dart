@@ -362,7 +362,7 @@ class _MemberScreenState extends State<MemberScreen> {
                   _showMemberDetailsDialog(member);
                 },
               ),
-              if (widget.loggedInUser.role == 'CellAdmin' ||
+              if (widget.loggedInUser.role == 'ChapelAdmin' ||
                   widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
@@ -645,8 +645,8 @@ class _MemberScreenState extends State<MemberScreen> {
                               true) ...[
                             const SizedBox(height: 12),
                             _buildEnhancedDetailCard(
-                              'Baptism Cell',
-                              member.baptismInformation?.baptismCell?.name ??
+                              'Baptism Chapel',
+                              member.baptismInformation?.baptismChapel?.name ??
                                   'N/A',
                               Icons.groups_outlined,
                               Colors.purple,
@@ -692,7 +692,7 @@ class _MemberScreenState extends State<MemberScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           Container(
                             decoration: BoxDecoration(
@@ -1041,7 +1041,7 @@ class _MemberScreenState extends State<MemberScreen> {
                           ),
                         ),
                         const SizedBox(width: 280),
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin') ...[
                           ElevatedButton.icon(
                             onPressed: () async {

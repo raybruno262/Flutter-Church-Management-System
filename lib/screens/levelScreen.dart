@@ -64,6 +64,11 @@ class _LevelScreenState extends State<LevelScreen> {
     });
   }
 
+  // Check if user is SuperAdmin
+  bool get _isSuperAdmin => widget.loggedInUser.role == 'SuperAdmin';
+
+  // Check if user is ChapelAdmin
+  bool get _isChapelAdmin => widget.loggedInUser.role == 'ChapelAdmin';
   void _applySearchFilter() {
     final nameQuery = _nameFilterController.text.toLowerCase();
     final addressQuery = _addressFilterController.text.toLowerCase();
@@ -410,45 +415,90 @@ class _LevelScreenState extends State<LevelScreen> {
                           ),
                         ),
                         SizedBox(width: 280),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddLevelScreen(
-                                  loggedInUser: widget.loggedInUser,
+
+                        if (_isSuperAdmin) ...[
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddLevelScreen(
+                                    loggedInUser: widget.loggedInUser,
+                                  ),
                                 ),
+                              );
+
+                              if (result != null) {
+                                setState(() {
+                                  _currentPage = 0;
+                                });
+
+                                await _fetchLevels();
+                                await _fetchLevelCounts();
+                              }
+                            },
+                            icon: SvgPicture.asset("assets/icons/level.svg"),
+                            label: Text(
+                              'Add Level',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
                               ),
-                            );
-
-                            if (result != null) {
-                              setState(() {
-                                _currentPage = 0;
-                              });
-
-                              await _fetchLevels();
-                              await _fetchLevelCounts();
-                            }
-                          },
-                          icon: SvgPicture.asset("assets/icons/level.svg"),
-                          label: Text(
-                            'Add Level',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 15,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 15,
+                        ],
+
+                        if (_isChapelAdmin) ...[
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddLevelScreen(
+                                    loggedInUser: widget.loggedInUser,
+                                  ),
+                                ),
+                              );
+
+                              if (result != null) {
+                                setState(() {
+                                  _currentPage = 0;
+                                });
+
+                                await _fetchLevels();
+                                await _fetchLevelCounts();
+                              }
+                            },
+                            icon: SvgPicture.asset("assets/icons/level.svg"),
+                            label: Text(
+                              'Add Cell Level',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 15,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

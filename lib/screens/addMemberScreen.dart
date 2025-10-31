@@ -48,7 +48,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   // Data lists
   List<Department> _departments = [];
-  List<Level> _cells = [];
+  List<Level> _chapels = [];
 
   // Controllers
   final LevelController _levelController = LevelController();
@@ -64,8 +64,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   String? _baptismStatus;
   String? _sameReligion;
   Department? _selectedDepartment;
-  Level? _selectedBaptismCell;
-  Level? _selectedSuperAdminBaptismCell;
+  Level? _selectedBaptismChapel;
+  Level? _selectedSuperAdminBaptismChapel;
   Country? _selectedCountry;
 
   // Message state variables
@@ -76,7 +76,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   void initState() {
     super.initState();
     _loadDepartments();
-    _loadCells();
+    _loadChapels();
   }
 
   @override
@@ -91,10 +91,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
-      setState(() => _cells = cells);
+      setState(() => _chapels = chapels);
     }
   }
 
@@ -141,7 +141,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       _baptismStatus = null;
       _sameReligion = null;
       _selectedDepartment = null;
-      _selectedBaptismCell = null;
+      _selectedBaptismChapel = null;
       _selectedCountry = null;
     });
 
@@ -194,10 +194,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       return;
     }
 
-    // Validate baptism cell when same religion is Yes
-    if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
+    // Validate baptism chapel when same religion is Yes
+    if (_sameReligion == 'Yes' && _selectedBaptismChapel == null) {
       setState(() {
-        _message = 'Please select a baptism cell';
+        _message = 'Please select a baptism chapel';
         _isSuccess = false;
       });
       return;
@@ -221,9 +221,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       }
     }
     if (widget.loggedInUser.role == 'SuperAdmin' &&
-        _selectedSuperAdminBaptismCell == null) {
+        _selectedSuperAdminBaptismChapel == null) {
       setState(() {
-        _message = 'Please select a cell for this member';
+        _message = 'Please select a chapel for this member';
         _isSuccess = false;
       });
       return;
@@ -272,7 +272,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       final baptismInfo = BaptismInformation(
         baptized: _baptismStatus == "Baptized",
         sameReligion: _sameReligion == "Yes",
-        baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
+        baptismChapel: _sameReligion == "Yes" ? _selectedBaptismChapel : null,
         otherChurchName: _sameReligion == "No"
             ? _otherChurchNameController.text.trim()
             : null,
@@ -306,7 +306,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             '${DateTime.now().day.toString().padLeft(2, '0')}/'
             '${DateTime.now().year}',
         level: widget.loggedInUser.role == 'SuperAdmin'
-            ? _selectedSuperAdminBaptismCell
+            ? _selectedSuperAdminBaptismChapel
             : widget.loggedInUser.level,
 
         department: _selectedDepartment,
@@ -554,11 +554,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         _buildPhoneField(_phoneController),
 
                         if (widget.loggedInUser.role == 'SuperAdmin') ...[
-                          _buildSuperAdminCellDropdown(
-                            'Select Cell',
-                            _selectedSuperAdminBaptismCell,
-                            (cell) => setState(
-                              () => _selectedSuperAdminBaptismCell = cell,
+                          _buildSuperAdminChapelDropdown(
+                            'Select Chapel',
+                            _selectedSuperAdminBaptismChapel,
+                            (chapel) => setState(
+                              () => _selectedSuperAdminBaptismChapel = chapel,
                             ),
                           ),
                         ],
@@ -605,7 +605,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                               _baptismStatus = val;
                               if (val == 'Not Baptized') {
                                 _sameReligion = null;
-                                _selectedBaptismCell = null;
+                                _selectedBaptismChapel = null;
                                 _otherChurchNameController.clear();
                                 _otherChurchAddressController.clear();
                               }
@@ -625,7 +625,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                                   _otherChurchNameController.clear();
                                   _otherChurchAddressController.clear();
                                 } else if (val == 'No') {
-                                  _selectedBaptismCell = null;
+                                  _selectedBaptismChapel = null;
                                 }
                               });
                             },
@@ -633,11 +633,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
                         if (_baptismStatus == 'Baptized' &&
                             _sameReligion == 'Yes')
-                          _buildCellDropdown(
-                            'Baptism Cell',
-                            _selectedBaptismCell,
-                            (cell) =>
-                                setState(() => _selectedBaptismCell = cell),
+                          _buildChapelDropdown(
+                            'Baptism Chapel',
+                            _selectedBaptismChapel,
+                            (chapel) =>
+                                setState(() => _selectedBaptismChapel = chapel),
                           ),
 
                         if (_baptismStatus == 'Baptized' &&
@@ -711,15 +711,15 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     );
   }
 
-  Widget _buildCellDropdown(
+  Widget _buildChapelDropdown(
     String label,
-    Level? selectedCell,
+    Level? selectedChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: selectedCell,
+        value: selectedChapel,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -729,10 +729,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             vertical: 10,
           ),
         ),
-        items: _cells.map((cell) {
+        items: _chapels.map((chapel) {
           return DropdownMenuItem<Level>(
-            value: cell,
-            child: Text(cell.name ?? 'Unknown'),
+            value: chapel,
+            child: Text(chapel.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,
@@ -742,15 +742,15 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     );
   }
 
-  Widget _buildSuperAdminCellDropdown(
+  Widget _buildSuperAdminChapelDropdown(
     String label,
-    Level? _selectedSuperAdminBaptismCell,
+    Level? _selectedSuperAdminBaptismChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: _selectedSuperAdminBaptismCell,
+        value: _selectedSuperAdminBaptismChapel,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -760,10 +760,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             vertical: 10,
           ),
         ),
-        items: _cells.map((cell) {
+        items: _chapels.map((chapel) {
           return DropdownMenuItem<Level>(
-            value: cell,
-            child: Text(cell.name ?? 'Unknown'),
+            value: chapel,
+            child: Text(chapel.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,

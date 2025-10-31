@@ -145,14 +145,14 @@ class _UpdateUserScreenState extends State<UpdateUserScreen> {
     // Role type
     final roleMatch = _roleTypes.firstWhere(
       (r) => r.name == widget.user.role,
-      orElse: () => RoleType.CellAdmin,
+      orElse: () => RoleType.ChapelAdmin,
     );
     _selectedRoleType = roleMatch;
 
     // Level type
     final levelTypeMatch = LevelType.values.firstWhere(
       (lt) => lt.name == widget.user.level.levelType,
-      orElse: () => LevelType.CELL,
+      orElse: () => LevelType.CHAPEL,
     );
 
     final levels = await LevelController().getLevelsByType(levelTypeMatch);

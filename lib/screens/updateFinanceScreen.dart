@@ -53,8 +53,8 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
   // Income Data lists
   List<IncomeCategory> _incomeCategories = [];
   List<ExpenseCategory> _expenseCategories = [];
-  List<Level> _cells = [];
-  List<Level> _expenseCells = [];
+  List<Level> _chapels = [];
+  List<Level> _expenseChapels = [];
   final IncomeCategoryController _incomeCatController =
       IncomeCategoryController();
   final ExpenseCategoryController _expenseCatController =
@@ -66,8 +66,8 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
   DateTime? _expensetransactionDate;
   IncomeCategory? _selectedIncomeCategory;
   ExpenseCategory? _selectedExpenseCategory;
-  Level? _incomeselectedSuperAdminCell;
-  Level? _expenseselectedSuperAdminCell;
+  Level? _incomeselectedSuperAdminChapel;
+  Level? _expenseselectedSuperAdminChapel;
   // Message state variables
   String? _message;
   bool _isSuccess = false;
@@ -82,9 +82,9 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     // Load all data first
     await Future.wait([
       _loadIncomeCategories(),
-      _loadCells(),
+      _loadChapels(),
       _loadExpenseCategories(),
-      _loadExpenseCells(),
+      _loadExpenseChapels(),
     ]);
 
     // Then populate the form
@@ -144,10 +144,10 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
 
       _incomedescriptionController.text = finance.description ?? '';
 
-      // Set cell for SuperAdmin
+      // Set chapel for SuperAdmin
       if (widget.loggedInUser.role == 'SuperAdmin' && finance.level != null) {
         setState(() {
-          _incomeselectedSuperAdminCell = finance.level;
+          _incomeselectedSuperAdminChapel = finance.level;
         });
       }
     } else if (finance.transactionType == 'EXPENSE') {
@@ -196,10 +196,10 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
 
       _expensedescriptionController.text = finance.description ?? '';
 
-      // Set cell for SuperAdmin
+      // Set chapel for SuperAdmin
       if (widget.loggedInUser.role == 'SuperAdmin' && finance.level != null) {
         setState(() {
-          _expenseselectedSuperAdminCell = finance.level;
+          _expenseselectedSuperAdminChapel = finance.level;
         });
       }
     }
@@ -214,17 +214,17 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
-      setState(() => _cells = cells);
+      setState(() => _chapels = chapels);
     }
   }
 
-  Future<void> _loadExpenseCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadExpenseChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
-      setState(() => _expenseCells = cells);
+      setState(() => _expenseChapels = chapels);
     }
   }
 
@@ -255,7 +255,7 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     setState(() {
       _incometransactionDate = null;
       _selectedIncomeCategory = null;
-      _incomeselectedSuperAdminCell = null;
+      _incomeselectedSuperAdminChapel = null;
     });
   }
 
@@ -271,7 +271,7 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     setState(() {
       _expensetransactionDate = null;
       _selectedExpenseCategory = null;
-      _expenseselectedSuperAdminCell = null;
+      _expenseselectedSuperAdminChapel = null;
     });
   }
 
@@ -337,15 +337,15 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
       return;
     }
 
-    // Validate level/cell selection
+    // Validate level/chapel selection
     final level = widget.loggedInUser.role == 'SuperAdmin'
-        ? _incomeselectedSuperAdminCell
+        ? _incomeselectedSuperAdminChapel
         : widget.loggedInUser.level;
 
     if (level == null) {
       setState(() {
         _message = widget.loggedInUser.role == 'SuperAdmin'
-            ? 'Please select a cell for this transaction'
+            ? 'Please select a chapel for this transaction'
             : 'You are not allowed to add a transaction';
         _isSuccess = false;
       });
@@ -355,7 +355,7 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     // Validate level ID
     if (level.levelId == null) {
       setState(() {
-        _message = 'Invalid cell selection. Please try again.';
+        _message = 'Invalid chapel selection. Please try again.';
         _isSuccess = false;
       });
       return;
@@ -524,15 +524,15 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
       return;
     }
 
-    // Validate level/cell selection
+    // Validate level/chapel selection
     final level = widget.loggedInUser.role == 'SuperAdmin'
-        ? _expenseselectedSuperAdminCell
+        ? _expenseselectedSuperAdminChapel
         : widget.loggedInUser.level;
 
     if (level == null) {
       setState(() {
         _message = widget.loggedInUser.role == 'SuperAdmin'
-            ? 'Please select a cell for this transaction'
+            ? 'Please select a chapel for this transaction'
             : 'You are not allowed to add a transaction';
         _isSuccess = false;
       });
@@ -542,7 +542,7 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     // Validate level ID
     if (level.levelId == null) {
       setState(() {
-        _message = 'Invalid cell selection. Please try again.';
+        _message = 'Invalid chapel selection. Please try again.';
         _isSuccess = false;
       });
       return;
@@ -823,11 +823,11 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
                         ),
 
                         if (widget.loggedInUser.role == 'SuperAdmin') ...[
-                          _buildIncomeSuperAdminCellDropdown(
-                            'Select Cell',
-                            _incomeselectedSuperAdminCell,
-                            (cell) => setState(
-                              () => _incomeselectedSuperAdminCell = cell,
+                          _buildIncomeSuperAdminChapelDropdown(
+                            'Select Chapel',
+                            _incomeselectedSuperAdminChapel,
+                            (chapel) => setState(
+                              () => _incomeselectedSuperAdminChapel = chapel,
                             ),
                           ),
                         ],
@@ -906,11 +906,11 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
                         ),
 
                         if (widget.loggedInUser.role == 'SuperAdmin') ...[
-                          _buildExpenseSuperAdminCellDropdown(
-                            'Select Cell',
-                            _expenseselectedSuperAdminCell,
-                            (cell) => setState(
-                              () => _expenseselectedSuperAdminCell = cell,
+                          _buildExpenseSuperAdminChapelDropdown(
+                            'Select Chapel',
+                            _expenseselectedSuperAdminChapel,
+                            (chapel) => setState(
+                              () => _expenseselectedSuperAdminChapel = chapel,
                             ),
                           ),
                         ],
@@ -983,16 +983,16 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     );
   }
 
-  Widget _buildIncomeSuperAdminCellDropdown(
+  Widget _buildIncomeSuperAdminChapelDropdown(
     String label,
-    Level? selectedCell,
+    Level? selectedChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
         value:
-            selectedCell?.levelId, // Use levelId as value for proper comparison
+            selectedChapel?.levelId, // Use levelId as value for proper comparison
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -1005,12 +1005,12 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
         items: [
           const DropdownMenuItem<String>(
             value: null,
-            child: Text('Select Cell'),
+            child: Text('Select Chapel'),
           ),
-          ..._cells.map((cell) {
+          ..._chapels.map((chapel) {
             return DropdownMenuItem<String>(
-              value: cell.levelId,
-              child: Text(cell.name ?? 'Unknown'), // Only display name, not ID
+              value: chapel.levelId,
+              child: Text(chapel.name ?? 'Unknown'), // Only display name, not ID
             );
           }).toList(),
         ],
@@ -1018,8 +1018,8 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
           if (selectedId == null) {
             onChanged(null);
           } else {
-            final selectedLevel = _cells.firstWhere(
-              (cell) => cell.levelId == selectedId,
+            final selectedLevel = _chapels.firstWhere(
+              (chapel) => chapel.levelId == selectedId,
             );
             onChanged(selectedLevel);
           }
@@ -1029,16 +1029,16 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
     );
   }
 
-  Widget _buildExpenseSuperAdminCellDropdown(
+  Widget _buildExpenseSuperAdminChapelDropdown(
     String label,
-    Level? selectedCell,
+    Level? selectedChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
         value:
-            selectedCell?.levelId, // Use levelId as value for proper comparison
+            selectedChapel?.levelId, // Use levelId as value for proper comparison
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -1051,12 +1051,12 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
         items: [
           const DropdownMenuItem<String>(
             value: null,
-            child: Text('Select Cell'),
+            child: Text('Select Chapel'),
           ),
-          ..._expenseCells.map((cell) {
+          ..._expenseChapels.map((chapel) {
             return DropdownMenuItem<String>(
-              value: cell.levelId,
-              child: Text(cell.name ?? 'Unknown'), // Only display name, not ID
+              value: chapel.levelId,
+              child: Text(chapel.name ?? 'Unknown'), // Only display name, not ID
             );
           }).toList(),
         ],
@@ -1064,8 +1064,8 @@ class _UpdateFinanceScreenState extends State<UpdateFinanceScreen> {
           if (selectedId == null) {
             onChanged(null);
           } else {
-            final selectedLevel = _expenseCells.firstWhere(
-              (cell) => cell.levelId == selectedId,
+            final selectedLevel = _expenseChapels.firstWhere(
+              (chapel) => chapel.levelId == selectedId,
             );
             onChanged(selectedLevel);
           }

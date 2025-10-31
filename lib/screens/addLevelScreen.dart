@@ -1,31 +1,14 @@
-import 'dart:convert';
-import 'dart:typed_data';
-import 'package:flutter_churchcrm_system/controller/department_controller.dart';
 import 'package:flutter_churchcrm_system/controller/level_controller.dart';
-import 'package:flutter_churchcrm_system/controller/member_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
-import 'package:flutter_churchcrm_system/model/baptismInformation_model.dart';
-import 'package:flutter_churchcrm_system/model/department_model.dart';
 import 'package:flutter_churchcrm_system/model/levelType_model.dart';
 import 'package:flutter_churchcrm_system/model/level_model.dart';
-import 'package:flutter_churchcrm_system/model/member_model.dart';
-import 'package:flutter_churchcrm_system/screens/deparmentScreen.dart';
-import 'package:syncfusion_flutter_datepicker/datepicker.dart';
-
 import 'package:flutter/material.dart';
-
-import 'package:image_picker/image_picker.dart';
-import 'package:country_picker/country_picker.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
-
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mime/mime.dart';
 
 class AddLevelScreen extends StatefulWidget {
   final UserModel loggedInUser;
@@ -40,7 +23,8 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
   final _formKey = GlobalKey<FormState>();
   final LevelController levelController = LevelController();
   final UserController userController = UserController();
-  // Controllers
+
+  // Controllers for "Add All Levels" and "Add One Level"
   final _headquarterNameController = TextEditingController();
   final _headquarterAddressController = TextEditingController();
   final _regionNameController = TextEditingController();
@@ -55,11 +39,16 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
   final _levelNameController = TextEditingController();
   final _levelAddressController = TextEditingController();
 
+  // Controllers for "Add Cell Level"
+  final _cellLevelNameController = TextEditingController();
+  final _cellLevelAddressController = TextEditingController();
+
   // Message state variables
   String? _message;
   bool _isSuccess = false;
   bool _isLoading = false;
   bool _issaveOneLoading = false;
+  bool _isSaveCellLoading = false;
 
   @override
   void initState() {
@@ -77,11 +66,15 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
     _chapelNameController.dispose();
     _cellNameController.dispose();
     _cellAddressController.dispose();
+    _levelNameController.dispose();
+    _levelAddressController.dispose();
+    _cellLevelNameController.dispose();
+    _cellLevelAddressController.dispose();
     super.dispose();
   }
 
   void _clearForm() {
-    // Clear text controllers
+    _formKey.currentState?.reset();
     _headquarterNameController.clear();
     _headquarterAddressController.clear();
     _regionNameController.clear();
@@ -91,9 +84,6 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
     _chapelNameController.clear();
     _cellNameController.clear();
     _cellAddressController.clear();
-
-    // Reset form validation
-    _formKey.currentState?.reset();
   }
 
   Level? _selectedParentLevel;
@@ -126,14 +116,24 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
   }
 
   void _clearoneForm() {
+    _formKey.currentState?.reset();
     _levelNameController.clear();
     _levelAddressController.clear();
-    _selectedParentId = null;
     _selectedParentLevel = null;
-
-    // Reset form validation
-    _formKey.currentState?.reset();
+    _selectedParentType = null;
+    _selectedParentId = null;
   }
+
+  void _clearCellForm() {
+    _cellLevelNameController.clear();
+    _cellLevelAddressController.clear();
+  }
+
+  // Check if user is SuperAdmin
+  bool get _isSuperAdmin => widget.loggedInUser.role == 'SuperAdmin';
+
+  // Check if user is ChapelAdmin
+  bool get _isChapelAdmin => widget.loggedInUser.role == 'ChapelAdmin';
 
   Future<void> _submitOneLevel() async {
     if (!_formKey.currentState!.validate()) return;
@@ -213,6 +213,78 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
       setState(() {
         _issaveOneLoading = false;
         _message = 'Error submitting level';
+        _isSuccess = false;
+      });
+    }
+  }
+
+  Future<void> _submitCellLevel() async {
+    final levelName = _cellLevelNameController.text.trim();
+    final levelAddress = _cellLevelAddressController.text.trim();
+
+    if (levelName.isEmpty || levelAddress.isEmpty) {
+      setState(() {
+        _message = 'Both level name and address are required.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSaveCellLoading = true;
+      _message = null;
+    });
+
+    final loggedInUser = await userController.loadUserFromStorage();
+    if (loggedInUser == null || loggedInUser.userId == null) {
+      setState(() {
+        _isSaveCellLoading = false;
+        _message = 'User ID not found. Please log in again.';
+        _isSuccess = false;
+      });
+      return;
+    }
+
+    try {
+      final result = await LevelController().addCellLevel(
+        levelName: levelName,
+        levelAddress: levelAddress,
+        userId: loggedInUser.userId!,
+      );
+
+      setState(() => _isSaveCellLoading = false);
+
+      switch (result) {
+        case 'Status 1000':
+          setState(() {
+            _message = 'Cell level created successfully';
+            _isSuccess = true;
+          });
+          _clearCellForm();
+          break;
+        case 'Status 3000':
+          _message = 'Missing fields or invalid parent level.';
+          break;
+        case 'Status 4000':
+          _message = 'User not found.';
+          break;
+        case 'Status 6000':
+          _message =
+              'Unauthorized role. Only SuperAdmin and ChapelAdmin can add cell levels.';
+          break;
+        case 'Status 7000':
+          _message = 'Network error.';
+          break;
+        case 'Status 9999':
+          _message = 'Server error.';
+          break;
+        default:
+          _message = 'Unexpected error';
+      }
+    } catch (e) {
+      setState(() {
+        _isSaveCellLoading = false;
+        _message = 'Error submitting cell level';
         _isSuccess = false;
       });
     }
@@ -493,56 +565,189 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Add all levels at once
-                    Text(
-                      "Add All Levels",
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: titlepageColor,
+                    // Show "Add All Levels" section only for SuperAdmin
+                    if (_isSuperAdmin) ...[
+                      Text(
+                        "Add All Levels",
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: titlepageColor,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildTextField(
-                          'Headquarter Name',
-                          _headquarterNameController,
-                        ),
-                        _buildTextField(
-                          'Headquarter Address',
-                          _headquarterAddressController,
-                        ),
-                        _buildTextField('Region Name', _regionNameController),
-                        _buildTextField(
-                          'Region Address',
-                          _regionAddressController,
-                        ),
-                        _buildTextField('Parish Name', _parishNameController),
-                        _buildTextField(
-                          'Parish Address',
-                          _parishAddressController,
-                        ),
-                        _buildTextField('Chapel Name', _chapelNameController),
-                        _buildTextField(
-                          'Chapel Address',
-                          _chapelAddressController,
-                        ),
-                        _buildTextField('Cell Name', _cellNameController),
-                        _buildTextField('Cell Address', _cellAddressController),
-                        const SizedBox(width: 50),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          _buildTextField(
+                            'Headquarter Name',
+                            _headquarterNameController,
+                          ),
+                          _buildTextField(
+                            'Headquarter Address',
+                            _headquarterAddressController,
+                          ),
+                          _buildTextField('Region Name', _regionNameController),
+                          _buildTextField(
+                            'Region Address',
+                            _regionAddressController,
+                          ),
+                          _buildTextField('Parish Name', _parishNameController),
+                          _buildTextField(
+                            'Parish Address',
+                            _parishAddressController,
+                          ),
+                          _buildTextField('Chapel Name', _chapelNameController),
+                          _buildTextField(
+                            'Chapel Address',
+                            _chapelAddressController,
+                          ),
+                          _buildTextField('Cell Name', _cellNameController),
+                          _buildTextField(
+                            'Cell Address',
+                            _cellAddressController,
+                          ),
+                          const SizedBox(width: 50),
 
-                        /// Save All levels Button
-                        _isLoading
+                          /// Save All levels Button
+                          _isLoading
+                              ? const CircularProgressIndicator()
+                              : ElevatedButton(
+                                  onPressed: _submit,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 40,
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Save All",
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                        ],
+                      ),
+                      const SizedBox(height: 26),
+                    ],
+
+                    // Show "Add One Level" section only for SuperAdmin
+                    if (_isSuperAdmin) ...[
+                      Text(
+                        "Add One Level",
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: titlepageColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          _buildTextField('Level Name', _levelNameController),
+                          _buildTextField(
+                            'Level Address',
+                            _levelAddressController,
+                          ),
+                          _buildParentTypeDropdown(
+                            label: 'Parent Level Type',
+                            selectedType: _selectedParentType,
+                            onChanged: (type) async {
+                              setState(() {
+                                _selectedParentType = type;
+                                _selectedParentLevel = null;
+                                _availableParents = [];
+                              });
+                              if (type != null) {
+                                await _loadParentLevels(type);
+                              }
+                            },
+                          ),
+
+                          _buildParentNameDropdown(
+                            label: 'Parent Level Name',
+                            selectedLevel: _selectedParentLevel,
+                            onChanged: (level) => setState(() {
+                              _selectedParentLevel = level;
+                              _selectedParentId = level?.levelId;
+                            }),
+                          ),
+                          const SizedBox(width: 50),
+
+                          /// Save Button
+                          _issaveOneLoading
+                              ? const CircularProgressIndicator()
+                              : ElevatedButton(
+                                  onPressed: _submitOneLevel,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 40,
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Save",
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                        ],
+                      ),
+                      const SizedBox(height: 26),
+                    ],
+
+                    // Show "Add Cell Level" section for for ChapelAdmin
+                    if (_isChapelAdmin) ...[
+                      Text(
+                        "Add Cell Level",
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: titlepageColor,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          _buildTextField(
+                            'Cell Name',
+                            _cellLevelNameController,
+                          ),
+                          _buildTextField(
+                            'Cell Address',
+                            _cellLevelAddressController,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      /// Save Cell Button
+                      Center(
+                        child: _isSaveCellLoading
                             ? const CircularProgressIndicator()
                             : ElevatedButton(
-                                onPressed: _submit,
+                                onPressed: _submitCellLevel,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.deepPurple,
                                   foregroundColor: Colors.white,
-
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 40,
                                     vertical: 16,
@@ -552,85 +757,36 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  "Save All",
+                                  "Save Cell",
                                   style: GoogleFonts.inter(
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 26),
-
-                    Text(
-                      "Add One Level",
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: titlepageColor,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildTextField('Level Name', _levelNameController),
-                        _buildTextField(
-                          'Level Address',
-                          _levelAddressController,
-                        ),
-                        _buildParentTypeDropdown(
-                          label: 'Parent Level Type',
-                          selectedType: _selectedParentType,
-                          onChanged: (type) async {
-                            setState(() {
-                              _selectedParentType = type;
-                              _selectedParentLevel = null;
-                              _availableParents = [];
-                            });
-                            if (type != null) {
-                              await _loadParentLevels(type);
-                            }
-                          },
-                        ),
+                    ],
 
-                        _buildParentNameDropdown(
-                          label: 'Parent Level Name',
-                          selectedLevel: _selectedParentLevel,
-                          onChanged: (level) => setState(() {
-                            _selectedParentLevel = level;
-                            _selectedParentId = level?.levelId;
-                          }),
+                    // Show message if user doesn't have permission
+                    if (!_isSuperAdmin && !_isChapelAdmin)
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 50),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            "You don't have permission to add levels",
+                            style: GoogleFonts.inter(
+                              color: Colors.red.shade800,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        const SizedBox(width: 50),
-
-                        /// Save Button
-                        _issaveOneLoading
-                            ? const CircularProgressIndicator()
-                            : ElevatedButton(
-                                onPressed: _submitOneLevel,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepPurple,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 40,
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Save",
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               ),
@@ -713,7 +869,6 @@ class _AddLevelScreenState extends State<AddLevelScreen> {
           );
         }).toList(),
         onChanged: onChanged,
-
         menuMaxHeight: 250,
       ),
     );

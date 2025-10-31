@@ -962,9 +962,12 @@ class _UserScreenState extends State<UserScreen> {
                                     ),
                                     child: Row(
                                       children: [
-                                        _buildFilterField(
-                                          _nameFilterController,
-                                          'Search Name',
+                                        SizedBox(
+                                          width: 210,
+                                          child: _buildFilterField(
+                                            _nameFilterController,
+                                            'Search Name',
+                                          ),
                                         ),
                                         const SizedBox(width: 8),
                                         _buildFilterField(

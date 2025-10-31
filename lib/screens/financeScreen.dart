@@ -376,7 +376,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
         DataCell(
           Row(
             children: [
-              if (widget.loggedInUser.role == 'CellAdmin' ||
+              if (widget.loggedInUser.role == 'ChapelAdmin' ||
                   widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
@@ -570,7 +570,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           ),
                         ),
                         const SizedBox(width: 240),
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin') ...[
                           ElevatedButton.icon(
                             onPressed: () async {

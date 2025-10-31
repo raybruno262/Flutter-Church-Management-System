@@ -49,6 +49,25 @@ class LevelController {
     }
   }
 
+  //  Add cell  level under a parent
+  Future<String> addCellLevel({
+    required String levelName,
+    required String levelAddress,
+    required String userId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/addCellLevel/$userId');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'levelName': levelName, 'levelAddress': levelAddress},
+      );
+      return response.body;
+    } catch (e) {
+      return 'Status 7000';
+    }
+  }
+
   // get parent level by level type
   Future<List<Level>> getLevelsByType(LevelType type) async {
     final url = Uri.parse('$baseUrl/byType/${type.name}');
@@ -103,10 +122,10 @@ class LevelController {
     }
   }
 
-  //get all cells
-  Future<List<Level>> getAllCells() async {
+  //get all chapels
+  Future<List<Level>> getAllChapels() async {
     try {
-      final url = Uri.parse('$baseUrl/allCells');
+      final url = Uri.parse('$baseUrl/allChapels');
       final response = await http.get(url);
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Level.fromJson(json)).toList();

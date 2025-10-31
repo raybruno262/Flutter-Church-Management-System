@@ -53,7 +53,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
 
   // Data lists
   List<Department> _departments = [];
-  List<Level> _cells = [];
+  List<Level> _chapels = [];
 
   // Controllers
   final LevelController _levelController = LevelController();
@@ -72,7 +72,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
   String? _baptismStatus;
   String? _sameReligion;
   Department? _selectedDepartment;
-  Level? _selectedBaptismCell;
+  Level? _selectedBaptismChapel;
   Country? _selectedCountry;
 
   // Message state variables
@@ -83,7 +83,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
   void initState() {
     super.initState();
     _loadDepartments();
-    _loadCells();
+    _loadChapels();
     _populateExistingData();
   }
 
@@ -140,7 +140,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
           : 'No';
 
       if (widget.member.baptismInformation!.sameReligion == true) {
-        _selectedBaptismCell = widget.member.baptismInformation!.baptismCell;
+        _selectedBaptismChapel = widget.member.baptismInformation!.baptismChapel;
       } else {
         _otherChurchNameController.text =
             widget.member.baptismInformation!.otherChurchName ?? '';
@@ -168,18 +168,18 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCells() async {
-    final cells = await _levelController.getAllCells();
+  Future<void> _loadChapels() async {
+    final chapels = await _levelController.getAllChapels();
     if (mounted) {
       setState(() {
-        _cells = cells;
-        // Match existing baptism cell if it exists
-        if (widget.member.baptismInformation?.baptismCell != null) {
-          _selectedBaptismCell = _cells.firstWhere(
-            (cell) =>
-                cell.levelId ==
-                widget.member.baptismInformation!.baptismCell!.levelId,
-            orElse: () => widget.member.baptismInformation!.baptismCell!,
+        _chapels = chapels;
+        // Match existing baptism chapel if it exists
+        if (widget.member.baptismInformation?.baptismChapel != null) {
+          _selectedBaptismChapel = _chapels.firstWhere(
+            (chapel) =>
+                chapel.levelId ==
+                widget.member.baptismInformation!.baptismChapel!.levelId,
+            orElse: () => widget.member.baptismInformation!.baptismChapel!,
           );
         }
       });
@@ -271,10 +271,10 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
       return;
     }
 
-    // Validate baptism cell when same religion is Yes
-    if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
+    // Validate baptism chapel when same religion is Yes
+    if (_sameReligion == 'Yes' && _selectedBaptismChapel == null) {
       setState(() {
-        _message = 'Please select a baptism cell';
+        _message = 'Please select a baptism chapel';
         _isSuccess = false;
       });
       return;
@@ -345,7 +345,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
       final baptismInfo = BaptismInformation(
         baptized: _baptismStatus == "Baptized",
         sameReligion: _sameReligion == "Yes",
-        baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
+        baptismChapel: _sameReligion == "Yes" ? _selectedBaptismChapel : null,
         otherChurchName: _sameReligion == "No"
             ? _otherChurchNameController.text.trim()
             : null,
@@ -684,7 +684,7 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                               // Clear dependent fields when baptism status changes
                               if (val == 'Not Baptized') {
                                 _sameReligion = null;
-                                _selectedBaptismCell = null;
+                                _selectedBaptismChapel = null;
                                 _otherChurchNameController.clear();
                                 _otherChurchAddressController.clear();
                               }
@@ -707,21 +707,21 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
                                   _otherChurchNameController.clear();
                                   _otherChurchAddressController.clear();
                                 } else if (val == 'No') {
-                                  // Clear baptism cell when switching to No
-                                  _selectedBaptismCell = null;
+                                  // Clear baptism chapel when switching to No
+                                  _selectedBaptismChapel = null;
                                 }
                               });
                             },
                           ),
 
-                        // Show baptism cell only when baptized and same religion is Yes
+                        // Show baptism chapel only when baptized and same religion is Yes
                         if (_baptismStatus == 'Baptized' &&
                             _sameReligion == 'Yes')
-                          _buildCellDropdown(
-                            'Baptism Cell',
-                            _selectedBaptismCell,
-                            (cell) =>
-                                setState(() => _selectedBaptismCell = cell),
+                          _buildChapelDropdown(
+                            'Baptism Chapel',
+                            _selectedBaptismChapel,
+                            (chapel) =>
+                                setState(() => _selectedBaptismChapel = chapel),
                           ),
 
                         // Show other church fields only when baptized and same religion is No
@@ -820,15 +820,15 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
     );
   }
 
-  Widget _buildCellDropdown(
+  Widget _buildChapelDropdown(
     String label,
-    Level? selectedCell,
+    Level? selectedChapel,
     void Function(Level?) onChanged,
   ) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<Level>(
-        value: selectedCell,
+        value: selectedChapel,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.inter(fontSize: 13),
@@ -838,10 +838,10 @@ class _UpdateMemberScreenState extends State<UpdateMemberScreen> {
             vertical: 10,
           ),
         ),
-        items: _cells.map((cell) {
+        items: _chapels.map((chapel) {
           return DropdownMenuItem<Level>(
-            value: cell,
-            child: Text(cell.name ?? 'Unknown'),
+            value: chapel,
+            child: Text(chapel.name ?? 'Unknown'),
           );
         }).toList(),
         onChanged: onChanged,

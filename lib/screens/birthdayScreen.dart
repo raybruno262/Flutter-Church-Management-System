@@ -354,7 +354,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                   _showMemberDetailsDialog(member);
                 },
               ),
-              if (widget.loggedInUser.role == 'CellAdmin' ||
+              if (widget.loggedInUser.role == 'ChapelAdmin' ||
                   widget.loggedInUser.role == 'SuperAdmin') ...[
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
@@ -637,8 +637,8 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                               true) ...[
                             const SizedBox(height: 12),
                             _buildEnhancedDetailCard(
-                              'Baptism Cell',
-                              member.baptismInformation?.baptismCell?.name ??
+                              'Baptism Chapel',
+                              member.baptismInformation?.baptismChapel?.name ??
                                   'N/A',
                               Icons.groups_outlined,
                               Colors.purple,
@@ -684,7 +684,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           Container(
                             decoration: BoxDecoration(

@@ -1,17 +1,15 @@
+import 'dart:io';
 import 'package:flutter_churchcrm_system/controller/equipmentCategory_controller.dart';
 import 'package:flutter_churchcrm_system/controller/user_controller.dart';
-
 import 'package:flutter/material.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/topHeaderWidget.dart';
 import 'package:flutter_churchcrm_system/model/equipmentCategory_model.dart';
-
 import 'package:flutter_churchcrm_system/model/user_model.dart';
 import 'package:flutter_churchcrm_system/utils/responsive.dart';
-
 import 'package:flutter_churchcrm_system/Widgets/sidemenu_widget.dart';
 import 'package:flutter_churchcrm_system/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AddEquipmentCategoryScreen extends StatefulWidget {
   final UserModel loggedInUser;
@@ -47,6 +45,7 @@ class _AddEquipmentCategoryScreenState
 
   // State variables
   bool _isLoading = false;
+  bool _isUploading = false;
 
   // Message state variables
   String? _message;
@@ -55,7 +54,6 @@ class _AddEquipmentCategoryScreenState
   @override
   void dispose() {
     _nameController.dispose();
-
     super.dispose();
   }
 
@@ -65,13 +63,16 @@ class _AddEquipmentCategoryScreenState
         _message = 'Please enter equipment category name';
         _isSuccess = false;
       });
-
       return;
     }
 
     final equipmentCategoryName = _nameController.text.trim();
 
     try {
+      setState(() {
+        _isLoading = true;
+      });
+
       final newEquipmentCategory = EquipmentCategory(
         name: equipmentCategoryName,
       );
@@ -85,7 +86,6 @@ class _AddEquipmentCategoryScreenState
           _message = 'Equipment Category created successfully!';
           _isSuccess = true;
         });
-
         _clearoneForm();
       } else if (result == 'Status 5000') {
         setState(() {
@@ -106,6 +106,133 @@ class _AddEquipmentCategoryScreenState
     } catch (e) {
       setState(() {
         _message = 'Error creating Equipment Category';
+        _isSuccess = false;
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Handle Excel file upload
+  Future<void> _uploadExcelFile() async {
+    try {
+      print('=== FILE UPLOAD START ===');
+
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        allowMultiple: false,
+      );
+
+      if (result == null) {
+        print('User canceled file selection');
+        return;
+      }
+
+      if (result.files.isEmpty) {
+        setState(() {
+          _message = 'No file selected';
+          _isSuccess = false;
+        });
+        return;
+      }
+
+      PlatformFile platformFile = result.files.first;
+
+      print('File details:');
+      print('- Name: ${platformFile.name}');
+      print('- Size: ${platformFile.size} bytes');
+      print('- Bytes available: ${platformFile.bytes != null}');
+      print('- Path: ${platformFile.path}');
+
+      if (platformFile.bytes == null) {
+        setState(() {
+          _message = 'Could not read file data. Please try another file.';
+          _isSuccess = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _isUploading = true;
+        _message = 'Uploading ${platformFile.name}...';
+        _isSuccess = false;
+      });
+
+      // Call the controller with PlatformFile
+      final response = await equipmentCategoryController
+          .uploadExcelEquipmentCategory(platformFile);
+
+      print('Upload response received: $response');
+
+      // Parse the response and set appropriate message
+      _handleUploadResponse(response);
+    } catch (e) {
+      print('ERROR in _uploadExcelFile: $e');
+      print('Error type: ${e.runtimeType}');
+      setState(() {
+        _message = 'Error during file upload: ${e.toString()}';
+        _isSuccess = false;
+      });
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+      print('=== FILE UPLOAD END ===');
+    }
+  }
+
+  //  Handle the upload response based on Spring backend messages
+  void _handleUploadResponse(String response) {
+    if (response.contains('Status 1000')) {
+      // Success case - extract the detailed message
+      setState(() {
+        _message = response.replaceFirst('Status 1000: ', '');
+        _isSuccess = true;
+      });
+    } else if (response.contains('Status 4000')) {
+      setState(() {
+        _message = 'File is empty. Please select a valid Excel file.';
+        _isSuccess = false;
+      });
+    } else if (response.contains('Status 4001')) {
+      setState(() {
+        _message = 'Please upload an Excel file (.xlsx or .xls format).';
+        _isSuccess = false;
+      });
+    } else if (response.contains('Status 4002')) {
+      setState(() {
+        _message =
+            'No valid data found in the Excel file. Please check the file format.';
+        _isSuccess = false;
+      });
+    } else if (response.contains('Status 5000')) {
+      // Extract duplicate names from the message
+      final duplicateMessage = response.replaceFirst('Status 5000: ', '');
+      setState(() {
+        _message = duplicateMessage;
+        _isSuccess = false;
+      });
+    } else if (response.contains('Status 2000')) {
+      setState(() {
+        _message = 'Error processing the file. Please try again.';
+        _isSuccess = false;
+      });
+    } else if (response.contains('Status 9999')) {
+      setState(() {
+        _message = 'Unexpected error occurred. Please contact support.';
+        _isSuccess = false;
+      });
+    } else if (response.contains('Status 7000')) {
+      setState(() {
+        _message = 'Network error. Please check your connection and try again.';
+        _isSuccess = false;
+      });
+    } else {
+      setState(() {
+        _message = response;
         _isSuccess = false;
       });
     }
@@ -226,6 +353,7 @@ class _AddEquipmentCategoryScreenState
                         ),
                       ),
 
+                    // Back Button
                     ElevatedButton.icon(
                       onPressed: () => Navigator.pop(context, 'refresh'),
                       icon: const Icon(Icons.arrow_back),
@@ -246,6 +374,106 @@ class _AddEquipmentCategoryScreenState
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    // Excel Upload Section
+                    Card(
+                      elevation: 2,
+                      color: containerColor,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Upload via Excel",
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Upload an Excel file to add multiple equipment categories at once.",
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isUploading
+                                        ? null
+                                        : _uploadExcelFile,
+                                    icon: _isUploading
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          )
+                                        : const Icon(Icons.upload_file),
+                                    label: Text(
+                                      _isUploading
+                                          ? 'Uploading...'
+                                          : 'Upload Excel File',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade700,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 15,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Supported formats: .xlsx, .xls\nExcel should have 'Category Name' in the first column starting from row 2",
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                    Divider(color: Colors.grey.shade300),
+                    const SizedBox(height: 16),
+
+                    // Manual Entry Section
+                    Center(
+                      child: Text(
+                        "Or Add Manually",
+                        style: GoogleFonts.inter(
+                          color: Colors.grey.shade700,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     Wrap(
                       spacing: 16,

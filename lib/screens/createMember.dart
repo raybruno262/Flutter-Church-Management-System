@@ -35,16 +35,16 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
   String? _baptismStatus;
   String? _sameReligion;
   Department? _selectedDepartment;
-  Level? _selectedBaptismCell;
+  Level? _selectedBaptismChapel;
 
   List<Department> _departments = [];
-  List<Level> _cells = [];
+  List<Level> _chapels = [];
 
   @override
   void initState() {
     super.initState();
     _loadDepartments();
-    _loadCells();
+    _loadChapels();
   }
 
   Future<void> _loadDepartments() async {
@@ -52,9 +52,9 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
     setState(() => _departments = result);
   }
 
-  Future<void> _loadCells() async {
+  Future<void> _loadChapels() async {
     final result = await LevelController().getAllLevels();
-    setState(() => _cells = result);
+    setState(() => _chapels = result);
   }
 
   Future<void> _pickImage() async {
@@ -88,10 +88,10 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
         return;
       }
 
-      if (_sameReligion == 'Yes' && _selectedBaptismCell == null) {
+      if (_sameReligion == 'Yes' && _selectedBaptismChapel == null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Please select a baptism cell')));
+        ).showSnackBar(SnackBar(content: Text('Please select a baptism chapel')));
         return;
       }
 
@@ -101,7 +101,7 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
         final baptismInfo = BaptismInformation(
           baptized: _baptismStatus == "Baptized",
           sameReligion: _sameReligion == "Yes",
-          baptismCell: _sameReligion == "Yes" ? _selectedBaptismCell : null,
+          baptismChapel: _sameReligion == "Yes" ? _selectedBaptismChapel : null,
           otherChurchName: _sameReligion == "No"
               ? _otherChurchNameController.text.trim()
               : null,
@@ -199,12 +199,12 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
 
               if (_sameReligion == 'Yes')
                 _buildDropdown(
-                  'Baptism Cell',
-                  _cells.map((c) => c.levelId ?? '').toList(),
-                  _selectedBaptismCell?.levelId,
+                  'Baptism Chapel',
+                  _chapels.map((c) => c.levelId ?? '').toList(),
+                  _selectedBaptismChapel?.levelId,
                   (val) {
-                    final cell = _cells.firstWhere((c) => c.levelId == val);
-                    setState(() => _selectedBaptismCell = cell);
+                    final chapel = _chapels.firstWhere((c) => c.levelId == val);
+                    setState(() => _selectedBaptismChapel = chapel);
                   },
                 ),
 

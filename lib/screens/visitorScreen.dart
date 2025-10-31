@@ -322,7 +322,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                   _showVisitorDetailsDialog(visitor);
                 },
               ),
-              if (widget.loggedInUser.role == 'CellAdmin' ||
+              if (widget.loggedInUser.role == 'ChapelAdmin' ||
                   widget.loggedInUser.role == 'SuperAdmin')
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
@@ -549,13 +549,13 @@ class _VisitorScreenState extends State<VisitorScreen> {
                         const SizedBox(height: 24),
 
                         // Quick Actions Section
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           _buildSectionHeader('Quick Actions'),
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           const SizedBox(height: 16),
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           _buildQuickActions(visitor),
                       ],
@@ -575,7 +575,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           Container(
                             decoration: BoxDecoration(
@@ -1313,7 +1313,7 @@ class _VisitorScreenState extends State<VisitorScreen> {
                           ),
                         ),
                         const SizedBox(width: 280),
-                        if (widget.loggedInUser.role == 'CellAdmin' ||
+                        if (widget.loggedInUser.role == 'ChapelAdmin' ||
                             widget.loggedInUser.role == 'SuperAdmin')
                           ElevatedButton.icon(
                             onPressed: () async {
